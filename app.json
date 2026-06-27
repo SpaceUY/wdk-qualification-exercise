@@ -13,7 +13,7 @@
         "NSCameraUsageDescription": "Required to scan QR codes for sending payments",
         "NSFaceIDUsageDescription": "Used to protect your wallet"
       },
-      "bundleIdentifier": "com.masueel.rn-wdk-exercise"
+      "bundleIdentifier": "com.spacedev.rn-wdk-exercise"
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +33,7 @@
         "android.permission.USE_FINGERPRINT",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.masueel.rnwdkexercise"
+      "package": "com.spacedev.rnwdkexercise"
     },
     "web": {
       "favicon": "./assets/favicon.png"

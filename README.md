@@ -172,7 +172,7 @@ To enable Google Drive backup on Android:
 1. Create a project at [console.cloud.google.com](https://console.cloud.google.com) and enable the **Google Drive API**
 2. Under **APIs & Services → Credentials**, create:
    - An **OAuth 2.0 Web client ID** (for token exchange)
-   - An **OAuth 2.0 Android client ID** with package name `com.masueel.rnwdkexercise`
+   - An **OAuth 2.0 Android client ID** with package name `com.spacedev.rnwdkexercise`
 3. Add `rn-wdk-exercise://` as an authorized redirect URI on the Web client
 4. Set both IDs in your `.env.local`
 
