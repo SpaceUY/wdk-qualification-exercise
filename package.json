@@ -6,9 +6,17 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "build:worklet": "turbo run build:worklet"
+    "build:worklet": "turbo run build:worklet",
+    "infra:dev": "npx sst deploy --stage dev",
+    "infra:prod": "npx sst deploy --stage production",
+    "infra:remove:dev": "npx sst remove --stage dev",
+    "infra:output": "npx sst output"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@nestjs/core", "keccak", "secp256k1"]
   },
   "devDependencies": {
+    "sst": "^3",
     "turbo": "^2.3.3"
   }
 }

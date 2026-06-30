@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
+import { parseMerchantQR } from '@/utils/merchantQR';
 
 export default function QRScanScreen() {
   const router = useRouter();
@@ -27,18 +28,14 @@ export default function QRScanScreen() {
     if (scanned) return;
     setScanned(true);
 
-    // Parse ethereum: URI or plain address
-    let address = data;
-    if (data.startsWith('ethereum:')) {
-      address = data.replace('ethereum:', '').split('?')[0];
-    } else if (data.startsWith('bitcoin:')) {
-      address = data.replace('bitcoin:', '').split('?')[0];
-    }
+    const { address, amount } = parseMerchantQR(data);
 
-    // Navigate back to send with address pre-filled
     router.navigate({
       pathname: '/(wallet)/send',
-      params: { scannedAddress: address },
+      params: {
+        scannedAddress: address,
+        ...(amount !== null ? { scannedAmount: amount } : {}),
+      },
     });
   }
 
@@ -66,7 +63,7 @@ const styles = StyleSheet.create({
   permText: { textAlign: 'center', marginBottom: 16, fontSize: 15 },
   button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', paddingHorizontal: 24 },
   buttonText: { color: '#fff', fontWeight: '600' },
-  overlay: { ...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center' },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   frame: {
     width: 250,
     height: 250,

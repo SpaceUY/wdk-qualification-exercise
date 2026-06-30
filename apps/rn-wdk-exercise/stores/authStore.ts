@@ -5,7 +5,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 type AuthStore = {
   userId: string | null;
+  accessToken: string | null;
   setUserId: (id: string) => void;
+  setAccessToken: (token: string) => void;
   clear: () => void;
 };
 
@@ -27,13 +29,15 @@ export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
       userId: null,
+      accessToken: null,
       setUserId: (id) => set({ userId: id }),
-      clear: () => set({ userId: null }),
+      setAccessToken: (token) => set({ accessToken: token }),
+      clear: () => set({ userId: null, accessToken: null }),
     }),
     {
       name: 'auth-store',
       storage: createJSONStorage(() => storage),
-      partialize: (state) => ({ userId: state.userId }),
+      partialize: (state) => ({ userId: state.userId, accessToken: state.accessToken }),
     },
   ),
 );

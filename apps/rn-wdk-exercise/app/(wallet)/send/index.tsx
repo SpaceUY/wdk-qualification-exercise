@@ -13,7 +13,7 @@ import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 
 export default function SendScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ scannedAddress?: string }>();
+  const params = useLocalSearchParams<{ scannedAddress?: string; scannedAmount?: string }>();
   const [selectedAsset, setSelectedAsset] = useState<AssetConfig>(ALL_ASSET_CONFIGS[0]);
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -22,7 +22,10 @@ export default function SendScreen() {
     if (params.scannedAddress) {
       setRecipient(params.scannedAddress);
     }
-  }, [params.scannedAddress]);
+    if (params.scannedAmount) {
+      setAmount(params.scannedAmount);
+    }
+  }, [params.scannedAddress, params.scannedAmount]);
   const [error, setError] = useState<string | null>(null);
 
   function validate(): boolean {

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useBalancesForWallet, useBalance, useWallet } from '@tetherto/wdk-react-native-core';
@@ -5,12 +6,14 @@ import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
 import { useAuthStore } from '@/stores/authStore';
 import { EVM_ASSETS, BTC_ASSET, SPARK_ASSET, ALL_ASSET_CONFIGS, BTC_CONFIG, SPARK_CONFIG } from '@/config/assets';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
+import { putWalletAddress } from '@/utils/api';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const clearUserId = useAuthStore((s) => s.clear);
   const { status, error, retry } = useWalletBootstrap(userId);
+  const registeredRef = useRef(false);
 
   const { data: evmBalances, isLoading: evmLoading } = useBalancesForWallet(
     0,
@@ -30,6 +33,14 @@ export default function DashboardScreen() {
 
   const { addresses } = useWallet({ autoLoadAccountIndices: [0] });
   const ethAddress = addresses['ethereum']?.[0];
+
+  useEffect(() => {
+    if (!ethAddress || registeredRef.current) return;
+    registeredRef.current = true;
+    putWalletAddress(ethAddress).catch(() => {
+      registeredRef.current = false;
+    });
+  }, [ethAddress]);
 
   if (status === 'loading' || status === 'idle') {
     return (
@@ -122,6 +133,12 @@ export default function DashboardScreen() {
           onPress={() => router.push('/(wallet)/wallet-setup')}
         >
           <Text style={[styles.buttonText, { color: '#2563eb' }]}>Seed</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.actionButton, styles.secondaryButton]}
+          onPress={() => router.push('/(wallet)/cashback')}
+        >
+          <Text style={[styles.buttonText, { color: '#2563eb' }]}>Cashback</Text>
         </TouchableOpacity>
       </View>
     </View>

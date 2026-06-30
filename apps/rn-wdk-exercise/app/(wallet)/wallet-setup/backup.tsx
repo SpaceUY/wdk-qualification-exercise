@@ -6,6 +6,8 @@ import { useWalletData } from '@/hooks/useWalletData';
 import { useBiometrics } from '@/hooks/useBiometrics';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { createCloudBackup } from '@/utils/cloudBackup';
+import { postWalletBackup } from '@/utils/api';
+import { restoreFromCloudBackup } from '@/utils/cloudBackup';
 
 export default function BackupScreen() {
   const userId = useAuthStore((s) => s.userId);
@@ -46,23 +48,27 @@ export default function BackupScreen() {
     const granted = await authenticate('Authorize cloud backup');
     if (!granted) return;
 
-    if (Platform.OS === 'ios') {
-      try {
+    try {
+      if (Platform.OS === 'ios') {
         await createCloudBackup(mnemonic, userId);
-        Alert.alert('Backed Up', 'Seed phrase uploaded to iCloud securely.');
-      } catch (err) {
-        Alert.alert('Backup Failed', err instanceof Error ? err.message : 'Could not back up to iCloud.');
-      }
-    } else {
-      try {
+        await postWalletBackup(await getCloudCiphertext(userId));
+        Alert.alert('Backed Up', 'Seed phrase backed up to iCloud and our servers.');
+      } else {
         const accessToken = await signIn();
         if (!accessToken) return;
         await createCloudBackup(mnemonic, userId, accessToken);
-        Alert.alert('Backed Up', 'Seed phrase uploaded to Google Drive securely.');
-      } catch (err) {
-        Alert.alert('Backup Failed', err instanceof Error ? err.message : 'Could not back up to Google Drive.');
+        await postWalletBackup(await getCloudCiphertext(userId, accessToken));
+        Alert.alert('Backed Up', 'Seed phrase backed up to Google Drive and our servers.');
       }
+    } catch (err) {
+      Alert.alert('Backup Failed', err instanceof Error ? err.message : 'Backup failed.');
     }
+  }
+
+  async function getCloudCiphertext(walletId: string, accessToken?: string): Promise<string> {
+    const ciphertext = await restoreFromCloudBackup(walletId, accessToken);
+    if (!ciphertext) throw new Error('Could not read backup ciphertext from cloud storage');
+    return ciphertext;
   }
 
   const words = mnemonic?.split(' ') ?? [];
