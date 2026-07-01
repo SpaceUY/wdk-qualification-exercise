@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner-native';
 import { wdkConfigs } from '@/config/networks';
 import { useAuthStore } from '@/stores/authStore';
+import { AppLockOverlay } from '@/components/AppLockOverlay';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const wdkBundle = require('../.wdk-bundle/wdk-worklet.bundle.js');
@@ -22,6 +23,7 @@ export default function RootLayout() {
         enableAutoInitialization={false}
       >
         <Stack screenOptions={{ headerShown: false }} />
+        <AppLockOverlay />
         <Toaster />
       </WdkAppProvider>
     </QueryClientProvider>

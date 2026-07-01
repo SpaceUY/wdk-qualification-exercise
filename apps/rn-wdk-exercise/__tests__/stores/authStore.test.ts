@@ -50,4 +50,22 @@ describe('authStore', () => {
   it('state is isolated between tests (beforeEach reset works)', () => {
     expect(useAuthStore.getState().userId).toBeNull();
   });
+
+  describe('accessToken', () => {
+    it('starts as null', () => {
+      const store = useAuthStore.getState();
+      expect(store.accessToken).toBeNull();
+    });
+
+    it('setAccessToken persists the token', () => {
+      useAuthStore.getState().setAccessToken('id-token-abc');
+      expect(useAuthStore.getState().accessToken).toBe('id-token-abc');
+    });
+
+    it('clear resets accessToken to null', () => {
+      useAuthStore.getState().setAccessToken('id-token-abc');
+      useAuthStore.getState().clear();
+      expect(useAuthStore.getState().accessToken).toBeNull();
+    });
+  });
 });
