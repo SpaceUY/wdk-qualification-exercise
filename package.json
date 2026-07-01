@@ -47,10 +47,13 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
     "@tetherto/wdk-worklet-bundler": "github:nampc1/wdk-worklet-bundler-fork#nampc/dynamic-bundle",
+    "@types/jest": "^29.0.0",
     "@types/react": "19.1.10",
     "@types/react-native": "^0.73.0",
     "bare-pack": "^2.0.0",
+    "jest-expo": "~54.0.0",
     "typescript": "^5.3.3"
   },
   "scripts": {
@@ -60,7 +63,10 @@
     "web": "expo start --web",
     "build:worklet": "wdk-worklet-bundler generate",
     "generate-bundle": "wdk-worklet-bundler generate",
-    "postinstall": "wdk-worklet-bundler generate && node scripts/bare-link.mjs"
+    "postinstall": "wdk-worklet-bundler generate && node scripts/bare-link.mjs",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
