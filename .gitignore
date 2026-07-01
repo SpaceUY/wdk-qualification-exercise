@@ -37,6 +37,10 @@ yarn-error.*
 # WDK types (generated)
 .wdk/
 
+# Claude Code
+.claude/
+CLAUDE.md
+
 # typescript
 *.tsbuildinfo
 
