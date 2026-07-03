@@ -13,6 +13,7 @@
     "@tetherto/wdk-wallet-evm": "1.0.0-beta.6",
     "@tetherto/wdk-wallet-evm-erc-4337": "1.0.0-beta.5",
     "@tetherto/wdk-wallet-spark": "1.0.0-beta.11",
+    "@tetherto/wdk-wallet-tron": "1.0.0-beta.7",
     "axios": "^1.18.1",
     "bare-node-runtime": "^1.1.4",
     "bufferutil": "^4.1.0",
@@ -67,37 +68,6 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "secp256k1",
-      "protobufjs",
-      "@buildonspark/spark-frost-bare-addon"
-    ],
-    "ignoredBuiltDependencies": [
-      "@tetherto/wdk-worklet-bundler"
-    ],
-    "overrides": {
-      "@tetherto/pear-wrk-wdk": "1.0.0-beta.8",
-      "react-native-bare-kit": "0.13.3",
-      "bare-fetch": "3.0.0",
-      "bare-https": "3.0.0",
-      "bare-tls": "3.1.0",
-      "bare-tcp": "2.2.12",
-      "bare-http1": "4.3.0",
-      "@tetherto/wdk-wallet": "1.0.0-beta.11",
-      "ws": "8.17.1",
-      "@tetherto/wdk-wallet-evm": "1.0.0-beta.6",
-      "expo-crypto": "15.0.9",
-      "bare-buffer": "3.4.4",
-      "bare-channel": "5.2.3",
-      "bare-crypto": "1.13.2",
-      "bare-logger": "2.0.1",
-      "bare-realm": "2.0.1",
-      "bare-repl": "6.0.2",
-      "bare-system-logger": "1.0.3",
-      "bare-timers": "3.2.1"
-    }
   },
   "private": true,
   "packageManager": "pnpm@10.15.1"

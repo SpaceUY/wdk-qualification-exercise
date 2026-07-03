@@ -4,7 +4,7 @@ import { useWallet } from '@tetherto/wdk-react-native-core';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 
-const NETWORKS = ['ethereum', 'arbitrum', 'polygon', 'bitcoin', 'spark'] as const;
+const NETWORKS = ['ethereum', 'arbitrum', 'polygon', 'bitcoin', 'spark', 'tron'] as const;
 type Network = (typeof NETWORKS)[number];
 
 export default function ReceiveScreen() {
