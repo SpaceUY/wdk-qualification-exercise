@@ -72,6 +72,20 @@ export const SPARK_CONFIG: AssetConfig = {
   decimals: 8,
 };
 
+export const USDT_TRON_CONFIG: AssetConfig = {
+  id: 'tron-usdt',
+  network: 'tron',
+  isNative: false,
+  // Default is Tron MAINNET's real USDT-TRC20 contract — it does not exist on Nile testnet, so
+  // balance queries fail harmlessly until EXPO_PUBLIC_USDT_TRON_ADDRESS is set to a real Nile
+  // test-USDT contract. Do not point EXPO_PUBLIC_TRON_RPC_URL at mainnet without also setting
+  // this, or the wallet would silently start watching the real mainnet token.
+  address: process.env.EXPO_PUBLIC_USDT_TRON_ADDRESS ?? 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+  symbol: 'USDT',
+  name: 'Tether USD (Tron Nile)',
+  decimals: 6,
+};
+
 export const EVM_ASSET_CONFIGS: AssetConfig[] = [
   ETH_CONFIG,
   USDT_ETH_CONFIG,
@@ -84,6 +98,7 @@ export const ALL_ASSET_CONFIGS: AssetConfig[] = [
   ...EVM_ASSET_CONFIGS,
   BTC_CONFIG,
   SPARK_CONFIG,
+  USDT_TRON_CONFIG,
 ];
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -93,3 +108,4 @@ export const EVM_ASSETS = EVM_ASSET_CONFIGS
   .map((c) => new BaseAsset(c));
 export const BTC_ASSET = new BaseAsset(BTC_CONFIG);
 export const SPARK_ASSET = new BaseAsset(SPARK_CONFIG);
+export const USDT_TRON_ASSET = new BaseAsset(USDT_TRON_CONFIG);

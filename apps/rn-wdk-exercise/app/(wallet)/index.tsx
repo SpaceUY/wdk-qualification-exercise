@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useBalancesForWallet, useBalance, useWallet } from '@tetherto/wdk-react-native-core';
 import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
 import { useAuthStore } from '@/stores/authStore';
-import { EVM_ASSETS, BTC_ASSET, SPARK_ASSET, ALL_ASSET_CONFIGS, BTC_CONFIG, SPARK_CONFIG } from '@/config/assets';
+import { EVM_ASSETS, BTC_ASSET, SPARK_ASSET, USDT_TRON_ASSET, ALL_ASSET_CONFIGS, BTC_CONFIG, SPARK_CONFIG, USDT_TRON_CONFIG } from '@/config/assets';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
 import { putWalletAddress } from '@/utils/api';
 
@@ -27,6 +27,11 @@ export default function DashboardScreen() {
   });
 
   const { data: sparkBalance, isLoading: sparkLoading } = useBalance(SPARK_CONFIG.network, 0, SPARK_ASSET, {
+    staleTime: 0,
+    refetchInterval: 60_000,
+  });
+
+  const { data: tronBalance, isLoading: tronLoading } = useBalance(USDT_TRON_CONFIG.network, 0, USDT_TRON_ASSET, {
     staleTime: 0,
     refetchInterval: 60_000,
   });
@@ -66,9 +71,10 @@ export default function DashboardScreen() {
     ...(evmBalances ?? []),
     ...(btcBalance ? [btcBalance] : []),
     ...(sparkBalance ? [sparkBalance] : []),
+    ...(tronBalance ? [tronBalance] : []),
   ];
 
-  const isLoading = evmLoading || btcLoading || sparkLoading;
+  const isLoading = evmLoading || btcLoading || sparkLoading || tronLoading;
 
   return (
     <View style={styles.container}>

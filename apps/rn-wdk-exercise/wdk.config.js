@@ -6,6 +6,7 @@ module.exports = {
     polygon: { package: '@tetherto/wdk-wallet-evm' },
     bitcoin: { package: '@tetherto/wdk-wallet-btc' },
     spark: { package: '@tetherto/wdk-wallet-spark' },
+    tron: { package: '@tetherto/wdk-wallet-tron' },
   },
   output: {
     bundle: './.wdk-bundle/wdk-worklet.bundle.js',

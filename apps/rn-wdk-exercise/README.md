@@ -16,11 +16,11 @@ A React Native + Expo reference implementation of the [Tether WDK](https://githu
 3. **No local wallet, no cloud backup** — create a new wallet, then fire-and-forget upload to iCloud (iOS) or prompt the user to back up via Google Drive (Android)
 
 ### Dashboard
-- Displays live balances for all configured EVM/BTC assets, refreshed every 30 s
-- Also queries a Spark balance every 60 s, but Spark has no entry in `wdkConfigs.networks` (see [Networks and assets](#networks-and-assets)), so this query never resolves to a usable balance
+- Displays live balances for all configured EVM/BTC/Tron assets, refreshed every 30 s, plus Spark every 60 s
 - Shows the user's Ethereum address
 - Retry button on bootstrap error
 - Logout clears the session
+- The Tron balance query is wired up like the others but never resolves in practice — see the address-validation bug under [Networks and assets](#networks-and-assets)
 
 ### Send
 - Asset picker (chip selector across all networks)
@@ -30,7 +30,7 @@ A React Native + Expo reference implementation of the [Tether WDK](https://githu
 - Uses `useAccount.send()` from WDK core
 
 ### Receive
-- Network picker lists Ethereum, Arbitrum, Polygon, Bitcoin, and Spark — only Ethereum and Bitcoin currently resolve to an address, since the others aren't wired up in `config/networks.ts` (see [Networks and assets](#networks-and-assets))
+- Network picker lists Ethereum, Arbitrum, Polygon, Bitcoin, Spark, and Tron — Ethereum, Bitcoin, and Spark resolve to a real address; Arbitrum and Polygon aren't wired up in `config/networks.ts`; Tron is wired up but broken (see [Networks and assets](#networks-and-assets))
 - QR code rendered via `react-native-qrcode-svg`
 - One-tap copy to clipboard
 
@@ -78,14 +78,20 @@ On iOS, uses `ICloudProvider` (no token required). On Android, uses `GoogleDrive
 
 ## Networks and assets
 
-`config/networks.ts` currently wires up two networks:
+`config/networks.ts` currently wires up four networks:
 
-| Network | Chain | Assets |
-|---|---|---|
-| Ethereum Sepolia | EVM | ETH, USDT, UTL |
-| Bitcoin Testnet | BTC (Blockbook) | BTC |
+| Network | Chain | Assets | Notes |
+|---|---|---|---|
+| Ethereum Sepolia | EVM | ETH, USDT, UTL | Testnet |
+| Bitcoin | BTC (Blockbook) | BTC | **Mainnet** — real funds, per project requirement |
+| Spark | Spark (SparkScan) | sBTC | **Mainnet** — same real-funds requirement as Bitcoin (Spark is a Bitcoin L2). Requires `EXPO_PUBLIC_SPARK_SCAN_API_KEY`. Receive shows a real address; there is no deposit/claim UI, so crediting funds into a Spark wallet isn't possible from this app (see [`infra/wdk-stack`](../../infra/wdk-stack/README.md)) |
+| Tron | TVM | USDT (TRC20) | Nile testnet. **Wired but broken** — see the bug note below |
 
-Arbitrum, Polygon, and Spark support has been scoped out to keep the exercise focused on the ETH-based cashback loop. `config/assets.ts` still defines `USDT_ARB_CONFIG`, `USDT_POL_CONFIG`, and `SPARK_CONFIG` as dead scaffolding for a possible future re-add — they resolve to the zero address by default and are filtered out of `EVM_ASSETS`, so they never reach the dashboard. The `receive.tsx` network picker and the Spark balance query in `(wallet)/index.tsx` still reference these networks by name; selecting them currently has no backing `wdkConfigs` entry.
+Arbitrum and Polygon support has been scoped out to keep the exercise focused on the ETH-based cashback loop. `config/assets.ts` still defines `USDT_ARB_CONFIG` and `USDT_POL_CONFIG` as dead scaffolding for a possible future re-add — they resolve to the zero address by default and are filtered out of `EVM_ASSETS`, so they never reach the dashboard. The `receive.tsx` network picker still lists them by name; selecting either currently has no backing `wdkConfigs` entry.
+
+### Known bug — Tron addresses are rejected everywhere
+
+`@tetherto/wdk-react-native-core`'s address validator (`isValidAddress` in `utils/typeGuards.js`) only recognizes Ethereum, Spark, and Bitcoin formats — there's no Tron case, so every syntactically valid Tron address throws `"Address from worklet has invalid format"` and is silently dropped. Tron balance, address display, send, and receive never work in this app, regardless of how correct the underlying address is. This is an upstream library bug, not something introduced by this project — a fix (patching `isValidAddress` to also accept Tron's `^T[1-9A-HJ-NP-Za-km-z]{33}$` format, e.g. via `pnpm patch`) has been identified but deliberately left unapplied. See `docs/qualification-todo.md` for the full write-up.
 
 ## Tech Stack
 
@@ -93,7 +99,7 @@ Arbitrum, Polygon, and Spark support has been scoped out to keep the exercise fo
 - **State:** Zustand v5 (auth + wallet onboarding), TanStack React Query v5 (server state)
 - **Forms:** React Hook Form + Zod
 - **Styling:** NativeWind (Tailwind for RN)
-- **Crypto:** @tetherto/wdk-react-native-core, wdk-wallet-evm, wdk-wallet-btc
+- **Crypto:** @tetherto/wdk-react-native-core, wdk-wallet-evm, wdk-wallet-btc, wdk-wallet-spark, wdk-wallet-tron
 - **Auth:** AWS Cognito (PKCE OAuth via expo-auth-session), expo-local-authentication
 - **Testing:** Jest (jest-expo preset), @testing-library/react-native
 
@@ -153,7 +159,7 @@ components/
   AppLockOverlay.tsx        Biometric gate overlay shown when app returns to foreground
 
 config/
-  networks.ts               WdkConfigs for Ethereum + Bitcoin (see Networks and assets)
+  networks.ts               WdkConfigs for Ethereum, Bitcoin, Spark, and Tron (see Networks and assets)
   assets.ts                 AssetConfig definitions + BaseAsset instances
 
 hooks/
@@ -208,7 +214,10 @@ All variables are prefixed with `EXPO_PUBLIC_` and have safe public-testnet defa
 | Variable | Default | Purpose |
 |---|---|---|
 | `EXPO_PUBLIC_ETHEREUM_RPC_URL` | `https://rpc.sepolia.org` | Ethereum Sepolia RPC |
-| `EXPO_PUBLIC_BTC_BLOCKBOOK_URL` | `https://tbtc1.trezor.io` | Bitcoin Testnet Blockbook |
+| `EXPO_PUBLIC_BTC_BLOCKBOOK_URL` | `https://blockbook.btc.zelcore.io/api` | Bitcoin **mainnet** Blockbook (real funds — `btc1.trezor.io` is Cloudflare-blocked for API requests) |
+| `EXPO_PUBLIC_TRON_RPC_URL` | `https://nile.trongrid.io` | Tron Nile testnet RPC (no API key needed; only mainnet requires one) |
+| `EXPO_PUBLIC_USDT_TRON_ADDRESS` | Tron mainnet USDT contract (placeholder) | USDT-TRC20 contract on Tron Nile — set to a real Nile test-token contract (no canonical one exists; see [`infra/wdk-stack`](../../infra/wdk-stack/README.md)) |
+| `EXPO_PUBLIC_SPARK_SCAN_API_KEY` | — | SparkScan API key, required for Spark (**mainnet**) balance/history |
 | `EXPO_PUBLIC_USDT_ETH_ADDRESS` | `0x000…` | USDT contract on Ethereum Sepolia |
 | `EXPO_PUBLIC_UTL_ADDRESS` | `0x000…` | UTL utility token contract |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | — | Google OAuth Web client ID (Android Drive backup) |
@@ -247,5 +256,5 @@ pnpm android
 - The WDK worklet bundle (`.wdk-bundle/`) must be committed or regenerated before running the app — the native runtime cannot bundle it on the fly.
 - Wallet IDs are the user's verified Cognito email address. A single device can hold multiple wallets (one per email).
 - Login requires a running Cognito User Pool (see [SST/Cognito infra](../../README.md#infrastructure-aws-cognito-via-sst)) and the cashback/wallet-backup screens require the [`apps/backend`](../backend/README.md) API to be reachable at `EXPO_PUBLIC_API_URL`.
-- All network requests target public testnets. No real funds are at risk.
+- **Bitcoin and Spark run on mainnet — real funds are at risk on those two networks** (a deliberate project requirement; Spark runs on top of Bitcoin, so it carries the same requirement). Ethereum and Tron stay on public testnets (Sepolia / Nile). Double-check recipient addresses and amounts before sending BTC or Spark from this app.
 - ERC-20 tokens whose contract address is the zero address (`0x000…`) are automatically excluded from balance fetching — they appear in the dashboard with `—` and produce no errors. Set the corresponding `EXPO_PUBLIC_*_ADDRESS` env var to a real contract address to activate them.
