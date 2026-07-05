@@ -1,21 +1,28 @@
 import { Body, Controller, Post, Put, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { WalletsService } from './wallets.service';
 import { UsersService } from '../users/users.service';
+import { CouponsService } from '../coupons/coupons.service';
 import { BackupWalletDto } from './dto/backup-wallet.dto';
 import { UpdateWalletAddressDto } from './dto/update-wallet-address.dto';
 
+@ApiTags('wallets')
+@ApiBearerAuth('access-token')
 @Controller('wallets')
 @UseGuards(JwtAuthGuard)
 export class WalletsController {
   constructor(
     private readonly walletsService: WalletsService,
     private readonly usersService: UsersService,
+    private readonly couponsService: CouponsService,
   ) {}
 
   @Post('backup')
+  @ApiOperation({ summary: 'Upsert the encrypted wallet backup for the authenticated user' })
+  @ApiResponse({ status: 201, description: 'Backup stored', type: Object })
   async backup(
     @CurrentUser() authUser: AuthenticatedUser,
     @Body() dto: BackupWalletDto,
@@ -29,6 +36,8 @@ export class WalletsController {
   }
 
   @Put('address')
+  @ApiOperation({ summary: "Register the authenticated user's EVM wallet address" })
+  @ApiResponse({ status: 200, description: 'Address registered', type: Object })
   async updateAddress(
     @CurrentUser() authUser: AuthenticatedUser,
     @Body() dto: UpdateWalletAddressDto,
@@ -38,6 +47,7 @@ export class WalletsController {
       email: authUser.email,
     });
     const updated = await this.usersService.updateWalletAddress(user.id, dto.walletAddress);
+    await this.couponsService.linkOrphanedCoupons(user.id, dto.walletAddress);
     return { walletAddress: updated.walletAddress as string };
   }
 }

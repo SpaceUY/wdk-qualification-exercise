@@ -1,16 +1,18 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 export class CouponListItemDto {
-  id!: string;
-  code!: string;
-  usdtAmountRaw!: string;
-  utlAmountRaw!: string;
-  createdAt!: Date;
+  @ApiProperty() id!: string;
+  @ApiProperty() code!: string;
+  @ApiProperty({ description: 'Raw USDT amount (6 decimals)' }) usdtAmountRaw!: string;
+  @ApiProperty({ description: 'Raw UTL cashback amount (18 decimals)' }) utlAmountRaw!: string;
+  @ApiProperty() createdAt!: Date;
 }
 
 export class ClaimedCouponListItemDto {
-  id!: string;
-  usdtAmountRaw!: string;
-  utlAmountRaw!: string;
-  redeemedAt!: Date;
-  redemptionTxHash!: string;
-  createdAt!: Date;
+  @ApiProperty() id!: string;
+  @ApiProperty({ description: 'Raw USDT amount (6 decimals)' }) usdtAmountRaw!: string;
+  @ApiProperty({ description: 'Raw UTL cashback amount (18 decimals)' }) utlAmountRaw!: string;
+  @ApiProperty() redeemedAt!: Date;
+  @ApiProperty() redemptionTxHash!: string;
+  @ApiProperty() createdAt!: Date;
 }

@@ -12,7 +12,7 @@
  * Defaults to 10 USDT → 0.5 UTL cashback (5%).
  */
 
-const { Client } = require('pg');
+const mongoose = require('mongoose');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -55,29 +55,18 @@ async function main() {
   const usdtRaw = BigInt(usdtWhole) * 10n ** 6n; // 6 decimals
   const utlRaw = computeUtlCashback(usdtRaw);
 
-  // 'db' is the Docker Compose service name — only valid inside the container.
-  // When running from the host, remap it to localhost.
-  const rawHost = process.env.DATABASE_HOST ?? 'localhost';
-  const host = rawHost === 'db' ? 'localhost' : rawHost;
-
-  const client = new Client({
-    host,
-    port: parseInt(process.env.DATABASE_PORT ?? '5432', 10),
-    user: process.env.DATABASE_USER ?? 'postgres',
-    password: process.env.DATABASE_PASSWORD || 'postgres',
-    database: process.env.DATABASE_NAME ?? 'cashback_db',
-  });
-
-  await client.connect();
+  const uri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/cashback_db';
+  await mongoose.connect(uri);
 
   try {
-    const userRes = await client.query('SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL', [email]);
-    if (userRes.rowCount === 0) {
+    const user = await mongoose.connection.db
+      .collection('users')
+      .findOne({ email, deletedAt: null });
+    if (!user) {
       console.error(`No user found with email: ${email}`);
       console.error('The user must have logged in at least once via the mobile app.');
       process.exit(1);
     }
-    const userId = userRes.rows[0].id;
 
     const code = crypto.randomBytes(16).toString('hex');
     // Fake tx hash — unique per run, not a real Sepolia hash
@@ -85,21 +74,30 @@ async function main() {
     const merchantAddress = '0x' + '0'.repeat(39) + '1'; // placeholder
     const blockNumber = 0;
 
-    await client.query(
-      `INSERT INTO coupons
-        (code, tx_hash, usdt_amount_raw, utl_amount_raw, merchant_address, block_number, user_id, redeemed)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
-      [code, txHash, usdtRaw.toString(), utlRaw.toString(), merchantAddress, blockNumber, userId],
-    );
+    await mongoose.connection.db.collection('coupons').insertOne({
+      code,
+      txHash,
+      usdtAmountRaw: usdtRaw.toString(),
+      utlAmountRaw: utlRaw.toString(),
+      merchantAddress,
+      payerAddress: null,
+      blockNumber,
+      userId: user._id.toString(),
+      redeemed: false,
+      redemptionTxHash: null,
+      redeemedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     console.log('Coupon seeded successfully:');
     console.log('  code          :', code);
-    console.log('  user          :', email, '(' + userId + ')');
+    console.log('  user          :', email, '(' + user._id.toString() + ')');
     console.log('  USDT paid     :', usdtWhole, 'USDT');
     console.log('  UTL cashback  :', Number(utlRaw) / 1e18, 'UTL');
     console.log('  utlAmountRaw  :', utlRaw.toString());
   } finally {
-    await client.end();
+    await mongoose.disconnect();
   }
 }
 

@@ -1,43 +1,36 @@
-import {
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  OneToMany,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
-import type { EncryptedBackup } from '../../wallets/entities/encrypted-backup.entity';
-import type { Coupon } from '../../coupons/entities/coupon.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 
-@Entity('users')
+@Schema({ collection: 'users', timestamps: true })
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  // Not a @Prop — this is Mongoose's default `id` virtual (string form of `_id`),
+  // declared here only so TypeScript recognizes it on hydrated documents.
   id!: string;
 
-  @Column({ unique: true })
+  @Prop({ type: String, required: true, unique: true })
   cognitoSub!: string;
 
   // email doubles as the WDK walletId — matches the RN app's useAuthStore.userId
-  @Column({ unique: true })
+  @Prop({ type: String, required: true, unique: true })
   email!: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: true })
+  // Nullable but must stay unique once set — see the partial index below, which allows
+  // multiple documents with walletAddress: null (mirrors the Postgres unique-constraint
+  // behavior, where multiple NULLs are allowed under a unique constraint).
+  @Prop({ type: String, default: null })
   walletAddress!: string | null;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
-
-  @DeleteDateColumn()
+  @Prop({ type: Date, default: null })
   deletedAt!: Date | null;
 
-  @OneToOne('EncryptedBackup', (b: EncryptedBackup) => b.user)
-  encryptedBackup!: EncryptedBackup | null;
-
-  @OneToMany('Coupon', (c: Coupon) => c.user)
-  coupons!: Coupon[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+export type UserDocument = HydratedDocument<User>;
+export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.index(
+  { walletAddress: 1 },
+  { unique: true, partialFilterExpression: { walletAddress: { $type: 'string' } } },
+);

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WalletsController } from './wallets.controller';
 import { WalletsService } from './wallets.service';
 import { UsersService } from '../users/users.service';
+import { CouponsService } from '../coupons/coupons.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import type { User } from '../users/entities/user.entity';
 import type { EncryptedBackup } from './entities/encrypted-backup.entity';
@@ -12,6 +13,7 @@ describe('WalletsController', () => {
   let controller: WalletsController;
   let walletsService: jest.Mocked<WalletsService>;
   let usersService: jest.Mocked<UsersService>;
+  let couponsService: jest.Mocked<CouponsService>;
 
   const authUser: AuthenticatedUser = { sub: 'cognito-sub', email: 'test@example.com' };
   const mockUser: Partial<User> = { id: 'user-id', walletAddress: null };
@@ -28,12 +30,17 @@ describe('WalletsController', () => {
           provide: UsersService,
           useValue: { findOrCreate: jest.fn(), updateWalletAddress: jest.fn() },
         },
+        {
+          provide: CouponsService,
+          useValue: { linkOrphanedCoupons: jest.fn() },
+        },
       ],
     }).compile();
 
     controller = module.get(WalletsController);
     walletsService = module.get(WalletsService);
     usersService = module.get(UsersService);
+    couponsService = module.get(CouponsService);
   });
 
   describe('backup', () => {
@@ -66,6 +73,16 @@ describe('WalletsController', () => {
       expect(usersService.updateWalletAddress).toHaveBeenCalledWith('user-id', '0xabc');
       expect(result).toEqual({ walletAddress: '0xabc' });
     });
+
+    it('links any coupons orphaned under this address after registering it', async () => {
+      (usersService.findOrCreate as jest.Mock).mockResolvedValue(mockUser as User);
+      const updated: Partial<User> = { walletAddress: '0xabc' };
+      (usersService.updateWalletAddress as jest.Mock).mockResolvedValue(updated as User);
+
+      await controller.updateAddress(authUser, { walletAddress: '0xabc' });
+
+      expect(couponsService.linkOrphanedCoupons).toHaveBeenCalledWith('user-id', '0xabc');
+    });
   });
 });
 
@@ -83,8 +100,14 @@ describe('BackupWalletDto validation', () => {
     }) as Promise<BackupWalletDto>;
   }
 
-  it('accepts a valid base64 string', async () => {
-    await expect(validate({ ciphertext: 'SGVsbG8gV29ybGQ=' })).resolves.toBeDefined();
+  function validWdkCiphertext(byteLength = 61): string {
+    const blob = Buffer.alloc(byteLength, 0);
+    blob[0] = 0x01;
+    return blob.toString('base64');
+  }
+
+  it('accepts a well-formed ciphertext blob', async () => {
+    await expect(validate({ ciphertext: validWdkCiphertext() })).resolves.toBeDefined();
   });
 
   it('rejects an empty string', async () => {
@@ -104,9 +127,9 @@ describe('BackupWalletDto validation', () => {
     );
   });
 
-  it('accepts a base64 string at exactly 65532 characters (valid length)', async () => {
-    // 'AAAA' repeated 16383 times = 65532 chars — under the limit, valid base64
-    await expect(validate({ ciphertext: 'AAAA'.repeat(16383) })).resolves.toBeDefined();
+  it('accepts a well-formed ciphertext blob at exactly 65532 base64 characters (valid length)', async () => {
+    // 49149 bytes -> exactly 65532 base64 chars (49149 / 3 * 4, no padding needed)
+    await expect(validate({ ciphertext: validWdkCiphertext(49149) })).resolves.toBeDefined();
   });
 
   it('rejects a missing ciphertext field', async () => {

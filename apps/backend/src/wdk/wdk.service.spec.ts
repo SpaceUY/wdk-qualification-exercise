@@ -4,7 +4,7 @@ import { WdkService } from './wdk.service';
 
 // axios uses a default export — mock must set __esModule + default
 jest.mock('axios', () => {
-  const mockInstance = { post: jest.fn(), get: jest.fn() };
+  const mockInstance = { get: jest.fn() };
   return {
     __esModule: true,
     default: { create: jest.fn().mockReturnValue(mockInstance) },
@@ -13,7 +13,8 @@ jest.mock('axios', () => {
 
 describe('WdkService', () => {
   let service: WdkService;
-  let mockAxiosInstance: { post: jest.Mock; get: jest.Mock };
+  let mockAxiosInstance: { get: jest.Mock };
+  let mockAxiosCreate: jest.Mock;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -21,7 +22,11 @@ describe('WdkService', () => {
         WdkService,
         {
           provide: ConfigService,
-          useValue: { getOrThrow: jest.fn().mockReturnValue('http://wdk.example.com') },
+          useValue: {
+            getOrThrow: jest.fn((key: string) =>
+              key === 'wdkIndexer.baseUrl' ? 'https://wdk-api.tether.io' : 'test-api-key',
+            ),
+          },
         },
       ],
     }).compile();
@@ -29,43 +34,49 @@ describe('WdkService', () => {
     service = module.get(WdkService);
 
     const axios = (jest.requireMock('axios') as { default: { create: jest.Mock } }).default;
-    mockAxiosInstance = axios.create.mock.results[0]?.value as { post: jest.Mock; get: jest.Mock };
+    mockAxiosCreate = axios.create;
+    mockAxiosInstance = axios.create.mock.results[0]?.value as { get: jest.Mock };
   });
 
-  describe('connectShard', () => {
-    it('posts to /connect-shard with walletId', async () => {
-      mockAxiosInstance.post.mockResolvedValue({});
+  it('creates the axios client with the x-api-key header', () => {
+    expect(mockAxiosCreate).toHaveBeenCalledWith({
+      baseURL: 'https://wdk-api.tether.io',
+      headers: { 'x-api-key': 'test-api-key' },
+    });
+  });
 
-      await service.connectShard('user@example.com');
-
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/connect-shard', {
-        walletId: 'user@example.com',
+  describe('getUsdtBalance', () => {
+    it('returns the balance amount from GET /api/v1/:chain/usdt/:address/token-balances', async () => {
+      mockAxiosInstance.get.mockResolvedValue({
+        data: { tokenBalance: { blockchain: 'sepolia', token: 'usdt', amount: '12.5' } },
       });
+
+      const result = await service.getUsdtBalance('sepolia', '0xabc');
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/api/v1/sepolia/usdt/0xabc/token-balances',
+      );
+      expect(result).toBe('12.5');
     });
   });
 
-  describe('getBalances', () => {
-    it('returns balance data from GET /balances/:walletId', async () => {
-      const balances = [{ asset: 'ETH', amount: '1000000000000000000', decimals: 18 }];
-      mockAxiosInstance.get.mockResolvedValue({ data: balances });
+  describe('getUsdtTransfers', () => {
+    it('returns transfers from GET /api/v1/:chain/usdt/:address/token-transfers', async () => {
+      const transfers = [{ txHash: '0xabc' }];
+      mockAxiosInstance.get.mockResolvedValue({ data: { transfers } });
 
-      const result = await service.getBalances('user@example.com');
+      const result = await service.getUsdtTransfers('sepolia', '0xabc', 5);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/balances/user%40example.com');
-      expect(result).toEqual(balances);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/api/v1/sepolia/usdt/0xabc/token-transfers?limit=5',
+      );
+      expect(result).toEqual(transfers);
     });
-  });
 
-  describe('getTransactionHistory', () => {
-    it('returns transactions from GET /transactions/:walletId', async () => {
-      const txs = [
-        { txHash: '0xabc', asset: 'ETH', amount: '100', direction: 'out', timestamp: 1000 },
-      ];
-      mockAxiosInstance.get.mockResolvedValue({ data: txs });
+    it('propagates errors from the indexer API', async () => {
+      mockAxiosInstance.get.mockRejectedValue(new Error('indexer down'));
 
-      const result = await service.getTransactionHistory('user@example.com');
-
-      expect(result).toEqual(txs);
+      await expect(service.getUsdtTransfers('sepolia', '0xabc')).rejects.toThrow('indexer down');
     });
   });
 });

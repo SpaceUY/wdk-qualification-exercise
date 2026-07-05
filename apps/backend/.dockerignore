@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+contracts/artifacts
+contracts/cache
+typechain-types
+.env
+.env.local
+.git

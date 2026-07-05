@@ -1,0 +1,39 @@
+config:
+  target: "http://localhost:3000"
+  processor: "./processor.js"
+  phases:
+    - name: "warm up"
+      duration: 30
+      arrivalRate: 2
+    - name: "sustained load"
+      duration: 60
+      arrivalRate: 10
+
+scenarios:
+  - name: "Authenticated read/write flow"
+    beforeScenario: "ensureToken"
+    flow:
+      - get:
+          url: "/coupons"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - get:
+          url: "/coupons/claimed"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - put:
+          url: "/wallets/address"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            walletAddress: "0x1111111111111111111111111111111111111111"
+      - post:
+          url: "/wallets/backup"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            ciphertext: "ZmFrZS1lbmNyeXB0ZWQtc2VlZC1wYXlsb2Fk"
+      - get:
+          url: "/wdk-app-node/token"
+          headers:
+            Authorization: "Bearer {{ token }}"

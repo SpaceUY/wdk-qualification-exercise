@@ -1,32 +1,45 @@
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import type { ObjectLiteral, Repository } from 'typeorm';
+import { getModelToken } from '@nestjs/mongoose';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 
-type MockRepo<T extends ObjectLiteral> = Partial<Record<keyof Repository<T>, jest.Mock>>;
+type MockModel = {
+  findOne: jest.Mock;
+  findOneAndUpdate: jest.Mock;
+  findById: jest.Mock;
+  create: jest.Mock;
+  updateOne: jest.Mock;
+};
 
-function createMockRepo<T extends ObjectLiteral>(): MockRepo<T> {
+function createMockModel(): MockModel {
   return {
     findOne: jest.fn(),
-    findOneOrFail: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
-    save: jest.fn(),
-    update: jest.fn(),
+    updateOne: jest.fn(),
   };
+}
+
+function duplicateKeyError(): Error {
+  return Object.assign(new Error('E11000 duplicate key error'), {
+    code: 11000,
+    name: 'MongoServerError',
+  });
 }
 
 describe('UsersService', () => {
   let service: UsersService;
-  let repo: MockRepo<User>;
+  let userModel: MockModel;
 
   beforeEach(async () => {
-    repo = createMockRepo<User>();
+    userModel = createMockModel();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: getRepositoryToken(User), useValue: repo },
+        { provide: getModelToken(User.name), useValue: userModel },
       ],
     }).compile();
 
@@ -34,48 +47,77 @@ describe('UsersService', () => {
   });
 
   describe('findOrCreate', () => {
-    it('returns existing user when found by cognitoSub', async () => {
-      const existing: Partial<User> = { id: 'uuid-1', cognitoSub: 'sub-1', email: 'a@b.com' };
-      (repo.findOne as jest.Mock).mockResolvedValue(existing);
+    it('returns the existing user via the atomic upsert when already present', async () => {
+      const existing: Partial<User> = { cognitoSub: 'sub-1', email: 'a@b.com' };
+      userModel.findOneAndUpdate.mockResolvedValue(existing);
 
       const result = await service.findOrCreate({ cognitoSub: 'sub-1', email: 'a@b.com' });
 
+      expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { cognitoSub: 'sub-1' },
+        { $setOnInsert: { email: 'a@b.com', walletAddress: null } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
       expect(result).toBe(existing);
-      expect(repo.create).not.toHaveBeenCalled();
-      expect(repo.save).not.toHaveBeenCalled();
     });
 
-    it('creates and saves a new user when not found', async () => {
-      const newUser: Partial<User> = { id: 'uuid-2', cognitoSub: 'sub-2', email: 'c@d.com' };
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
-      (repo.create as jest.Mock).mockReturnValue(newUser);
-      (repo.save as jest.Mock).mockResolvedValue(newUser);
+    it('creates a new user via the atomic upsert when not found', async () => {
+      const newUser: Partial<User> = { cognitoSub: 'sub-2', email: 'c@d.com' };
+      userModel.findOneAndUpdate.mockResolvedValue(newUser);
 
       const result = await service.findOrCreate({ cognitoSub: 'sub-2', email: 'c@d.com' });
 
-      expect(repo.create).toHaveBeenCalledWith({
-        cognitoSub: 'sub-2',
-        email: 'c@d.com',
-        walletAddress: null,
-      });
-      expect(repo.save).toHaveBeenCalledWith(newUser);
+      expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { cognitoSub: 'sub-2' },
+        { $setOnInsert: { email: 'c@d.com', walletAddress: null } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
       expect(result).toBe(newUser);
+    });
+
+    it('returns the existing user when a concurrent request wins the upsert race', async () => {
+      const existing: Partial<User> = { cognitoSub: 'sub-3', email: 'e@f.com' };
+      userModel.findOneAndUpdate.mockRejectedValue(duplicateKeyError());
+      userModel.findOne.mockResolvedValue(existing);
+
+      const result = await service.findOrCreate({ cognitoSub: 'sub-3', email: 'e@f.com' });
+
+      expect(userModel.findOne).toHaveBeenCalledWith({ cognitoSub: 'sub-3' });
+      expect(result).toBe(existing);
+    });
+
+    it('throws ConflictException when the duplicate key is a different account\'s email', async () => {
+      userModel.findOneAndUpdate.mockRejectedValue(duplicateKeyError());
+      userModel.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.findOrCreate({ cognitoSub: 'sub-4', email: 'taken@example.com' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('rethrows unrelated database errors unchanged', async () => {
+      const otherError = new Error('connection lost');
+      userModel.findOneAndUpdate.mockRejectedValue(otherError);
+
+      await expect(
+        service.findOrCreate({ cognitoSub: 'sub-5', email: 'g@h.com' }),
+      ).rejects.toBe(otherError);
     });
   });
 
   describe('findByCognitoSub', () => {
-    it('delegates to repository findOne', async () => {
-      const user: Partial<User> = { id: 'uuid-1' };
-      (repo.findOne as jest.Mock).mockResolvedValue(user);
+    it('delegates to findOne', async () => {
+      const user: Partial<User> = { cognitoSub: 'sub-1' };
+      userModel.findOne.mockResolvedValue(user);
 
       const result = await service.findByCognitoSub('sub-1');
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { cognitoSub: 'sub-1' } });
+      expect(userModel.findOne).toHaveBeenCalledWith({ cognitoSub: 'sub-1' });
       expect(result).toBe(user);
     });
 
     it('returns null when user does not exist', async () => {
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
+      userModel.findOne.mockResolvedValue(null);
 
       const result = await service.findByCognitoSub('unknown');
 
@@ -85,26 +127,43 @@ describe('UsersService', () => {
 
   describe('findByWalletAddress', () => {
     it('lowercases the address before querying', async () => {
-      (repo.findOne as jest.Mock).mockResolvedValue(null);
+      userModel.findOne.mockResolvedValue(null);
 
       await service.findByWalletAddress('0xABCDEF');
 
-      expect(repo.findOne).toHaveBeenCalledWith({
-        where: { walletAddress: '0xabcdef' },
-      });
+      expect(userModel.findOne).toHaveBeenCalledWith({ walletAddress: '0xabcdef' });
     });
   });
 
   describe('updateWalletAddress', () => {
     it('updates and returns the refreshed user', async () => {
-      const updated: Partial<User> = { id: 'uuid-1', walletAddress: '0xabc' };
-      (repo.update as jest.Mock).mockResolvedValue(undefined);
-      (repo.findOneOrFail as jest.Mock).mockResolvedValue(updated);
+      const updated: Partial<User> = { walletAddress: '0xabc' };
+      userModel.updateOne.mockResolvedValue({ acknowledged: true });
+      userModel.findById.mockReturnValue({ orFail: jest.fn().mockResolvedValue(updated) });
 
-      const result = await service.updateWalletAddress('uuid-1', '0xABC');
+      const result = await service.updateWalletAddress('user-1', '0xABC');
 
-      expect(repo.update).toHaveBeenCalledWith('uuid-1', { walletAddress: '0xabc' });
+      expect(userModel.updateOne).toHaveBeenCalledWith(
+        { _id: 'user-1' },
+        { walletAddress: '0xabc' },
+      );
       expect(result).toBe(updated);
+    });
+
+    it('throws ConflictException when the address is already claimed by another user', async () => {
+      userModel.updateOne.mockRejectedValue(duplicateKeyError());
+
+      await expect(service.updateWalletAddress('user-1', '0xabc')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(userModel.findById).not.toHaveBeenCalled();
+    });
+
+    it('rethrows unrelated database errors unchanged', async () => {
+      const otherError = new Error('connection lost');
+      userModel.updateOne.mockRejectedValue(otherError);
+
+      await expect(service.updateWalletAddress('user-1', '0xabc')).rejects.toBe(otherError);
     });
   });
 });
