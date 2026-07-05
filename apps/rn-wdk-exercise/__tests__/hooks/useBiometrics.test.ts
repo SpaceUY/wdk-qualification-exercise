@@ -54,14 +54,14 @@ describe('useBiometrics', () => {
   });
 
   describe('authenticate', () => {
-    it('returns true (graceful fallback) when biometrics unavailable', async () => {
+    it('returns false (fail closed) when biometrics unavailable', async () => {
       mockHasHardwareAsync.mockResolvedValue(false);
 
       const { result } = await renderHook(() => useBiometrics());
       let success!: boolean;
       await act(async () => { success = await result.current.authenticate('Please authenticate'); });
 
-      expect(success).toBe(true);
+      expect(success).toBe(false);
       expect(mockAuthenticateAsync).not.toHaveBeenCalled();
     });
 

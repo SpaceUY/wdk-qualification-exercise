@@ -123,7 +123,7 @@ export default function CashbackScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <View testID="cashback-item" style={styles.row}>
             <View>
               <Text style={styles.rowTitle}>
                 5% cashback on ${formatUsdt(item.usdtAmountRaw)} USDT
@@ -133,6 +133,7 @@ export default function CashbackScreen() {
               </Text>
             </View>
             <TouchableOpacity
+              testID="claim-button"
               style={styles.claimButton}
               onPress={() => handleClaim(item)}
               disabled={pendingId === item.id}
@@ -180,7 +181,7 @@ export default function CashbackScreen() {
         keyExtractor={(item: ClaimedCouponListItem) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }: { item: ClaimedCouponListItem }) => (
-          <View style={styles.row}>
+          <View testID="cashback-claimed-item" style={styles.row}>
             <View style={styles.claimedRowContent}>
               <Text style={styles.rowTitle}>
                 ${formatUsdt(item.usdtAmountRaw)} USDT → {formatUtl(item.utlAmountRaw)} UTL
@@ -201,6 +202,7 @@ export default function CashbackScreen() {
 
       <View style={styles.tabBar}>
         <TouchableOpacity
+          testID="cashback-tab-available"
           style={[styles.tab, activeTab === 'available' && styles.tabActive]}
           onPress={() => setActiveTab('available')}
         >
@@ -209,6 +211,7 @@ export default function CashbackScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          testID="cashback-tab-claimed"
           style={[styles.tab, activeTab === 'claimed' && styles.tabActive]}
           onPress={() => setActiveTab('claimed')}
         >

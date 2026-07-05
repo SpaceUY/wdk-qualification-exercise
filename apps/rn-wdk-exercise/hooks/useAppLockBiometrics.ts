@@ -17,9 +17,11 @@ export function useAppLockBiometrics(): {
   useEffect(() => {
     if (!userId) return;
 
-    isAvailable().then((available) => {
-      if (available) setLocked(true);
-    });
+    isAvailable()
+      .then((available) => {
+        if (available) setLocked(true);
+      })
+      .catch(() => setLocked(true));
 
     const subscription = AppState.addEventListener('change', (nextState) => {
       const previousState = appStateRef.current;
@@ -30,9 +32,11 @@ export function useAppLockBiometrics(): {
         nextState === 'active';
 
       if (comingToForeground && userId) {
-        isAvailable().then((available) => {
-          if (available) setLocked(true);
-        });
+        isAvailable()
+          .then((available) => {
+            if (available) setLocked(true);
+          })
+          .catch(() => setLocked(true));
       }
     });
 

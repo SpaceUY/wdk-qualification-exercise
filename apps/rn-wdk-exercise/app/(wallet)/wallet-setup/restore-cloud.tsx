@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { restoreFromCloudBackup } from '@/utils/cloudBackup';
+import { decryptMnemonic } from '@/utils/seedEncryption';
+import { PassphraseInput } from '@/components/PassphraseInput';
 
 export default function RestoreCloudScreen() {
   const router = useRouter();
@@ -12,46 +14,88 @@ export default function RestoreCloudScreen() {
   const { restoreWallet } = useWalletData();
   const { signIn } = useGoogleAuth();
   const [loading, setLoading] = useState(false);
+  const [showPassphrasePrompt, setShowPassphrasePrompt] = useState(false);
+  const [pendingCiphertext, setPendingCiphertext] = useState<string | null>(null);
 
   async function handleRestore() {
     if (!userId) return;
     setLoading(true);
     try {
-      const accessToken = await signIn();
-      if (!accessToken) return;
+      let accessToken: string | undefined;
+      if (Platform.OS === 'android') {
+        const token = await signIn();
+        if (!token) return;
+        accessToken = token;
+      }
 
-      const mnemonic = await restoreFromCloudBackup(userId, accessToken);
-      if (!mnemonic) {
-        Alert.alert('No Backup Found', 'No Google Drive backup was found for this account.');
+      const ciphertext = await restoreFromCloudBackup(userId, accessToken);
+      if (!ciphertext) {
+        Alert.alert('No Backup Found', 'No cloud backup was found for this account.');
         return;
       }
 
-      await restoreWallet(mnemonic, userId);
-      Alert.alert('Wallet Restored', 'Your wallet has been restored from Google Drive.', [
-        { text: 'OK', onPress: () => router.replace('/(wallet)') },
-      ]);
+      setPendingCiphertext(ciphertext);
+      setShowPassphrasePrompt(true);
     } catch (err) {
-      Alert.alert('Restore Failed', err instanceof Error ? err.message : 'Could not restore from Google Drive.');
+      Alert.alert(
+        'Restore Failed',
+        err instanceof Error ? err.message : 'Could not restore from cloud backup.',
+      );
     } finally {
       setLoading(false);
     }
   }
 
+  async function completeRestore(passphrase: string) {
+    setShowPassphrasePrompt(false);
+    if (!userId || !pendingCiphertext) return;
+
+    try {
+      const mnemonic = await decryptMnemonic(pendingCiphertext, passphrase);
+      await restoreWallet(mnemonic, userId);
+      Alert.alert('Wallet Restored', 'Your wallet has been restored from your cloud backup.', [
+        { text: 'OK', onPress: () => router.replace('/(wallet)') },
+      ]);
+    } catch (err) {
+      Alert.alert(
+        'Restore Failed',
+        err instanceof Error ? err.message : 'Could not restore from cloud backup.',
+      );
+    } finally {
+      setPendingCiphertext(null);
+    }
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Restore from Google Drive</Text>
+      <Text style={styles.title}>Restore from Cloud Backup</Text>
       <Text style={styles.subtitle}>
-        Sign in with the Google account you used to back up your wallet. Your seed phrase will be
-        downloaded and your wallet restored.
+        {Platform.OS === 'android'
+          ? "Sign in with the Google account you used to back up your wallet. You'll then enter your backup passphrase to restore it."
+          : "We'll look for a backup in your iCloud account. You'll then enter your backup passphrase to restore it."}
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Sign in with Google</Text>
+          <Text style={styles.buttonText}>
+            {Platform.OS === 'android' ? 'Sign in with Google' : 'Restore from iCloud'}
+          </Text>
         )}
       </TouchableOpacity>
+
+      {showPassphrasePrompt ? (
+        <PassphraseInput
+          submitLabel="Decrypt & Restore"
+          onSubmit={completeRestore}
+          onCancel={() => {
+            setShowPassphrasePrompt(false);
+            setPendingCiphertext(null);
+          }}
+          validateStrength={false}
+        />
+      ) : null}
     </View>
   );
 }

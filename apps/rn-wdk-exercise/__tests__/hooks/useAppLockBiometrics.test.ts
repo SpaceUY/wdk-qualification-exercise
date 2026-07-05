@@ -55,6 +55,14 @@ describe('useAppLockBiometrics', () => {
     expect(result.current.locked).toBe(false);
   });
 
+  it('locks on mount when isAvailable() rejects (fail closed)', async () => {
+    useAuthStore.getState().setUserId('alice@example.com');
+    mockIsAvailable.mockRejectedValue(new Error('native module error'));
+
+    const { result } = await renderHook(() => useAppLockBiometrics());
+    await waitFor(() => expect(result.current.locked).toBe(true));
+  });
+
   it('unlock() calls authenticate and sets locked=false on success', async () => {
     useAuthStore.getState().setUserId('alice@example.com');
     mockIsAvailable.mockResolvedValue(true);
@@ -95,6 +103,31 @@ describe('useAppLockBiometrics', () => {
     expect(result.current.locked).toBe(false);
 
     // Simulate background → foreground via two listener events
+    await act(async () => {
+      appStateListener?.('background');
+      await Promise.resolve();
+    });
+    await act(async () => {
+      appStateListener?.('active');
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.locked).toBe(true));
+  });
+
+  it('re-locks on foreground when isAvailable() rejects (fail closed)', async () => {
+    useAuthStore.getState().setUserId('alice@example.com');
+    mockIsAvailable.mockResolvedValue(true);
+    mockAuthenticate.mockResolvedValue(true);
+
+    const { result } = await renderHook(() => useAppLockBiometrics());
+    await waitFor(() => expect(result.current.locked).toBe(true));
+
+    await act(async () => { await result.current.unlock(); });
+    expect(result.current.locked).toBe(false);
+
+    mockIsAvailable.mockRejectedValue(new Error('native module error'));
+
     await act(async () => {
       appStateListener?.('background');
       await Promise.resolve();

@@ -81,6 +81,7 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Wallet</Text>
         <TouchableOpacity
+          testID="dashboard-logout"
           onPress={() => {
             clearUserId();
             router.replace('/(auth)');
@@ -91,7 +92,7 @@ export default function DashboardScreen() {
       </View>
 
       {ethAddress ? (
-        <Text style={styles.address} numberOfLines={1} ellipsizeMode="middle">
+        <Text testID="dashboard-address" style={styles.address} numberOfLines={1} ellipsizeMode="middle">
           {ethAddress}
         </Text>
       ) : null}
@@ -101,6 +102,7 @@ export default function DashboardScreen() {
       ) : null}
 
       <FlatList
+        testID="dashboard-balances"
         data={ALL_ASSET_CONFIGS}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
@@ -145,6 +147,12 @@ export default function DashboardScreen() {
           onPress={() => router.push('/(wallet)/cashback')}
         >
           <Text style={[styles.buttonText, { color: '#2563eb' }]}>Cashback</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.actionButton, styles.secondaryButton]}
+          onPress={() => router.push('/(wallet)/history')}
+        >
+          <Text style={[styles.buttonText, { color: '#2563eb' }]}>History</Text>
         </TouchableOpacity>
       </View>
     </View>

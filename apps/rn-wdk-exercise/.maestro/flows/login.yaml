@@ -1,0 +1,39 @@
+# Subflow — invoked via `runFlow: login.yaml` from each top-level journey flow.
+# Drives the real Cognito Hosted UI (OAuth PKCE) rather than bypassing auth,
+# per the design doc's decision to exercise the actual login flow.
+#
+# Verified live against this project's actual Cognito Hosted UI (default AWS
+# managed login styling: "Sign in with your email and password" form).
+#
+# Maestro requires a config section even in subflow files invoked via runFlow.
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn: "Sign in with Cognito"
+- waitForAnimationToEnd
+# The consent dialog and credentials form only appear on a cold Cognito session.
+# clearState wipes the APP's storage, but the system webview (ASWebAuthenticationSession)
+# keeps its own SSO cookie — a run shortly after a prior successful login can skip
+# straight back to the dashboard with neither of these shown. Both blocks are
+# conditional so the flow works either way (verified live: reproduced both paths
+# in back-to-back runs).
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue" # iOS's native "App wants to use ... to sign in" consent dialog
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "name@host.com"
+    commands:
+      - tapOn: "name@host.com" # Email field, matched by its placeholder text
+      - inputText: "${TEST_USER_EMAIL}"
+      - tapOn: "Password"
+      - inputText: "${TEST_USER_PASSWORD}"
+      - pressKey: Enter # submits the form; avoids fighting the webview keyboard covering the Sign in button
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-address"
+    timeout: 20000

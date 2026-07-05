@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- assertVisible:
+    id: "dashboard-address"
+- assertVisible:
+    id: "dashboard-balances"
+- assertVisible: "Send"
+- assertVisible: "Receive"
+- assertVisible: "Cashback"
+- assertVisible: "History"

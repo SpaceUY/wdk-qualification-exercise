@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function WalletSetupScreen() {
@@ -9,20 +9,21 @@ export default function WalletSetupScreen() {
       <Text style={styles.title}>Wallet Options</Text>
       <Text style={styles.subtitle}>Manage your seed phrase</Text>
 
-      <TouchableOpacity style={styles.option} onPress={() => router.push('/(wallet)/wallet-setup/backup')}>
+      <TouchableOpacity
+        style={styles.option}
+        onPress={() => router.push('/(wallet)/wallet-setup/backup')}
+      >
         <Text style={styles.optionTitle}>View Seed Phrase</Text>
         <Text style={styles.optionDesc}>See your 12-word recovery phrase. Keep it safe.</Text>
       </TouchableOpacity>
 
-      {Platform.OS === 'android' ? (
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => router.push('/(wallet)/wallet-setup/restore-cloud')}
-        >
-          <Text style={styles.optionTitle}>Restore from Google Drive</Text>
-          <Text style={styles.optionDesc}>Recover your wallet from a previous Google Drive backup.</Text>
-        </TouchableOpacity>
-      ) : null}
+      <TouchableOpacity
+        style={styles.option}
+        onPress={() => router.push('/(wallet)/wallet-setup/restore-cloud')}
+      >
+        <Text style={styles.optionTitle}>Restore from Cloud Backup</Text>
+        <Text style={styles.optionDesc}>Recover your wallet from a previous cloud backup.</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.option, styles.optionDanger]}

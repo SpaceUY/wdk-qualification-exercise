@@ -1,0 +1,8 @@
+# Workspace config — picked up by `maestro test .maestro`.
+# Only lists the top-level journey flows; login.yaml is a subflow invoked via
+# `runFlow` from each of these, not run standalone.
+flows:
+  - "flows/dashboard.yaml"
+  - "flows/receive.yaml"
+  - "flows/cashback.yaml"
+  - "flows/logout.yaml"

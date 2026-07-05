@@ -10,6 +10,20 @@ const ethereumConfig: EvmWalletConfig = {
   provider: process.env.EXPO_PUBLIC_ETHEREUM_RPC_URL ?? 'https://rpc.sepolia.org',
 };
 
+// Arbitrum Sepolia testnet. wdk.config.js's worklet bundle already declares a wallet manager
+// for this network (keyed by the same 'arbitrum' blockchain name below) — this runtime config
+// entry was the only missing half of the wiring; without it, wdk-react-native-core never calls
+// registerWallet('arbitrum', ...), so any account method call against this network threw
+// "No wallet manager found for blockchain: arbitrum".
+const arbitrumConfig: EvmWalletConfig = {
+  provider: process.env.EXPO_PUBLIC_ARBITRUM_RPC_URL ?? 'https://sepolia-rollup.arbitrum.io/rpc',
+};
+
+// Polygon Amoy testnet — same missing-runtime-wiring situation as arbitrumConfig above.
+const polygonConfig: EvmWalletConfig = {
+  provider: process.env.EXPO_PUBLIC_POLYGON_RPC_URL ?? 'https://rpc-amoy.polygon.technology',
+};
+
 // Mainnet — a project requirement, unlike the other chains here which stay on testnet.
 // This means real funds; keep BTC_MAINNET_RPC_URL (infra/wdk-stack) and this Blockbook
 // URL on the same network (mainnet) or the self-hosted indexer will never see transfers
@@ -50,6 +64,8 @@ const tronConfig: TronWalletConfig = {
 export const wdkConfigs: WdkConfigs<NetworkConfig> = {
   networks: {
     ethereum: { blockchain: 'ethereum', config: ethereumConfig },
+    arbitrum: { blockchain: 'arbitrum', config: arbitrumConfig },
+    polygon: { blockchain: 'polygon', config: polygonConfig },
     bitcoin: { blockchain: 'bitcoin', config: bitcoinConfig },
     spark: { blockchain: 'spark', config: sparkConfig },
     tron: { blockchain: 'tron', config: tronConfig },
