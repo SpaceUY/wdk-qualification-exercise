@@ -1,0 +1,101 @@
+diff --git a/dist/utils/schemas.js b/dist/utils/schemas.js
+index 26981f8a3de7cbecad0b241eb04e3dd7cf6f1fe9..853556ee0e4785162a904a67a4670d9dcfd3e0df 100644
+--- a/dist/utils/schemas.js
++++ b/dist/utils/schemas.js
+@@ -28,6 +28,12 @@ export const sparkAddressSchema = z.string().regex(/^spark(1|t1|rt1|test1)[a-z0-
+ export const bitcoinAddressSchema = z.string().regex(/^(1|3|bc1|m|n|2|tb1)[a-zA-Z0-9]+$/, {
+     message: 'Must be a valid Bitcoin address',
+ }).min(14).max(90);
++/**
++ * Tron address schema (Base58Check, starts with "T", 34 characters total)
++ */
++export const tronAddressSchema = z.string().regex(/^T[1-9A-HJ-NP-Za-km-z]{33}$/, {
++    message: 'Must be a valid Tron address (T followed by 33 Base58 characters)',
++});
+ /**
+  * Address schema (Generic)
+  * Allows any non-empty string to support any blockchain (BTC, Solana, etc.)
+diff --git a/dist/utils/typeGuards.js b/dist/utils/typeGuards.js
+index 7618dae6e695a51cd159e18ea3c1e9e6c843c054..da29f7a68d00add97f4a3da67246cb2a111a133b 100644
+--- a/dist/utils/typeGuards.js
++++ b/dist/utils/typeGuards.js
+@@ -7,7 +7,7 @@
+  * NOTE: These type guards now use Zod schemas internally for validation.
+  * They are kept for backward compatibility but may be deprecated in the future.
+  */
+-import { wdkConfigSchema, wdkConfigsSchema, assetConfigSchema, walletAddressesSchema, walletBalancesSchema, ethereumAddressSchema, sparkAddressSchema, bitcoinAddressSchema, accountIndexSchema, networkNameSchema, balanceStringSchema, } from './schemas';
++import { wdkConfigSchema, wdkConfigsSchema, assetConfigSchema, walletAddressesSchema, walletBalancesSchema, ethereumAddressSchema, sparkAddressSchema, bitcoinAddressSchema, tronAddressSchema, accountIndexSchema, networkNameSchema, balanceStringSchema, } from './schemas';
+ /**
+  * Type guard to check if a value is a valid NetworkConfig
+  * Uses Zod schema internally for validation
+@@ -66,10 +66,17 @@ export function isBitcoinAddress(value) {
+     return bitcoinAddressSchema.safeParse(value).success;
+ }
+ /**
+- * Type guard to check if a value is a valid address (Ethereum, Spark, or Bitcoin format)
++ * Type guard to check if a value is a valid Tron address (Base58Check, starts with "T")
++ * Uses Zod schema internally for validation
++ */
++export function isTronAddress(value) {
++    return tronAddressSchema.safeParse(value).success;
++}
++/**
++ * Type guard to check if a value is a valid address (Ethereum, Spark, Bitcoin, or Tron format)
+  */
+ export function isValidAddress(value) {
+-    return isEthereumAddress(value) || isSparkAddress(value) || isBitcoinAddress(value);
++    return isEthereumAddress(value) || isSparkAddress(value) || isBitcoinAddress(value) || isTronAddress(value);
+ }
+ /**
+  * Type guard to check if a value is a valid account index
+diff --git a/src/utils/schemas.ts b/src/utils/schemas.ts
+index 82909e5ec48dd86d62c37c69cb5a18a44fac9465..a87d266d9beccae6368c452a7aee3f6f06469219 100644
+--- a/src/utils/schemas.ts
++++ b/src/utils/schemas.ts
+@@ -33,6 +33,13 @@ export const bitcoinAddressSchema = z.string().regex(/^(1|3|bc1|m|n|2|tb1)[a-zA-
+   message: 'Must be a valid Bitcoin address',
+ }).min(14).max(90)
+ 
++/**
++ * Tron address schema (Base58Check, starts with "T", 34 characters total)
++ */
++export const tronAddressSchema = z.string().regex(/^T[1-9A-HJ-NP-Za-km-z]{33}$/, {
++  message: 'Must be a valid Tron address (T followed by 33 Base58 characters)',
++})
++
+ /**
+  * Address schema (Generic)
+  * Allows any non-empty string to support any blockchain (BTC, Solana, etc.)
+diff --git a/src/utils/typeGuards.ts b/src/utils/typeGuards.ts
+index af9f6be677b7de877b39e0cab1026b70ab08f438..d4dd4f4c8582cefbdfb803141b10a05fea698531 100644
+--- a/src/utils/typeGuards.ts
++++ b/src/utils/typeGuards.ts
+@@ -17,6 +17,7 @@ import {
+   ethereumAddressSchema,
+   sparkAddressSchema,
+   bitcoinAddressSchema,
++  tronAddressSchema,
+   accountIndexSchema,
+   networkNameSchema,
+   balanceStringSchema,
+@@ -96,10 +97,18 @@ export function isBitcoinAddress(value: unknown): value is string {
+ }
+ 
+ /**
+- * Type guard to check if a value is a valid address (Ethereum, Spark, or Bitcoin format)
++ * Type guard to check if a value is a valid Tron address (Base58Check, starts with "T")
++ * Uses Zod schema internally for validation
++ */
++export function isTronAddress(value: unknown): value is string {
++  return tronAddressSchema.safeParse(value).success
++}
++
++/**
++ * Type guard to check if a value is a valid address (Ethereum, Spark, Bitcoin, or Tron format)
+  */
+ export function isValidAddress(value: unknown): value is string {
+-  return isEthereumAddress(value) || isSparkAddress(value) || isBitcoinAddress(value)
++  return isEthereumAddress(value) || isSparkAddress(value) || isBitcoinAddress(value) || isTronAddress(value)
+ }
+ 
+ /**

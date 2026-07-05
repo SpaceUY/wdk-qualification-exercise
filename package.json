@@ -1,10 +1,13 @@
 {
   "name": "wdk-qualification-exercise",
   "private": true,
+  "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "turbo run start",
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:e2e": "turbo run test:e2e --filter=backend",
     "lint": "turbo run lint",
     "build:worklet": "turbo run build:worklet",
     "infra:dev": "npx sst deploy --stage dev",
@@ -13,7 +16,44 @@
     "infra:output": "npx sst output"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@nestjs/core", "keccak", "secp256k1"]
+    "onlyBuiltDependencies": [
+      "@buildonspark/spark-frost-bare-addon",
+      "@nestjs/core",
+      "keccak",
+      "protobufjs",
+      "secp256k1"
+    ],
+    "ignoredBuiltDependencies": [
+      "@tetherto/wdk-worklet-bundler"
+    ],
+    "overrides": {
+      "@tetherto/pear-wrk-wdk": "1.0.0-beta.8",
+      "react-native-bare-kit": "0.13.3",
+      "bare-fetch": "3.0.0",
+      "bare-https": "3.0.0",
+      "bare-tls": "3.1.0",
+      "bare-tcp": "2.2.12",
+      "bare-http1": "4.3.0",
+      "@tetherto/wdk-wallet": "1.0.0-beta.11",
+      "ws": "8.17.1",
+      "@tetherto/wdk-wallet-evm": "1.0.0-beta.6",
+      "expo-crypto": "15.0.9",
+      "bare-buffer": "3.4.4",
+      "bare-channel": "5.2.3",
+      "bare-crypto": "1.13.2",
+      "bare-logger": "2.0.1",
+      "bare-realm": "2.0.1",
+      "bare-repl": "6.0.2",
+      "bare-system-logger": "1.0.3",
+      "bare-timers": "3.2.1",
+      "multer": "^2.2.0",
+      "qs": "^6.15.2",
+      "@nestjs/swagger>js-yaml": "^4.2.0",
+      "axios": "^1.18.1"
+    },
+    "patchedDependencies": {
+      "@tetherto/wdk-react-native-core@1.0.0": "patches/@tetherto__wdk-react-native-core@1.0.0.patch"
+    }
   },
   "devDependencies": {
     "sst": "^3",
