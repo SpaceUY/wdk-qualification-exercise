@@ -27,6 +27,7 @@ export default function ReceiveScreen() {
         {NETWORKS.map((n) => (
           <TouchableOpacity
             key={n}
+            testID={`network-chip-${n}`}
             style={[styles.networkChip, selectedNetwork === n && styles.networkChipActive]}
             onPress={() => setSelectedNetwork(n)}
           >
@@ -37,7 +38,7 @@ export default function ReceiveScreen() {
         ))}
       </View>
 
-      <View style={styles.qrContainer}>
+      <View testID="receive-qr" style={styles.qrContainer}>
         {address ? (
           <QRCode value={address} size={220} />
         ) : (
@@ -50,7 +51,7 @@ export default function ReceiveScreen() {
       {address ? (
         <>
           <Text style={styles.addressLabel}>Your {selectedNetwork} address</Text>
-          <Text style={styles.address}>{address}</Text>
+          <Text testID="receive-address" style={styles.address}>{address}</Text>
           <TouchableOpacity style={styles.copyButton} onPress={copyAddress}>
             <Text style={styles.copyButtonText}>Copy Address</Text>
           </TouchableOpacity>

@@ -36,13 +36,13 @@ export async function hasCloudBackup(walletId: string, accessToken?: string): Pr
 }
 
 export async function createCloudBackup(
-  mnemonic: string,
+  ciphertext: string,
   walletId: string,
   accessToken?: string,
 ): Promise<void> {
   const cloud = getCloudBackup(walletId, accessToken);
   if (!cloud) throw new Error('Cloud backup not available on this platform');
-  await cloud.uploadEncryptedKey(mnemonic, { version: 1, cloudEmail: walletId });
+  await cloud.uploadEncryptedKey(ciphertext, { version: 1, cloudEmail: walletId });
 }
 
 export async function restoreFromCloudBackup(

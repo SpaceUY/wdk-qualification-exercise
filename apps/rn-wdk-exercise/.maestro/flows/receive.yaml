@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- tapOn: "Receive"
+- assertVisible:
+    id: "receive-qr"
+- assertVisible:
+    id: "receive-address"
+- tapOn:
+    id: "network-chip-bitcoin"
+- assertVisible:
+    id: "receive-qr"
+- assertVisible:
+    id: "receive-address"

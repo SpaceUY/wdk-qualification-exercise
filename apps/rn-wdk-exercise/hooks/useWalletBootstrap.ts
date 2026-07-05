@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWdkApp } from '@tetherto/wdk-react-native-core';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useWalletOnboardingStore } from '@/stores/walletOnboardingStore';
-import { createCloudBackup, restoreFromCloudBackup } from '@/utils/cloudBackup';
 
 type BootstrapStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -12,8 +11,7 @@ export function useWalletBootstrap(userId: string | null): {
   retry: () => void;
 } {
   const { workletState } = useWdkApp();
-  const { unlock, hasLocalWallet, createWallet, setActiveWalletId, getMnemonic, restoreWallet } =
-    useWalletData();
+  const { unlock, hasLocalWallet, createWallet, setActiveWalletId } = useWalletData();
   const setWalletOnboardingCompleted = useWalletOnboardingStore(
     (s) => s.setWalletOnboardingCompleted,
   );
@@ -38,22 +36,12 @@ export function useWalletBootstrap(userId: string | null): {
           setActiveWalletId(walletId);
           await unlock(walletId);
         } else {
-          // Slow path: try cloud restore first, then create new
-          const cloudMnemonic = await restoreFromCloudBackup(walletId);
-
-          if (cloudMnemonic) {
-            await restoreWallet(cloudMnemonic, walletId);
-            setActiveWalletId(walletId);
-            await unlock(walletId);
-          } else {
-            await createWallet(walletId);
-            // Fire-and-forget: back up new wallet to iCloud (iOS only — Android backup is user-initiated)
-            getMnemonic(walletId)
-              .then((m) => {
-                if (m) return createCloudBackup(m, walletId);
-              })
-              .catch(() => {});
-          }
+          // No local wallet: always create a fresh one. Restoring from an existing cloud
+          // backup now requires a user-supplied passphrase (see utils/seedEncryption.ts),
+          // which isn't available inside this background bootstrap effect — restoring
+          // from a cloud backup is something the user does explicitly, via the
+          // "Restore from Cloud Backup" screen.
+          await createWallet(walletId);
           setWalletOnboardingCompleted(false);
         }
 
@@ -66,15 +54,7 @@ export function useWalletBootstrap(userId: string | null): {
         opInProgress.current = false;
       }
     },
-    [
-      hasLocalWallet,
-      unlock,
-      createWallet,
-      setActiveWalletId,
-      getMnemonic,
-      restoreWallet,
-      setWalletOnboardingCompleted,
-    ],
+    [hasLocalWallet, unlock, createWallet, setActiveWalletId, setWalletOnboardingCompleted],
   );
 
   useEffect(() => {

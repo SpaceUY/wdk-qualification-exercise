@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "dashboard-logout"
+- assertVisible: "Sign in with Cognito"

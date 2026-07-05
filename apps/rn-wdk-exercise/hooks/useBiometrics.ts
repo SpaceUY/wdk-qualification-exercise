@@ -10,7 +10,7 @@ export function useBiometrics() {
 
   async function authenticate(reason: string): Promise<boolean> {
     const available = await isAvailable();
-    if (!available) return true;
+    if (!available) return false;
 
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,

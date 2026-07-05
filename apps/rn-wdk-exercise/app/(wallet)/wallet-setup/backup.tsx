@@ -1,13 +1,23 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useBiometrics } from '@/hooks/useBiometrics';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { createCloudBackup } from '@/utils/cloudBackup';
+import { createCloudBackup, restoreFromCloudBackup } from '@/utils/cloudBackup';
 import { postWalletBackup } from '@/utils/api';
-import { restoreFromCloudBackup } from '@/utils/cloudBackup';
+import { encryptMnemonic } from '@/utils/seedEncryption';
+import { PassphraseInput } from '@/components/PassphraseInput';
 
 export default function BackupScreen() {
   const userId = useAuthStore((s) => s.userId);
@@ -18,6 +28,7 @@ export default function BackupScreen() {
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [showPassphrasePrompt, setShowPassphrasePrompt] = useState(false);
 
   async function reveal() {
     if (!userId) return;
@@ -47,16 +58,24 @@ export default function BackupScreen() {
     if (!userId || !mnemonic) return;
     const granted = await authenticate('Authorize cloud backup');
     if (!granted) return;
+    setShowPassphrasePrompt(true);
+  }
+
+  async function performUpload(passphrase: string) {
+    setShowPassphrasePrompt(false);
+    if (!userId || !mnemonic) return;
 
     try {
+      const ciphertext = await encryptMnemonic(mnemonic, passphrase);
+
       if (Platform.OS === 'ios') {
-        await createCloudBackup(mnemonic, userId);
+        await createCloudBackup(ciphertext, userId);
         await postWalletBackup(await getCloudCiphertext(userId));
         Alert.alert('Backed Up', 'Seed phrase backed up to iCloud and our servers.');
       } else {
         const accessToken = await signIn();
         if (!accessToken) return;
-        await createCloudBackup(mnemonic, userId, accessToken);
+        await createCloudBackup(ciphertext, userId, accessToken);
         await postWalletBackup(await getCloudCiphertext(userId, accessToken));
         Alert.alert('Backed Up', 'Seed phrase backed up to Google Drive and our servers.');
       }
@@ -114,6 +133,15 @@ export default function BackupScreen() {
           )}
         </>
       )}
+
+      <Modal visible={showPassphrasePrompt} animationType="slide" transparent>
+        <PassphraseInput
+          confirm
+          submitLabel="Encrypt & Upload"
+          onSubmit={performUpload}
+          onCancel={() => setShowPassphrasePrompt(false)}
+        />
+      </Modal>
     </View>
   );
 }

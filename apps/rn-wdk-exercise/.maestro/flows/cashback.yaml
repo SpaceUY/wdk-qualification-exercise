@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+---
+# Requires a seeded, unredeemed coupon for the test user — see .maestro/README.md.
+- runFlow: login.yaml
+- tapOn: "Cashback"
+- assertVisible:
+    id: "cashback-item"
+- tapOn:
+    id: "claim-button"
+- extendedWaitUntil:
+    visible:
+      text: "Coupon Redeemed!"
+    timeout: 30000 # claimCoupon() does a real on-chain transfer + tx.wait(1)
+- tapOn: "OK" # dismiss the native Alert — taps underneath it don't register otherwise
+- tapOn:
+    id: "cashback-tab-claimed"
+- assertVisible:
+    id: "cashback-claimed-item"
