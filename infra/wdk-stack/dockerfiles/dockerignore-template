@@ -1,0 +1,58 @@
+# Keep the build context tiny — everything not needed at build/runtime is excluded.
+# Copied verbatim from wdk-indexer-wrk-btc/.dockerignore (the only fork that shipped one) into
+# every other vendored repo by scripts/clone-forks.sh, since none of them have one otherwise.
+
+# VCS / IDE
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+.husky
+
+# Dependencies (re-installed inside the image)
+node_modules
+**/node_modules
+
+# Build & test artifacts
+coverage
+.nyc_output
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local-only configs and runtime data
+config/*.json
+!config/*.json.example
+config/facs/*.json
+!config/facs/*.json.example
+logs
+sec
+status
+store
+db/*
+!db/.gitkeep
+
+# Tests not needed at runtime (scripts/ kept — used by `npm run db:migration`)
+tests
+**/*.test.js
+
+# Docker / CI
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+**/CI.Dockerfile
+
+# Editor leftovers
+*.swp
+*.swo
+.DS_Store
+
+# Misc local
+.env
+.env.*
+!.env.example
+sonar-project.properties
+upstream-merge.sh
