@@ -18,6 +18,9 @@ apps/backend/typechain-types
 apps/backend/dist
 apps/backend/coverage
 
+# WDK self-hosted stack (see docs/wdk-self-hosted-stack) — forked repos are vendored locally, not committed
+infra/wdk-stack/vendor
+
 # Docs
 docs
 
