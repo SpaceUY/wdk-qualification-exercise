@@ -1,0 +1,1 @@
+export const WDK_EVENT_BUS_CLIENT = Symbol('WDK_EVENT_BUS_CLIENT');

@@ -1,25 +1,13 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  RelationId,
-  UpdateDateColumn,
-} from 'typeorm';
-import type { User } from '../../users/entities/user.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 
-@Entity('encrypted_backups')
+@Schema({ collection: 'encrypted_backups', timestamps: true })
 export class EncryptedBackup {
-  @PrimaryGeneratedColumn('uuid')
+  // Not a @Prop — Mongoose's default `id` virtual (string form of `_id`), declared
+  // here only so TypeScript recognizes it on hydrated documents.
   id!: string;
 
-  @OneToOne('User', (u: User) => u.encryptedBackup, { onDelete: 'CASCADE' })
-  @JoinColumn()
-  user!: User;
-
-  @RelationId((backup: EncryptedBackup) => backup.user)
+  @Prop({ type: String, required: true, unique: true })
   userId!: string;
 
   /**
@@ -27,12 +15,12 @@ export class EncryptedBackup {
    * SECURITY: Must NEVER contain raw seed phrases or private keys.
    * BackupWalletDto enforces @IsBase64() + @MaxLength(65535) at the API boundary.
    */
-  @Column({ type: 'text' })
+  @Prop({ type: String, required: true })
   ciphertext!: string;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+export type EncryptedBackupDocument = HydratedDocument<EncryptedBackup>;
+export const EncryptedBackupSchema = SchemaFactory.createForClass(EncryptedBackup);

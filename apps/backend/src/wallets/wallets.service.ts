@@ -1,22 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { EncryptedBackup } from './entities/encrypted-backup.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { EncryptedBackup, EncryptedBackupDocument } from './entities/encrypted-backup.entity';
 
 @Injectable()
 export class WalletsService {
   constructor(
-    @InjectRepository(EncryptedBackup)
-    private readonly backupRepo: Repository<EncryptedBackup>,
+    @InjectModel(EncryptedBackup.name)
+    private readonly backupModel: Model<EncryptedBackupDocument>,
   ) {}
 
-  async upsertBackup(userId: string, ciphertext: string): Promise<EncryptedBackup> {
-    const existing = await this.backupRepo.findOne({ where: { userId } });
-    if (existing) {
-      await this.backupRepo.update(existing.id, { ciphertext });
-      return this.backupRepo.findOneOrFail({ where: { id: existing.id } });
-    }
-    const backup = this.backupRepo.create({ userId, ciphertext });
-    return this.backupRepo.save(backup);
+  async upsertBackup(userId: string, ciphertext: string): Promise<EncryptedBackupDocument> {
+    return this.backupModel.findOneAndUpdate(
+      { userId },
+      { ciphertext },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
   }
 }

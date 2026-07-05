@@ -1,61 +1,62 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  RelationId,
-  UpdateDateColumn,
-} from 'typeorm';
-import type { User } from '../../users/entities/user.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 
-@Entity('coupons')
+@Schema({ collection: 'coupons', timestamps: true })
 export class Coupon {
-  @PrimaryGeneratedColumn('uuid')
+  // Not a @Prop — Mongoose's default `id` virtual (string form of `_id`), declared
+  // here only so TypeScript recognizes it on hydrated documents.
   id!: string;
 
-  @Index({ unique: true })
-  @Column({ length: 64 })
+  @Prop({ type: String, required: true, unique: true, maxlength: 64 })
   code!: string;
 
-  // Prevents issuing more than one coupon per blockchain transaction
-  @Index({ unique: true })
-  @Column({ length: 66 })
+  // Prevents issuing more than one coupon per blockchain transaction — this unique index
+  // is the real idempotency backstop for coupon issuance (see transfer.processor.ts)
+  @Prop({ type: String, required: true, unique: true, maxlength: 66 })
   txHash!: string;
 
-  // Raw USDT transfer amount (6 decimals) — stored as string to preserve BigInt precision
-  @Column({ type: 'numeric', precision: 36, scale: 0 })
+  // Raw USDT transfer amount (6 decimals) — stored as string to preserve BigInt precision.
+  // Never Number/Decimal128: these can need up to 36 significant digits.
+  @Prop({ type: String, required: true })
   usdtAmountRaw!: string;
 
   // Cashback amount in UTL (18 decimals) = 5% of usdtAmountRaw × 10^12 decimal adjustment
-  @Column({ type: 'numeric', precision: 36, scale: 0 })
+  @Prop({ type: String, required: true })
   utlAmountRaw!: string;
 
-  @Column({ length: 42 })
+  @Prop({ type: String, required: true, maxlength: 42 })
   merchantAddress!: string;
 
-  @Column({ type: 'int' })
+  // Sender's EVM address at payment time — lets a later `PUT /wallets/address`
+  // retroactively link a coupon that was orphaned because the wallet wasn't
+  // registered yet when the payment was indexed
+  @Prop({ type: String, default: null, maxlength: 42 })
+  payerAddress!: string | null;
+
+  @Prop({ type: Number, required: true })
   blockNumber!: number;
 
-  @ManyToOne('User', (u: User) => u.coupons, { onDelete: 'SET NULL', nullable: true })
-  user!: User | null;
-
-  @RelationId((coupon: Coupon) => coupon.user)
+  // Plain denormalized reference (no populate/ref) — mirrors the app's previous
+  // @RelationId shadow-column behavior, since the relation was never eagerly loaded.
+  @Prop({ type: String, default: null })
   userId!: string | null;
 
-  @Column({ default: false })
+  @Prop({ type: Boolean, default: false })
   redeemed!: boolean;
 
-  @Column({ type: 'varchar', nullable: true, length: 66 })
+  @Prop({ type: String, default: null, maxlength: 66 })
   redemptionTxHash!: string | null;
 
-  @Column({ nullable: true, type: 'timestamptz' })
+  @Prop({ type: Date, default: null })
   redeemedAt!: Date | null;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+export type CouponDocument = HydratedDocument<Coupon>;
+export const CouponSchema = SchemaFactory.createForClass(Coupon);
+
+CouponSchema.index({ payerAddress: 1 });
+// Matches the exact query shape used by findUnredeemedByUser/findRedeemedByUser
+CouponSchema.index({ userId: 1, redeemed: 1 });

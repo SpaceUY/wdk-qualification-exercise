@@ -10,35 +10,52 @@ services:
     env_file:
       - .env.local
     ports:
-      - '3000:3000'
+      # Host port 3001, not 3000 — infra/wdk-stack's app-node service also binds host 3000,
+      # and the two stacks can be brought up at the same time (this one talks to it over
+      # WDK_EVENT_BUS_REDIS_HOST/PORT when INDEXER_TRANSPORT=redis-stream).
+      - '3001:3000'
     depends_on:
-      db:
+      mongo:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - cashback-net
     restart: unless-stopped
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${DATABASE_USER:-postgres}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
-      POSTGRES_DB: ${DATABASE_NAME:-cashback_db}
+  mongo:
+    image: mongo:7
     ports:
-      - '5432:5432'
+      - '27017:27017'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
     networks:
       - cashback-net
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USER:-postgres}']
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - cashback-net
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  mongo_data:
+  redis_data:
 
 networks:
   cashback-net:

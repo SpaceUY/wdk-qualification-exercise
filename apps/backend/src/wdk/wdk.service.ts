@@ -2,18 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { type AxiosInstance } from 'axios';
 
-export interface WdkBalance {
-  asset: string;
-  amount: string;
-  decimals: number;
-}
+export type UsdtChain = 'sepolia';
 
-export interface WdkTransaction {
-  txHash: string;
-  asset: string;
+export interface WdkTokenBalance {
+  blockchain: string;
+  token: string;
   amount: string;
-  direction: 'in' | 'out';
-  timestamp: number;
 }
 
 @Injectable()
@@ -22,26 +16,31 @@ export class WdkService {
   private readonly client: AxiosInstance;
 
   constructor(configService: ConfigService) {
-    const baseURL = configService.getOrThrow<string>('WDK_BASE_URL');
-    this.client = axios.create({ baseURL });
+    const baseURL = configService.getOrThrow<string>('wdkIndexer.baseUrl');
+    const apiKey = configService.getOrThrow<string>('wdkIndexer.apiKey');
+    this.client = axios.create({ baseURL, headers: { 'x-api-key': apiKey } });
   }
 
-  async connectShard(walletId: string): Promise<void> {
-    await this.client.post('/connect-shard', { walletId });
-    this.logger.log(`Shard connected for wallet ${walletId}`);
-  }
-
-  async getBalances(walletId: string): Promise<WdkBalance[]> {
-    const response = await this.client.get<WdkBalance[]>(
-      `/balances/${encodeURIComponent(walletId)}`,
+  async getUsdtBalance(chain: UsdtChain, address: string): Promise<string> {
+    const response = await this.client.get<{ tokenBalance: WdkTokenBalance }>(
+      `/api/v1/${chain}/usdt/${encodeURIComponent(address)}/token-balances`,
     );
-    return response.data;
+    return response.data.tokenBalance.amount;
   }
 
-  async getTransactionHistory(walletId: string): Promise<WdkTransaction[]> {
-    const response = await this.client.get<WdkTransaction[]>(
-      `/transactions/${encodeURIComponent(walletId)}`,
-    );
-    return response.data;
+  async getUsdtTransfers(
+    chain: UsdtChain,
+    address: string,
+    limit = 20,
+  ): Promise<unknown[]> {
+    try {
+      const response = await this.client.get<{ transfers: unknown[] }>(
+        `/api/v1/${chain}/usdt/${encodeURIComponent(address)}/token-transfers?limit=${limit}`,
+      );
+      return response.data.transfers;
+    } catch (err) {
+      this.logger.error(`Failed to fetch transfers for ${address} on ${chain}`, err);
+      throw err;
+    }
   }
 }
