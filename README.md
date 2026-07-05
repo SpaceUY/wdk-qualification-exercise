@@ -8,6 +8,8 @@ A P2P retail cashback loop built with React Native and NestJS. Users pay merchan
 apps/
   rn-wdk-exercise/   # React Native wallet (Expo)
   backend/           # NestJS API + blockchain listener
+infra/
+  wdk-stack/         # Self-hosted WDK stack (indexers, transaction routers, ORK, app-node) — see infra/wdk-stack/README.md
 packages/            # Shared packages (if any)
 ```
 
@@ -17,16 +19,19 @@ packages/            # Shared packages (if any)
 
 - Node.js ^24 (required by `apps/backend`'s `engines` field)
 - pnpm ≥ 10 (both apps pin `packageManager: pnpm@10.15.1`)
-- PostgreSQL instance (local or remote)
-- Ethereum Sepolia RPC endpoint (HTTP + optional WebSocket)
+- MongoDB instance (local or remote; bundled in `docker-compose.yml`)
+- Redis instance (local or remote — Bull queue backend; bundled in `docker-compose.yml`)
+- Ethereum Sepolia RPC endpoint (HTTP — used to sign/send the UTL cashback payout)
+- WDK Indexer API key — free, from [docs.wdk.tether.io/tools/indexer-api/get-started](https://docs.wdk.tether.io/tools/indexer-api/get-started) — used to detect incoming USDT payments
 - AWS Cognito User Pool (provision it with `pnpm infra:dev` — see [Infrastructure](#infrastructure-aws-cognito-via-sst))
 - AWS account/profile with SST permissions, if you need to (re)deploy the Cognito stack
 
 ## Quick start
 
 ```bash
-# Install dependencies (run from each app individually due to RN native deps)
-cd apps/backend && pnpm install --ignore-workspace
+# Install dependencies (run from the repo root — a workspace-level
+# pnpm.overrides fix resolves the RN app's native/git deps correctly)
+pnpm install
 
 # Configure environment
 cp apps/backend/.env.example apps/backend/.env.local
@@ -47,8 +52,12 @@ cd apps/backend && pnpm test:coverage
 
 | App | Description |
 |---|---|
-| [`apps/backend`](apps/backend/README.md) | NestJS REST API, blockchain event listener, UTL ERC-20, Docker |
+| [`apps/backend`](apps/backend/README.md) | NestJS REST API, WDK-indexer cashback pipeline (Redis/Bull), UTL ERC-20, Swagger, Docker |
 | [`apps/rn-wdk-exercise`](apps/rn-wdk-exercise/README.md) | Expo React Native wallet with WDK, Cognito auth, cashback UI |
+
+## Self-hosted WDK stack (infra/wdk-stack)
+
+An optional, fully self-hosted replacement for the hosted WDK Indexer API — indexers, transaction routers, data shard, ORK, and app-node running as Docker containers, covering Ethereum (Sepolia), Bitcoin (**mainnet**), Spark (**mainnet**, a Bitcoin L2), and Tron (Nile testnet). Bitcoin and Spark run on mainnet as an explicit project requirement (real funds); the other chains stay on testnet. The backend can point at either transport via `INDEXER_TRANSPORT` (see [`apps/backend/README.md`](apps/backend/README.md#transfer-indexing-pipeline)). See [`infra/wdk-stack/README.md`](infra/wdk-stack/README.md) for setup and `docs/wdk-self-hosted-stack/` for the full design docs.
 
 ## Infrastructure (AWS Cognito via SST)
 
@@ -85,3 +94,18 @@ See [`apps/backend/README.md`](apps/backend/README.md#docker-quick-start) for th
 | `pnpm build` | Build all apps |
 | `pnpm test` | Run all test suites |
 | `pnpm lint` | Lint all apps |
+
+## CI/CD
+
+`.github/workflows/ci.yml` runs `lint → test → build → deploy` on every push/PR to `main`. The
+`deploy` stage (backend only) targets **AWS Elastic Beanstalk** and only runs on pushes to `main` —
+it requires an Elastic Beanstalk application/environment and a handful of GitHub Actions secrets
+that don't exist yet (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`,
+`EB_APPLICATION_NAME`, `EB_ENVIRONMENT_NAME`); until then, `lint`/`test`/`build` still run and pass
+on every PR, but `deploy` will fail. `apps/rn-wdk-exercise` isn't deployed here — mobile builds are
+a separate EAS/Xcode/Android Studio concern (`apps/rn-wdk-exercise/eas.json` has the build/submit
+profiles).
+
+See [`docs/deployment-guide.md`](docs/deployment-guide.md) for the full step-by-step runbook —
+provisioning the not-yet-created Elastic Beanstalk environments (backend and the self-hosted WDK
+stack), wiring the secrets above, and shipping the mobile app to the App Store and Google Play.

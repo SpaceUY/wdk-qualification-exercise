@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '10.15.1'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Cache MongoDB binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: ${{ runner.os }}-mongodb-binaries-${{ hashFiles('apps/backend/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-mongodb-binaries-
+      # Runs the same tests as `pnpm test` plus coverage collection — both apps' Jest configs
+      # enforce a 90% statements/functions/lines and 80% branches threshold, so this job fails
+      # if coverage regresses below that bar.
+      - run: pnpm test:coverage
+      # Hermetic backend integration/e2e suite: in-memory Mongo, mocked blockchain calls,
+      # no real Redis — safe to run on every push. Never runs the Maestro RN suite (see
+      # apps/rn-wdk-exercise/.maestro/README.md), which stays local/manual-only.
+      - run: pnpm test:e2e
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # Only apps/backend defines a "build" script — turbo skips rn-wdk-exercise (mobile builds
+      # are a separate EAS/Xcode/Android-Studio concern, not part of this pipeline).
+      - run: pnpm build
+
+      # Packaged for AWS Elastic Beanstalk's single-container Docker platform, which builds the
+      # image itself from the Dockerfile at the root of this zip — no registry push needed here.
+      # apps/backend/Dockerfile is self-contained (--ignore-workspace install), so only that
+      # directory is needed, not the monorepo root.
+      - name: Package backend for Elastic Beanstalk
+        run: |
+          cd apps/backend
+          zip -r ../../backend-deploy.zip . \
+            -x 'node_modules/*' -x '.git/*' -x 'dist/*' -x 'coverage/*' \
+            -x 'contracts/artifacts/*' -x 'contracts/cache/*' -x 'typechain-types/*'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-deploy
+          path: backend-deploy.zip
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Requires a GitHub Actions "production" environment with the AWS/Beanstalk secrets below —
+    # see infra/wdk-stack notwithstanding, THIS deploy target is apps/backend only. No AWS
+    # Elastic Beanstalk application/environment has been provisioned yet for this project, so
+    # this job will fail until one exists and these secrets are set:
+    #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION,
+    #   EB_APPLICATION_NAME, EB_ENVIRONMENT_NAME
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: backend-deploy }
+      - name: Deploy to AWS Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.AWS_REGION }}
+          application_name: ${{ secrets.EB_APPLICATION_NAME }}
+          environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
+          version_label: ${{ github.sha }}
+          deployment_package: backend-deploy.zip
