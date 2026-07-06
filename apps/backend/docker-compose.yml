@@ -9,6 +9,21 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.local
+    environment:
+      # Override .env.local's host-oriented values — inside this container, "localhost" is the
+      # container itself, not the mongo/redis siblings. Reach them by service name instead.
+      MONGODB_URI: mongodb://mongo:27017/cashback_db
+      REDIS_HOST: redis
+      # .env.local's PORT=3001 is for the host-run case; inside the container it must listen on
+      # 3000 to match this service's own "3001:3000" port mapping below.
+      PORT: '3000'
+      # infra/wdk-stack's redis lives on a different compose project's network — reach its
+      # host-published port (6380) via the Docker host gateway, not "localhost".
+      WDK_EVENT_BUS_REDIS_HOST: host.docker.internal
+    extra_hosts:
+      # host.docker.internal resolves natively on Docker Desktop (macOS/Windows); this makes it
+      # resolve on Linux hosts too.
+      - 'host.docker.internal:host-gateway'
     ports:
       # Host port 3001, not 3000 — infra/wdk-stack's app-node service also binds host 3000,
       # and the two stacks can be brought up at the same time (this one talks to it over
