@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useBalancesForWallet, useBalance, useWallet } from '@tetherto/wdk-react-native-core';
 import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
@@ -49,21 +51,21 @@ export default function DashboardScreen() {
 
   if (status === 'loading' || status === 'idle') {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" />
         <Text style={styles.statusText}>Initializing wallet…</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top', 'bottom']}>
         <Text style={styles.errorText}>{error ?? 'Wallet failed to initialize'}</Text>
         <TouchableOpacity style={styles.button} onPress={retry}>
           <Text style={styles.buttonText}>Retry</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -77,7 +79,7 @@ export default function DashboardScreen() {
   const isLoading = evmLoading || btcLoading || sparkLoading || tronLoading;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Text style={styles.title}>Wallet</Text>
         <TouchableOpacity
@@ -125,37 +127,42 @@ export default function DashboardScreen() {
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={[styles.button, styles.actionButton]}
+          style={[styles.actionButton, styles.actionButtonPrimary]}
           onPress={() => router.push('/(wallet)/send')}
         >
-          <Text style={styles.buttonText}>Send</Text>
+          <Ionicons name="arrow-up" size={16} color="#fff" />
+          <Text style={styles.actionButtonLabel}>Send</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.button, styles.actionButton]}
+          style={[styles.actionButton, styles.actionButtonPrimary]}
           onPress={() => router.push('/(wallet)/receive')}
         >
-          <Text style={styles.buttonText}>Receive</Text>
+          <Ionicons name="arrow-down" size={16} color="#fff" />
+          <Text style={styles.actionButtonLabel}>Receive</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.button, styles.actionButton, styles.secondaryButton]}
+          style={[styles.actionButton, styles.actionButtonSecondary]}
           onPress={() => router.push('/(wallet)/wallet-setup')}
         >
-          <Text style={[styles.buttonText, { color: '#2563eb' }]}>Seed</Text>
+          <Ionicons name="key-outline" size={16} color="#2563eb" />
+          <Text style={[styles.actionButtonLabel, styles.actionButtonLabelSecondary]}>Seed</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.button, styles.actionButton, styles.secondaryButton]}
+          style={[styles.actionButton, styles.actionButtonSecondary]}
           onPress={() => router.push('/(wallet)/cashback')}
         >
-          <Text style={[styles.buttonText, { color: '#2563eb' }]}>Cashback</Text>
+          <Ionicons name="pricetag-outline" size={16} color="#2563eb" />
+          <Text style={[styles.actionButtonLabel, styles.actionButtonLabelSecondary]}>Cashback</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.button, styles.actionButton, styles.secondaryButton]}
+          style={[styles.actionButton, styles.actionButtonSecondary]}
           onPress={() => router.push('/(wallet)/history')}
         >
-          <Text style={[styles.buttonText, { color: '#2563eb' }]}>History</Text>
+          <Ionicons name="time-outline" size={16} color="#2563eb" />
+          <Text style={[styles.actionButtonLabel, styles.actionButtonLabelSecondary]}>History</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -167,7 +174,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 56,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -191,8 +197,8 @@ const styles = StyleSheet.create({
   balance: { fontSize: 16, fontWeight: '500' },
   actions: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 10,
+    padding: 10,
+    gap: 6,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
@@ -203,8 +209,18 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
   },
-  actionButton: { flex: 1 },
-  secondaryButton: { backgroundColor: '#eff6ff' },
+  actionButton: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  actionButtonPrimary: { backgroundColor: '#2563eb' },
+  actionButtonSecondary: { backgroundColor: '#eff6ff' },
+  actionButtonLabel: { color: '#fff', fontWeight: '600', fontSize: 10 },
+  actionButtonLabelSecondary: { color: '#2563eb' },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
   statusText: { color: '#888', marginTop: 12 },
   errorText: { color: '#ef4444', marginBottom: 16, textAlign: 'center' },

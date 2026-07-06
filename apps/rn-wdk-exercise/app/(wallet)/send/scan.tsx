@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { parseMerchantQR } from '@/utils/merchantQR';
 
 export default function QRScanScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
@@ -50,7 +52,10 @@ export default function QRScanScreen() {
         <View style={styles.frame} />
         <Text style={styles.hint}>Align QR code within the frame</Text>
       </View>
-      <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={[styles.cancelButton, { bottom: 48 + insets.bottom }]}
+        onPress={() => router.back()}
+      >
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
     </View>

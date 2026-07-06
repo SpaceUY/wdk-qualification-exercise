@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import {
@@ -17,6 +18,7 @@ import {
   type CouponListItem,
   type ClaimedCouponListItem,
 } from '@/utils/api';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 type Tab = 'available' | 'claimed';
 type ClaimResponse = { redemptionTxHash: string };
@@ -197,8 +199,8 @@ export default function CashbackScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Cashback Coupons</Text>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScreenHeader title="Cashback Coupons" />
 
       <View style={styles.tabBar}>
         <TouchableOpacity
@@ -222,19 +224,19 @@ export default function CashbackScreen() {
       </View>
 
       {activeTab === 'available' ? renderAvailable() : renderClaimed()}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  title: { fontSize: 22, fontWeight: '700', padding: 24, paddingBottom: 12 },
   emptyText: { fontSize: 14, color: '#6b7280' },
   errorText: { color: '#ef4444', marginBottom: 16, textAlign: 'center' },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 12,
     borderRadius: 10,
     backgroundColor: '#e5e7eb',

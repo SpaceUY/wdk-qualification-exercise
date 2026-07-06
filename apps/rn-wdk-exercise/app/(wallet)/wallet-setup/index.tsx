@@ -1,45 +1,49 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function WalletSetupScreen() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Wallet Options</Text>
-      <Text style={styles.subtitle}>Manage your seed phrase</Text>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScreenHeader title="Wallet Options" />
+      <View style={styles.container}>
+        <Text style={styles.subtitle}>Manage your seed phrase</Text>
 
-      <TouchableOpacity
-        style={styles.option}
-        onPress={() => router.push('/(wallet)/wallet-setup/backup')}
-      >
-        <Text style={styles.optionTitle}>View Seed Phrase</Text>
-        <Text style={styles.optionDesc}>See your 12-word recovery phrase. Keep it safe.</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => router.push('/(wallet)/wallet-setup/backup')}
+        >
+          <Text style={styles.optionTitle}>View Seed Phrase</Text>
+          <Text style={styles.optionDesc}>See your 12-word recovery phrase. Keep it safe.</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.option}
-        onPress={() => router.push('/(wallet)/wallet-setup/restore-cloud')}
-      >
-        <Text style={styles.optionTitle}>Restore from Cloud Backup</Text>
-        <Text style={styles.optionDesc}>Recover your wallet from a previous cloud backup.</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => router.push('/(wallet)/wallet-setup/restore-cloud')}
+        >
+          <Text style={styles.optionTitle}>Restore from Cloud Backup</Text>
+          <Text style={styles.optionDesc}>Recover your wallet from a previous cloud backup.</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.option, styles.optionDanger]}
-        onPress={() => router.push('/(wallet)/wallet-setup/restore')}
-      >
-        <Text style={[styles.optionTitle, { color: '#dc2626' }]}>Restore Wallet</Text>
-        <Text style={styles.optionDesc}>Import a wallet using an existing seed phrase.</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={[styles.option, styles.optionDanger]}
+          onPress={() => router.push('/(wallet)/wallet-setup/restore')}
+        >
+          <Text style={[styles.optionTitle, { color: '#dc2626' }]}>Restore Wallet</Text>
+          <Text style={styles.optionDesc}>Import a wallet using an existing seed phrase.</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#f9fafb' },
   container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#6b7280', marginBottom: 32 },
+  subtitle: { fontSize: 15, color: '#6b7280', marginTop: 16, marginBottom: 32 },
   option: {
     backgroundColor: '#fff',
     borderRadius: 12,

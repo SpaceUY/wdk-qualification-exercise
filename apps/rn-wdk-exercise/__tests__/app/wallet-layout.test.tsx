@@ -7,11 +7,11 @@ describe('WalletLayout', () => {
     jest.clearAllMocks();
   });
 
-  it('renders a Stack with headers shown', async () => {
+  it('renders a Stack with headers hidden', async () => {
     await render(<WalletLayout />);
 
     expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
-      expect.objectContaining({ screenOptions: { headerShown: true } }),
+      expect.objectContaining({ screenOptions: { headerShown: false } }),
     );
   });
 });

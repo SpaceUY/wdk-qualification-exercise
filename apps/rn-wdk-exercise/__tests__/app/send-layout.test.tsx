@@ -7,15 +7,15 @@ describe('SendLayout', () => {
     jest.clearAllMocks();
   });
 
-  it('configures index, scan, and confirm screens', async () => {
+  it('hides headers and presents scan as a full screen modal', async () => {
     await render(<SendLayout />);
+
+    expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ screenOptions: { headerShown: false } }),
+    );
 
     const screenCalls = (Stack.Screen as unknown as jest.Mock).mock.calls.map(([props]) => props);
 
-    expect(screenCalls).toEqual([
-      { name: 'index', options: { title: 'Send' } },
-      { name: 'scan', options: { title: 'Scan QR Code', presentation: 'fullScreenModal' } },
-      { name: 'confirm', options: { title: 'Confirm' } },
-    ]);
+    expect(screenCalls).toEqual([{ name: 'scan', options: { presentation: 'fullScreenModal' } }]);
   });
 });

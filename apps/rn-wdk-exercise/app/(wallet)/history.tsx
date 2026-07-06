@@ -1,10 +1,12 @@
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppNodeWalletSync } from '@/hooks/useAppNodeWalletSync';
 import { useTransactionHistory } from '@/hooks/useTransactionHistory';
 import type { TokenTransfer } from '@/utils/appNodeApi';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 // Matches infra/wdk-stack's wdk-app-node schema (workers/lib/schemas/common.js `tokens` enum).
 const TOKEN_DECIMALS: Record<string, number> = { usdt: 6, xaut: 6, usat: 6, btc: 8 };
@@ -39,65 +41,72 @@ export default function HistoryScreen() {
 
   const myAddresses = [ethereum, bitcoin].filter((a): a is string => Boolean(a));
 
+  let content;
   if (syncStatus === 'syncing' || (syncStatus === 'done' && isLoading)) {
-    return (
+    content = (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
         <Text style={styles.statusText}>Loading history…</Text>
       </View>
     );
-  }
-
-  if (syncStatus === 'error' || isError) {
-    return (
+  } else if (syncStatus === 'error' || isError) {
+    content = (
       <View style={styles.center}>
         <Text style={styles.errorText}>
           {syncError ?? 'Could not load transaction history'}
         </Text>
       </View>
     );
+  } else {
+    content = (
+      <FlatList
+        contentContainerStyle={styles.container}
+        data={transfers ?? []}
+        keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text style={styles.statusText}>No transactions yet</Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const decimals = TOKEN_DECIMALS[item.token?.toLowerCase()] ?? 8;
+          const amount = trimDisplayDecimals(
+            formatBalanceFromRaw(item.amount, decimals) ?? '0',
+            6,
+          );
+          const received = isReceived(item, myAddresses);
+
+          return (
+            <View style={styles.row}>
+              <View>
+                <Text style={styles.direction}>{received ? 'Received' : 'Sent'}</Text>
+                <Text style={styles.meta}>
+                  {item.blockchain} · {item.token?.toUpperCase()}
+                </Text>
+                <Text style={styles.hash}>{truncateHash(item.transactionHash)}</Text>
+                <Text style={styles.date}>{formatDate(item.ts)}</Text>
+              </View>
+              <Text style={[styles.amount, received ? styles.amountIn : styles.amountOut]}>
+                {received ? '+' : '-'}
+                {amount}
+              </Text>
+            </View>
+          );
+        }}
+      />
+    );
   }
 
   return (
-    <FlatList
-      contentContainerStyle={styles.container}
-      data={transfers ?? []}
-      keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
-      ListEmptyComponent={
-        <View style={styles.center}>
-          <Text style={styles.statusText}>No transactions yet</Text>
-        </View>
-      }
-      renderItem={({ item }) => {
-        const decimals = TOKEN_DECIMALS[item.token?.toLowerCase()] ?? 8;
-        const amount = trimDisplayDecimals(
-          formatBalanceFromRaw(item.amount, decimals) ?? '0',
-          6,
-        );
-        const received = isReceived(item, myAddresses);
-
-        return (
-          <View style={styles.row}>
-            <View>
-              <Text style={styles.direction}>{received ? 'Received' : 'Sent'}</Text>
-              <Text style={styles.meta}>
-                {item.blockchain} · {item.token?.toUpperCase()}
-              </Text>
-              <Text style={styles.hash}>{truncateHash(item.transactionHash)}</Text>
-              <Text style={styles.date}>{formatDate(item.ts)}</Text>
-            </View>
-            <Text style={[styles.amount, received ? styles.amountIn : styles.amountOut]}>
-              {received ? '+' : '-'}
-              {amount}
-            </Text>
-          </View>
-        );
-      }}
-    />
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScreenHeader title="History" />
+      {content}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#f9fafb' },
   container: { flexGrow: 1, backgroundColor: '#f9fafb', padding: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   row: {

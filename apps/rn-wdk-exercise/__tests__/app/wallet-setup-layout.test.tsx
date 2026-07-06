@@ -7,16 +7,11 @@ describe('WalletSetupLayout', () => {
     jest.clearAllMocks();
   });
 
-  it('configures index, backup, restore, and restore-cloud screens', async () => {
+  it('renders a Stack with headers hidden', async () => {
     await render(<WalletSetupLayout />);
 
-    const screenCalls = (Stack.Screen as unknown as jest.Mock).mock.calls.map(([props]) => props);
-
-    expect(screenCalls).toEqual([
-      { name: 'index', options: { title: 'Wallet Options' } },
-      { name: 'backup', options: { title: 'Seed Phrase' } },
-      { name: 'restore', options: { title: 'Restore Wallet' } },
-      { name: 'restore-cloud', options: { title: 'Restore from Google Drive' } },
-    ]);
+    expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ screenOptions: { headerShown: false } }),
+    );
   });
 });

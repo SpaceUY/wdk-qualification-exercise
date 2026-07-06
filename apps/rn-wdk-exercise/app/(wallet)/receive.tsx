@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 const NETWORKS = ['ethereum', 'arbitrum', 'polygon', 'bitcoin', 'spark', 'tron'] as const;
 type Network = (typeof NETWORKS)[number];
@@ -20,50 +22,51 @@ export default function ReceiveScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Receive</Text>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScreenHeader title="Receive" />
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.networkRow}>
+          {NETWORKS.map((n) => (
+            <TouchableOpacity
+              key={n}
+              testID={`network-chip-${n}`}
+              style={[styles.networkChip, selectedNetwork === n && styles.networkChipActive]}
+              onPress={() => setSelectedNetwork(n)}
+            >
+              <Text style={[styles.networkChipText, selectedNetwork === n && styles.networkChipTextActive]}>
+                {n.charAt(0).toUpperCase() + n.slice(1, 3)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <View style={styles.networkRow}>
-        {NETWORKS.map((n) => (
-          <TouchableOpacity
-            key={n}
-            testID={`network-chip-${n}`}
-            style={[styles.networkChip, selectedNetwork === n && styles.networkChipActive]}
-            onPress={() => setSelectedNetwork(n)}
-          >
-            <Text style={[styles.networkChipText, selectedNetwork === n && styles.networkChipTextActive]}>
-              {n.charAt(0).toUpperCase() + n.slice(1, 3)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        <View testID="receive-qr" style={styles.qrContainer}>
+          {address ? (
+            <QRCode value={address} size={220} />
+          ) : (
+            <View style={styles.qrPlaceholder}>
+              <Text style={styles.qrPlaceholderText}>Loading address…</Text>
+            </View>
+          )}
+        </View>
 
-      <View testID="receive-qr" style={styles.qrContainer}>
         {address ? (
-          <QRCode value={address} size={220} />
-        ) : (
-          <View style={styles.qrPlaceholder}>
-            <Text style={styles.qrPlaceholderText}>Loading address…</Text>
-          </View>
-        )}
-      </View>
-
-      {address ? (
-        <>
-          <Text style={styles.addressLabel}>Your {selectedNetwork} address</Text>
-          <Text testID="receive-address" style={styles.address}>{address}</Text>
-          <TouchableOpacity style={styles.copyButton} onPress={copyAddress}>
-            <Text style={styles.copyButtonText}>Copy Address</Text>
-          </TouchableOpacity>
-        </>
-      ) : null}
-    </ScrollView>
+          <>
+            <Text style={styles.addressLabel}>Your {selectedNetwork} address</Text>
+            <Text testID="receive-address" style={styles.address}>{address}</Text>
+            <TouchableOpacity style={styles.copyButton} onPress={copyAddress}>
+              <Text style={styles.copyButtonText}>Copy Address</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#f9fafb' },
   container: { padding: 24, alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 20, alignSelf: 'flex-start' },
   networkRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   networkChip: {
     paddingHorizontal: 14,

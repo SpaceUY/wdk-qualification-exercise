@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useBiometrics } from '@/hooks/useBiometrics';
@@ -18,6 +19,7 @@ import { createCloudBackup, restoreFromCloudBackup } from '@/utils/cloudBackup';
 import { postWalletBackup } from '@/utils/api';
 import { encryptMnemonic } from '@/utils/seedEncryption';
 import { PassphraseInput } from '@/components/PassphraseInput';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function BackupScreen() {
   const userId = useAuthStore((s) => s.userId);
@@ -93,68 +95,71 @@ export default function BackupScreen() {
   const words = mnemonic?.split(' ') ?? [];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Seed Phrase</Text>
-      <Text style={styles.warning}>
-        ⚠️ Never share your seed phrase. Anyone with it has full access to your wallet.
-      </Text>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScreenHeader title="Seed Phrase" />
+      <View style={styles.container}>
+        <Text style={styles.warning}>
+          ⚠️ Never share your seed phrase. Anyone with it has full access to your wallet.
+        </Text>
 
-      {!revealed ? (
-        <TouchableOpacity style={styles.revealButton} onPress={reveal} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.revealButtonText}>Reveal Seed Phrase</Text>
-          )}
-        </TouchableOpacity>
-      ) : (
-        <>
-          <View style={styles.grid}>
-            {words.map((word, i) => (
-              <View key={i} style={styles.wordCard}>
-                <Text style={styles.wordIndex}>{i + 1}</Text>
-                <Text style={styles.word}>{word}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.copyButton} onPress={copy}>
-            <Text style={styles.copyButtonText}>Copy to Clipboard</Text>
+        {!revealed ? (
+          <TouchableOpacity style={styles.revealButton} onPress={reveal} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.revealButtonText}>Reveal Seed Phrase</Text>
+            )}
           </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.grid}>
+              {words.map((word, i) => (
+                <View key={i} style={styles.wordCard}>
+                  <Text style={styles.wordIndex}>{i + 1}</Text>
+                  <Text style={styles.word}>{word}</Text>
+                </View>
+              ))}
+            </View>
 
-          {Platform.OS === 'ios' ? (
-            <TouchableOpacity style={styles.icloudButton} onPress={uploadToCloud}>
-              <Text style={styles.icloudButtonText}>Upload to iCloud</Text>
+            <TouchableOpacity style={styles.copyButton} onPress={copy}>
+              <Text style={styles.copyButtonText}>Copy to Clipboard</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.driveButton} onPress={uploadToCloud}>
-              <Text style={styles.driveButtonText}>Upload to Google Drive</Text>
-            </TouchableOpacity>
-          )}
-        </>
-      )}
 
-      <Modal visible={showPassphrasePrompt} animationType="slide" transparent>
-        <PassphraseInput
-          confirm
-          submitLabel="Encrypt & Upload"
-          onSubmit={performUpload}
-          onCancel={() => setShowPassphrasePrompt(false)}
-        />
-      </Modal>
-    </View>
+            {Platform.OS === 'ios' ? (
+              <TouchableOpacity style={styles.icloudButton} onPress={uploadToCloud}>
+                <Text style={styles.icloudButtonText}>Upload to iCloud</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.driveButton} onPress={uploadToCloud}>
+                <Text style={styles.driveButtonText}>Upload to Google Drive</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+
+        <Modal visible={showPassphrasePrompt} animationType="slide" transparent>
+          <PassphraseInput
+            confirm
+            submitLabel="Encrypt & Upload"
+            onSubmit={performUpload}
+            onCancel={() => setShowPassphrasePrompt(false)}
+          />
+        </Modal>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#f9fafb' },
   container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
   warning: {
     color: '#b45309',
     backgroundColor: '#fef3c7',
     padding: 14,
     borderRadius: 8,
     fontSize: 13,
+    marginTop: 16,
     marginBottom: 24,
   },
   revealButton: {
