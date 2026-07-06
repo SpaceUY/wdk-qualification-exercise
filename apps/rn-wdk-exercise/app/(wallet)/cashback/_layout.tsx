@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
 
 export default function CashbackLayout() {
-  return <Stack screenOptions={{ headerShown: true, title: 'Cashback' }} />;
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

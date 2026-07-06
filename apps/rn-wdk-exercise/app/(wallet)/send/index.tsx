@@ -7,9 +7,11 @@ import {
   View,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function SendScreen() {
   const router = useRouter();
@@ -64,63 +66,64 @@ export default function SendScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Send</Text>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScreenHeader title="Send" />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.label}>Token</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tokenScroll}>
+          {ALL_ASSET_CONFIGS.map((asset) => (
+            <TouchableOpacity
+              key={asset.id}
+              style={[styles.tokenChip, selectedAsset.id === asset.id && styles.tokenChipActive]}
+              onPress={() => setSelectedAsset(asset)}
+            >
+              <Text style={[styles.tokenChipText, selectedAsset.id === asset.id && styles.tokenChipTextActive]}>
+                {asset.symbol}
+              </Text>
+              <Text style={[styles.tokenNetwork, selectedAsset.id === asset.id && { color: '#93c5fd' }]}>
+                {asset.network}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-      <Text style={styles.label}>Token</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tokenScroll}>
-        {ALL_ASSET_CONFIGS.map((asset) => (
-          <TouchableOpacity
-            key={asset.id}
-            style={[styles.tokenChip, selectedAsset.id === asset.id && styles.tokenChipActive]}
-            onPress={() => setSelectedAsset(asset)}
-          >
-            <Text style={[styles.tokenChipText, selectedAsset.id === asset.id && styles.tokenChipTextActive]}>
-              {asset.symbol}
-            </Text>
-            <Text style={[styles.tokenNetwork, selectedAsset.id === asset.id && { color: '#93c5fd' }]}>
-              {asset.network}
-            </Text>
+        <Text style={styles.label}>Recipient</Text>
+        <View style={styles.recipientRow}>
+          <TextInput
+            style={[styles.input, styles.recipientInput]}
+            value={recipient}
+            onChangeText={setRecipient}
+            placeholder="Address or scan QR"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
+            <Text style={styles.scanButtonText}>QR</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </View>
 
-      <Text style={styles.label}>Recipient</Text>
-      <View style={styles.recipientRow}>
+        <Text style={styles.label}>Amount</Text>
         <TextInput
-          style={[styles.input, styles.recipientInput]}
-          value={recipient}
-          onChangeText={setRecipient}
-          placeholder="Address or scan QR"
-          autoCapitalize="none"
-          autoCorrect={false}
+          style={styles.input}
+          value={amount}
+          onChangeText={setAmount}
+          placeholder={`0.00 ${selectedAsset.symbol}`}
+          keyboardType="decimal-pad"
         />
-        <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
-          <Text style={styles.scanButtonText}>QR</Text>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+          <Text style={styles.continueButtonText}>Review Transaction</Text>
         </TouchableOpacity>
-      </View>
-
-      <Text style={styles.label}>Amount</Text>
-      <TextInput
-        style={styles.input}
-        value={amount}
-        onChangeText={setAmount}
-        placeholder={`0.00 ${selectedAsset.symbol}`}
-        keyboardType="decimal-pad"
-      />
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-        <Text style={styles.continueButtonText}>Review Transaction</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#fff' },
   container: { padding: 24 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 24 },
   label: { fontSize: 13, fontWeight: '600', color: '#6b7280', marginBottom: 8, marginTop: 16 },
   tokenScroll: { marginBottom: 4 },
   tokenChip: {

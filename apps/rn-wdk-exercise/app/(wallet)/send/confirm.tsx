@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
@@ -62,14 +63,14 @@ export default function ConfirmSendScreen() {
 
   if (!assetConfig) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top', 'bottom']}>
         <Text>Asset not found</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Text style={styles.title}>Confirm Transaction</Text>
 
       <View style={styles.detailCard}>
@@ -94,7 +95,7 @@ export default function ConfirmSendScreen() {
           </TouchableOpacity>
         </>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

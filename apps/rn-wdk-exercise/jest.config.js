@@ -9,6 +9,7 @@ const config = {
     '^react-native-vector-icons$': '@expo/vector-icons',
     '^react-native-vector-icons/(.*)': '@expo/vector-icons/$1',
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
+    '\\.(ttf|otf|woff|woff2)$': '<rootDir>/__mocks__/fileMock.js',
   },
 
   // These packages ship ESM source — Jest must transform them via Babel.

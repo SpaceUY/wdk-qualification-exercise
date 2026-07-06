@@ -8,10 +8,12 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { validateMnemonic } from '@tetherto/wdk-react-native-core';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function RestoreWalletScreen() {
   const router = useRouter();
@@ -53,45 +55,47 @@ export default function RestoreWalletScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Restore Wallet</Text>
-      <Text style={styles.subtitle}>
-        Enter your 12 or 24-word seed phrase separated by spaces.
-      </Text>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScreenHeader title="Restore Wallet" />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.subtitle}>
+          Enter your 12 or 24-word seed phrase separated by spaces.
+        </Text>
 
-      <Text style={styles.warning}>
-        ⚠️ This will replace your current wallet. Your existing funds will only be accessible via the old seed phrase.
-      </Text>
+        <Text style={styles.warning}>
+          ⚠️ This will replace your current wallet. Your existing funds will only be accessible via the old seed phrase.
+        </Text>
 
-      <TextInput
-        style={styles.input}
-        value={phrase}
-        onChangeText={setPhrase}
-        placeholder="word1 word2 word3 …"
-        multiline
-        numberOfLines={5}
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="off"
-      />
+        <TextInput
+          style={styles.input}
+          value={phrase}
+          onChangeText={setPhrase}
+          placeholder="word1 word2 word3 …"
+          multiline
+          numberOfLines={5}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+        />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Restore Wallet</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Restore Wallet</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#fff' },
   container: { padding: 24 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#6b7280', marginBottom: 16 },
+  subtitle: { fontSize: 15, color: '#6b7280', marginTop: 16, marginBottom: 16 },
   warning: {
     color: '#b45309',
     backgroundColor: '#fef3c7',
