@@ -38,7 +38,15 @@
       "expo-router",
       "expo-camera",
       "expo-local-authentication",
-      "react-native-cloud-storage"
+      "react-native-cloud-storage",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 29
+          }
+        }
+      ]
     ]
   }
 }
