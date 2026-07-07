@@ -22,6 +22,7 @@
     "date-fns": "^4.4.0",
     "expo": "^54.0.10",
     "expo-auth-session": "~7.0.11",
+    "expo-build-properties": "~1.0.10",
     "expo-camera": "^17.0.10",
     "expo-clipboard": "^8.0.8",
     "expo-constants": "^18.0.9",
@@ -52,7 +53,7 @@
   },
   "devDependencies": {
     "@testing-library/react-native": "^14.0.1",
-    "@tetherto/wdk-worklet-bundler": "github:nampc1/wdk-worklet-bundler-fork#nampc/dynamic-bundle",
+    "@tetherto/wdk-worklet-bundler": "1.0.0-beta.3",
     "@types/jest": "^29.0.0",
     "@types/react": "19.1.10",
     "@types/react-native": "^0.73.0",

@@ -17,6 +17,7 @@ import { CouponsModule } from './coupons/coupons.module';
 import { IndexerModule } from './modules/indexer/indexer.module';
 import { WdkModule } from './wdk/wdk.module';
 import { WdkAppNodeModule } from './wdk-app-node/wdk-app-node.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { WdkAppNodeModule } from './wdk-app-node/wdk-app-node.module';
     IndexerModule,
     WdkModule,
     WdkAppNodeModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
