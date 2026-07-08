@@ -28,7 +28,9 @@
     ],
     "overrides": {
       "@tetherto/pear-wrk-wdk": "1.0.0-beta.8",
-      "react-native-bare-kit": "0.15.0",
+      "react-native-bare-kit": "0.13.3",
+      "bare-module": "6.3.2",
+      "@noble/curves": "1.9.2",
       "bare-fetch": "3.0.0",
       "bare-https": "3.0.0",
       "bare-tls": "3.1.0",

@@ -6,8 +6,10 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 type AuthStore = {
   userId: string | null;
   accessToken: string | null;
+  refreshToken: string | null;
   setUserId: (id: string) => void;
   setAccessToken: (token: string) => void;
+  setRefreshToken: (token: string | null) => void;
   clear: () => void;
 };
 
@@ -30,14 +32,20 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       userId: null,
       accessToken: null,
+      refreshToken: null,
       setUserId: (id) => set({ userId: id }),
       setAccessToken: (token) => set({ accessToken: token }),
-      clear: () => set({ userId: null, accessToken: null }),
+      setRefreshToken: (token) => set({ refreshToken: token }),
+      clear: () => set({ userId: null, accessToken: null, refreshToken: null }),
     }),
     {
       name: 'auth-store',
       storage: createJSONStorage(() => storage),
-      partialize: (state) => ({ userId: state.userId, accessToken: state.accessToken }),
+      partialize: (state) => ({
+        userId: state.userId,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
     },
   ),
 );

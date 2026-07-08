@@ -8,7 +8,7 @@ jest.mock('expo-web-browser', () => ({
 }));
 
 jest.mock('expo-auth-session', () => ({
-  makeRedirectUri: jest.fn(() => 'rn-wdk-exercise://'),
+  makeRedirectUri: jest.fn(() => 'space-utl://'),
   useAuthRequest: jest.fn(() => [
     { codeVerifier: 'pkce-verifier-123' },
     null,

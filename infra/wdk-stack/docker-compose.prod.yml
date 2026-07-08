@@ -1,0 +1,373 @@
+name: wdk-stack
+
+services:
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_data:/data
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '27018:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-evm-proc:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-evm-proc:latest
+    environment:
+      WORKER_TYPE: wrk-erc20-indexer-proc
+      ENV: production
+      RACK: usdt-eth-1
+      CHAIN: usdt-eth
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL}
+      USDT_ETH_CONTRACT_OVERRIDE: ${USDT_ETH_CONTRACT_OVERRIDE:-}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    volumes:
+      - indexer_evm_store:/app/store
+      - indexer_evm_status:/app/status
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-evm-api:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-evm-api:latest
+    environment:
+      WORKER_TYPE: wrk-erc20-indexer-api
+      ENV: production
+      RACK: usdt-eth-1-1
+      CHAIN: usdt-eth
+      PROC_RPC: ${INDEXER_PROC_RPC_KEY}
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL}
+      USDT_ETH_CONTRACT_OVERRIDE: ${USDT_ETH_CONTRACT_OVERRIDE:-}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    depends_on:
+      indexer-evm-proc: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-btc-proc:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-btc-proc:latest
+    environment:
+      WORKER_TYPE: wrk-btc-indexer-proc
+      ENV: production
+      RACK: bitcoin-1
+      CHAIN: bitcoin
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      BTC_RPC_URL: ${BTC_MAINNET_RPC_URL}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    volumes:
+      - indexer_btc_store:/app/store
+      - indexer_btc_status:/app/status
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-btc-api:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-btc-api:latest
+    environment:
+      WORKER_TYPE: wrk-btc-indexer-api
+      ENV: production
+      RACK: bitcoin-1-1
+      CHAIN: bitcoin
+      PROC_RPC: ${INDEXER_BTC_PROC_RPC_KEY}
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      BTC_RPC_URL: ${BTC_MAINNET_RPC_URL}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    depends_on:
+      indexer-btc-proc: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  processor-bitcoin:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-processor-bitcoin:latest
+    environment:
+      WORKER_TYPE: wrk-processor-indexer
+      ENV: production
+      RACK: processor-bitcoin-1
+      CHAIN: bitcoin
+      TOKEN: btc
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+      REDIS_HOST: redis
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-spark-proc:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-spark-proc:latest
+    environment:
+      WORKER_TYPE: wrk-spark-indexer-proc
+      ENV: production
+      RACK: spark-1
+      CHAIN: spark
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      SPARK_API_KEY: ${SPARK_API_KEY}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    volumes:
+      - indexer_spark_store:/app/store
+      - indexer_spark_status:/app/status
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-spark-api:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-spark-api:latest
+    environment:
+      WORKER_TYPE: wrk-spark-indexer-api
+      ENV: production
+      RACK: spark-1-1
+      CHAIN: spark
+      PROC_RPC: ${INDEXER_SPARK_PROC_RPC_KEY}
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      SPARK_API_KEY: ${SPARK_API_KEY}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    depends_on:
+      indexer-spark-proc: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  processor-spark:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-processor-spark:latest
+    environment:
+      WORKER_TYPE: wrk-processor-indexer
+      ENV: production
+      RACK: processor-spark-1
+      CHAIN: spark
+      TOKEN: btc
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+      REDIS_HOST: redis
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-tron-proc:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-tron-proc:latest
+    environment:
+      WORKER_TYPE: wrk-trc20-indexer-proc
+      ENV: production
+      RACK: usdt-tron-1
+      CHAIN: usdt-tron
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      TRON_RPC_URL: ${TRON_RPC_URL}
+      TRON_USDT_CONTRACT: ${TRON_USDT_CONTRACT}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    volumes:
+      - indexer_tron_store:/app/store
+      - indexer_tron_status:/app/status
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-tron-api:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-tron-api:latest
+    environment:
+      WORKER_TYPE: wrk-trc20-indexer-api
+      ENV: production
+      RACK: usdt-tron-1-1
+      CHAIN: usdt-tron
+      PROC_RPC: ${INDEXER_TRON_PROC_RPC_KEY}
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      TRON_RPC_URL: ${TRON_RPC_URL}
+      TRON_USDT_CONTRACT: ${TRON_USDT_CONTRACT}
+      MONGO_HOST: mongo
+      REDIS_HOST: redis
+    depends_on:
+      indexer-tron-proc: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  processor-tron:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-processor-tron:latest
+    environment:
+      WORKER_TYPE: wrk-processor-indexer
+      ENV: production
+      RACK: processor-tron-1
+      CHAIN: tron
+      TOKEN: usdt
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+      REDIS_HOST: redis
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  indexer-processor:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-indexer-processor:latest
+    environment:
+      WORKER_TYPE: wrk-processor-indexer
+      ENV: production
+      RACK: w-0
+      CHAIN: ethereum
+      TOKEN: usdt
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+      REDIS_HOST: redis
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  data-shard-proc:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-data-shard-proc:latest
+    environment:
+      WORKER_TYPE: wrk-data-shard-proc
+      ENV: production
+      RACK: shard-1
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      SHARD_MONGO_DATABASE: wdk_shard_1
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+      REDIS_HOST: redis
+    volumes:
+      - shard1_store:/app/store
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  data-shard-api:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-data-shard-api:latest
+    environment:
+      WORKER_TYPE: wrk-data-shard-api
+      ENV: production
+      RACK: shard-1-1
+      PROC_RPC: ${DATA_SHARD_PROC_RPC_KEY}
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      SHARD_MONGO_DATABASE: wdk_shard_1
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+      REDIS_HOST: redis
+    depends_on:
+      data-shard-proc: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  ork:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-ork:latest
+    environment:
+      WORKER_TYPE: wrk-ork-api
+      ENV: production
+      RACK: ork-1
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+    depends_on:
+      mongo: { condition: service_healthy }
+      data-shard-api: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  ork-2:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-ork-2:latest
+    environment:
+      WORKER_TYPE: wrk-ork-api
+      ENV: production
+      RACK: ork-2
+      SECONDARY: 'true'
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      MONGO_HOST: mongo
+      LOOKUP_MONGO_DATABASE: wdk_lookup
+    depends_on:
+      mongo: { condition: service_healthy }
+      data-shard-api: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+  app-node:
+    image: 145706027626.dkr.ecr.us-east-1.amazonaws.com/cashback-wdk-stack-app-node:latest
+    ports:
+      - '3000:3000'
+    environment:
+      WORKER_TYPE: wdk-server-http-base
+      ENV: production
+      PORT: 3000
+      WDK_CAPABILITY: ${WDK_CAPABILITY}
+      WDK_CRYPTO_KEY: ${WDK_CRYPTO_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: redis
+    depends_on:
+      redis: { condition: service_healthy }
+      ork: { condition: service_started }
+      ork-2: { condition: service_started }
+    networks: [wdk-net]
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  mongo_data:
+  indexer_evm_store:
+  indexer_evm_status:
+  indexer_btc_store:
+  indexer_btc_status:
+  indexer_spark_store:
+  indexer_spark_status:
+  indexer_tron_store:
+  indexer_tron_status:
+  shard1_store:
+
+networks:
+  wdk-net:
+    driver: bridge

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState } from 'react-native';
 import { useBiometrics } from './useBiometrics';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -12,7 +12,7 @@ export function useAppLockBiometrics(): {
   const { isAvailable, authenticate } = useBiometrics();
   const [locked, setLocked] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const wentToBackgroundRef = useRef(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -24,14 +24,19 @@ export function useAppLockBiometrics(): {
       .catch(() => setLocked(true));
 
     const subscription = AppState.addEventListener('change', (nextState) => {
-      const previousState = appStateRef.current;
-      appStateRef.current = nextState;
+      if (nextState === 'background') {
+        wentToBackgroundRef.current = true;
+      }
 
-      const comingToForeground =
-        (previousState === 'inactive' || previousState === 'background') &&
-        nextState === 'active';
+      // Only treat this as "returning from background" if the app actually
+      // backgrounded. Native system dialogs (e.g. Face ID/Touch ID prompts -
+      // including the WDK SDK's own biometric prompt for wallet unlock) also
+      // drive AppState through active -> inactive -> active without ever
+      // reaching 'background', and must not re-trigger the lock screen.
+      const comingToForeground = wentToBackgroundRef.current && nextState === 'active';
 
       if (comingToForeground && userId) {
+        wentToBackgroundRef.current = false;
         isAvailable()
           .then((available) => {
             if (available) setLocked(true);

@@ -267,7 +267,6 @@ All variables are prefixed with `EXPO_PUBLIC_` and have safe public-testnet defa
 | `EXPO_PUBLIC_SPARK_SCAN_API_KEY` | — | SparkScan API key, required for Spark (**mainnet**) balance/history |
 | `EXPO_PUBLIC_USDT_ETH_ADDRESS` | `0x000…` | USDT contract on Ethereum Sepolia |
 | `EXPO_PUBLIC_UTL_ADDRESS` | `0x000…` | UTL utility token contract |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | — | Google OAuth Web client ID (Android Drive backup) |
 | `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | — | Google OAuth Android client ID (Android Drive backup) |
 | `EXPO_PUBLIC_COGNITO_DOMAIN` | — | Cognito Hosted UI domain, e.g. `https://your-pool.auth.us-east-1.amazoncognito.com` (see [SST/Cognito infra](../../README.md#infrastructure-aws-cognito-via-sst)) |
 | `EXPO_PUBLIC_COGNITO_CLIENT_ID` | — | Cognito app client ID (public client, no secret) |
