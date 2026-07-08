@@ -93,7 +93,8 @@ jobs:
           cd apps/backend
           zip -r ../../backend-deploy.zip . \
             -x 'node_modules/*' -x '.git/*' -x 'dist/*' -x 'coverage/*' \
-            -x 'contracts/artifacts/*' -x 'contracts/cache/*' -x 'typechain-types/*'
+            -x 'contracts/artifacts/*' -x 'contracts/cache/*' -x 'typechain-types/*' \
+            -x 'docker-compose*.yml' -x '.env*'
       - uses: actions/upload-artifact@v4
         with:
           name: backend-deploy
