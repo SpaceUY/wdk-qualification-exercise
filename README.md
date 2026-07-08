@@ -97,15 +97,16 @@ See [`apps/backend/README.md`](apps/backend/README.md#docker-quick-start) for th
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs `lint → test → build → deploy` on every push/PR to `main`. The
-`deploy` stage (backend only) targets **AWS Elastic Beanstalk** and only runs on pushes to `main` —
-it requires an Elastic Beanstalk application/environment and a handful of GitHub Actions secrets
-that don't exist yet (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`,
-`EB_APPLICATION_NAME`, `EB_ENVIRONMENT_NAME`); until then, `lint`/`test`/`build` still run and pass
-on every PR, but `deploy` will fail. `apps/rn-wdk-exercise` isn't deployed here — mobile builds are
-a separate EAS/Xcode/Android Studio concern (`apps/rn-wdk-exercise/eas.json` has the build/submit
-profiles).
+The `.github/workflows/ci.yml` workflow runs on every push/PR to `main`:
 
-See [`docs/deployment-guide.md`](docs/deployment-guide.md) for the full step-by-step runbook —
-provisioning the not-yet-created Elastic Beanstalk environments (backend and the self-hosted WDK
-stack), wiring the secrets above, and shipping the mobile app to the App Store and Google Play.
+1. **lint** — `pnpm lint` across the whole monorepo.
+2. **test** — `pnpm test:coverage` + `pnpm test:e2e` (backend).
+3. **build** — `pnpm build` + packages `apps/backend` into a zip.
+4. **deploy** — only on push to `main`: deploys the zip to Elastic Beanstalk
+   (`cashback-backend` / `Cashback-backend-env`, `us-east-1`) using an IAM role
+   assumed via OIDC (no long-lived credentials).
+
+For the `deploy` job to work, someone with write access to the AWS account must
+create the IAM role documented in [`infra/aws-deploy-role.md`](./infra/aws-deploy-role.md) and
+upload its ARN as the `AWS_DEPLOY_ROLE_ARN` secret in the GitHub repo settings.
+Without that secret, the `lint`/`test`/`build` jobs work normally but `deploy` fails.

@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '10.15.1'
+  AWS_REGION: 'us-east-1'
+  EB_APPLICATION_NAME: 'cashback-backend'
+  EB_ENVIRONMENT_NAME: 'Cashback-backend-env'
+  EB_S3_BUCKET: 'elasticbeanstalk-us-east-1-145706027626'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Cache MongoDB binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: ${{ runner.os }}-mongodb-binaries-${{ hashFiles('apps/backend/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-mongodb-binaries-
+      - run: pnpm test:coverage
+      - run: pnpm test:e2e
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Package backend for Elastic Beanstalk
+        run: |
+          cd apps/backend
+          zip -r ../../backend-deploy.zip . \
+            -x 'node_modules/*' -x '.git/*' -x 'dist/*' -x 'coverage/*' \
+            -x 'contracts/artifacts/*' -x 'contracts/cache/*' -x 'typechain-types/*'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-deploy
+          path: backend-deploy.zip
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: backend-deploy }
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload application bundle to S3
+        run: |
+          aws s3 cp backend-deploy.zip \
+            "s3://${{ env.EB_S3_BUCKET }}/github-actions/${{ github.sha }}.zip"
+
+      - name: Create application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ env.EB_APPLICATION_NAME }}" \
+            --version-label "${{ github.sha }}" \
+            --source-bundle S3Bucket="${{ env.EB_S3_BUCKET }}",S3Key="github-actions/${{ github.sha }}.zip"
+
+      - name: Update environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ env.EB_ENVIRONMENT_NAME }}" \
+            --version-label "${{ github.sha }}"
+
+      - name: Wait for environment to be Ready
+        run: |
+          for i in $(seq 1 30); do
+            read -r STATUS VERSION < <(aws elasticbeanstalk describe-environments \
+              --environment-names "${{ env.EB_ENVIRONMENT_NAME }}" \
+              --query 'Environments[0].[Status,VersionLabel]' --output text)
+            echo "Status: $STATUS, Version: $VERSION ($i/30)"
+            if [ "$STATUS" = "Ready" ] && [ "$VERSION" = "${{ github.sha }}" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for environment to become Ready"
+          exit 1
+
+      - name: Verify environment health
+        run: |
+          HEALTH=$(aws elasticbeanstalk describe-environments \
+            --environment-names "${{ env.EB_ENVIRONMENT_NAME }}" \
+            --query 'Environments[0].Health' --output text)
+          echo "Health: $HEALTH"
+          if [ "$HEALTH" != "Green" ] && [ "$HEALTH" != "Yellow" ]; then
+            echo "Environment health is $HEALTH after deploy"
+            exit 1
+          fi
