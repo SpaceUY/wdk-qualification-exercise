@@ -139,10 +139,18 @@ jobs:
 
       - name: Create application version
         run: |
-          aws elasticbeanstalk create-application-version \
+          EXISTING=$(aws elasticbeanstalk describe-application-versions \
             --application-name "${{ env.EB_APPLICATION_NAME }}" \
-            --version-label "${{ github.sha }}" \
-            --source-bundle S3Bucket="${{ env.EB_S3_BUCKET }}",S3Key="github-actions/${{ github.sha }}.zip"
+            --version-labels "${{ github.sha }}" \
+            --query 'ApplicationVersions[0].VersionLabel' --output text 2>/dev/null || echo "None")
+          if [ "$EXISTING" = "${{ github.sha }}" ]; then
+            echo "Application version ${{ github.sha }} already exists, skipping creation (retry of a prior run)"
+          else
+            aws elasticbeanstalk create-application-version \
+              --application-name "${{ env.EB_APPLICATION_NAME }}" \
+              --version-label "${{ github.sha }}" \
+              --source-bundle S3Bucket="${{ env.EB_S3_BUCKET }}",S3Key="github-actions/${{ github.sha }}.zip"
+          fi
 
       - name: Update environment
         run: |
