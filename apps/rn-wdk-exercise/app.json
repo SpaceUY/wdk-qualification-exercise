@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "rn-wdk-exercise",
-    "scheme": "rn-wdk-exercise",
-    "slug": "rn-wdk-exercise",
+    "name": "Space UTL",
+    "scheme": "space-utl",
+    "slug": "space-utl",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,9 +11,11 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Required to scan QR codes for sending payments",
-        "NSFaceIDUsageDescription": "Used to protect your wallet"
+        "NSFaceIDUsageDescription": "Used to protect your wallet",
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.spacedev.rn-wdk-exercise"
+      "bundleIdentifier": "com.space.utl",
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +31,8 @@
         "android.permission.USE_FINGERPRINT",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.spacedev.rnwdkexercise"
+      "package": "com.space.utl",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -47,6 +50,13 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7d195e14-821e-4f82-bee4-d8633f42f359"
+      }
+    },
+    "owner": "spaceuy"
   }
 }

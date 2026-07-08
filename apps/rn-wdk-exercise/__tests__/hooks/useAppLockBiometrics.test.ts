@@ -115,6 +115,35 @@ describe('useAppLockBiometrics', () => {
     await waitFor(() => expect(result.current.locked).toBe(true));
   });
 
+  it('does not re-lock when a system dialog (e.g. Face ID) briefly makes the app inactive without backgrounding it', async () => {
+    // Regression test: on iOS, native biometric prompts (including the WDK SDK's own
+    // wallet-unlock Face ID prompt) transition AppState active -> inactive -> active
+    // WITHOUT ever passing through 'background'. That must not be treated as the user
+    // returning from background, or the app re-locks itself mid-unlock in an infinite loop.
+    useAuthStore.getState().setUserId('alice@example.com');
+    mockIsAvailable.mockResolvedValue(true);
+    mockAuthenticate.mockResolvedValue(true);
+
+    const { result } = await renderHook(() => useAppLockBiometrics());
+    await waitFor(() => expect(result.current.locked).toBe(true));
+
+    await act(async () => { await result.current.unlock(); });
+    expect(result.current.locked).toBe(false);
+
+    // Simulate a native system dialog (Face ID sheet) appearing and dismissing:
+    // active -> inactive -> active, never touching 'background'.
+    await act(async () => {
+      appStateListener?.('inactive');
+      await Promise.resolve();
+    });
+    await act(async () => {
+      appStateListener?.('active');
+      await Promise.resolve();
+    });
+
+    expect(result.current.locked).toBe(false);
+  });
+
   it('re-locks on foreground when isAvailable() rejects (fail closed)', async () => {
     useAuthStore.getState().setUserId('alice@example.com');
     mockIsAvailable.mockResolvedValue(true);

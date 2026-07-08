@@ -27,8 +27,9 @@ const discovery: AuthSession.DiscoveryDocument = {
 export function useCognito(): { promptAsync: () => Promise<void>, ready: boolean } {
   const setUserId = useAuthStore((s) => s.setUserId);
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
+  const setRefreshToken = useAuthStore((s) => s.setRefreshToken);
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'rn-wdk-exercise' });
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'space-utl' });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -64,6 +65,7 @@ export function useCognito(): { promptAsync: () => Promise<void>, ready: boolean
         }
         setUserId(email);
         setAccessToken(idToken);
+        setRefreshToken(tokenResult.refreshToken ?? null);
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'Sign-in failed. Please try again.';
