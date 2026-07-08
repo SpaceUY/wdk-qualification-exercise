@@ -114,7 +114,6 @@ export class RedisStreamTransferAdapter extends TransferStreamPort implements On
       // every transfer for the chain/token pair arrives here, not just merchant-bound ones —
       // filter here rather than relying solely on TransferProcessor's downstream check
       if (!merchantAddresses.has(transfer.to.toLowerCase())) continue;
-      if (transfer.token && transfer.token.toUpperCase() !== 'USDT') continue;
 
       const rawAmount = decimalToRawUnits(transfer.amount, USDT_DECIMALS);
       if (rawAmount === null) {
