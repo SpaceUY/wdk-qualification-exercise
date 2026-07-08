@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useBalancesForWallet, useBalance, useWallet } from '@tetherto/wdk-react-native-core';
 import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
 import { useAuthStore } from '@/stores/authStore';
-import { EVM_ASSETS, BTC_ASSET, SPARK_ASSET, USDT_TRON_ASSET, ALL_ASSET_CONFIGS, BTC_CONFIG, SPARK_CONFIG, USDT_TRON_CONFIG } from '@/config/assets';
+import { EVM_ASSETS, BTC_ASSET, SPARK_ASSET, USDT_TRON_ASSET, ALL_ASSET_CONFIGS, BTC_CONFIG, SPARK_CONFIG, USDT_TRON_CONFIG, NETWORK_IS_MAINNET } from '@/config/assets';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
 import { putWalletAddress } from '@/utils/api';
 
@@ -93,12 +93,6 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {ethAddress ? (
-        <Text testID="dashboard-address" style={styles.address} numberOfLines={1} ellipsizeMode="middle">
-          {ethAddress}
-        </Text>
-      ) : null}
-
       {isLoading && allBalances.length === 0 ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
       ) : null}
@@ -111,11 +105,19 @@ export default function DashboardScreen() {
           const result = allBalances.find((b) => b.assetId === item.id);
           const raw = result?.success ? result.balance : null;
           const formatted = raw != null ? trimDisplayDecimals(formatBalanceFromRaw(raw, item.decimals) ?? '0', 6) : '—';
+          const isMainnet = NETWORK_IS_MAINNET[item.network] ?? false;
 
           return (
             <View style={styles.balanceRow}>
               <View>
-                <Text style={styles.symbol}>{item.symbol}</Text>
+                <View style={styles.symbolRow}>
+                  <Text style={styles.symbol}>{item.symbol}</Text>
+                  <View style={[styles.chip, isMainnet ? styles.chipMainnet : styles.chipTestnet]}>
+                    <Text style={[styles.chipText, isMainnet ? styles.chipTextMainnet : styles.chipTextTestnet]}>
+                      {isMainnet ? 'Mainnet' : 'Testnet'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.network}>{item.network}</Text>
               </View>
               <Text style={styles.balance}>{formatted}</Text>
@@ -180,7 +182,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '700' },
   logoutText: { color: '#ef4444', fontSize: 14 },
-  address: { fontSize: 11, color: '#888', marginHorizontal: 20, marginVertical: 8 },
   list: { flex: 1, marginTop: 8 },
   balanceRow: {
     flexDirection: 'row',
@@ -193,7 +194,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   symbol: { fontSize: 16, fontWeight: '600' },
+  symbolRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   network: { fontSize: 12, color: '#888', marginTop: 2 },
+  chip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
+  chipMainnet: { backgroundColor: '#dcfce7' },
+  chipTestnet: { backgroundColor: '#fef3c7' },
+  chipText: { fontSize: 10, fontWeight: '700' },
+  chipTextMainnet: { color: '#15803d' },
+  chipTextTestnet: { color: '#b45309' },
   balance: { fontSize: 16, fontWeight: '500' },
   actions: {
     flexDirection: 'row',
