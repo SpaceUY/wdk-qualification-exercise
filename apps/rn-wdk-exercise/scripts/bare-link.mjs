@@ -27,6 +27,8 @@ const targets = [
 
 console.log('Running bare-link from app root:', projectRoot)
 
+const failedPlatforms = []
+
 for (const { platform, hosts, out } of targets) {
   console.log(`Output ${platform} addons to:`, out)
 
@@ -37,8 +39,17 @@ for (const { platform, hosts, out } of targets) {
   }
 
   if (count === 0) {
-    console.log(`No ${platform} addons found (bare-crypto prebuilds may already be up to date or not present)`)
+    console.error(`ERROR: No ${platform} addons were linked. The worklet will be missing native addons and fail to start at runtime.`)
+    failedPlatforms.push(platform)
   } else {
     console.log(`Linked ${count} ${platform} addon resource(s)`)
   }
+}
+
+if (failedPlatforms.length > 0) {
+  console.error(
+    `bare-link: aborting — zero addons linked for: ${failedPlatforms.join(', ')}. ` +
+      'Shipping a build with no linked addons will silently hang at "Initializing wallet". Fix the addon resolution before continuing.',
+  )
+  process.exit(1)
 }
