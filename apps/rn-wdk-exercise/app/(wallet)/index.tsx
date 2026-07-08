@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -17,26 +17,36 @@ export default function DashboardScreen() {
   const { status, error, retry } = useWalletBootstrap(userId);
   const registeredRef = useRef(false);
 
-  const { data: evmBalances, isLoading: evmLoading } = useBalancesForWallet(
+  const { data: evmBalances, isLoading: evmLoading, refetch: refetchEvm } = useBalancesForWallet(
     0,
     EVM_ASSETS,
     { staleTime: 0, refetchInterval: 30_000 },
   );
 
-  const { data: btcBalance, isLoading: btcLoading } = useBalance(BTC_CONFIG.network, 0, BTC_ASSET, {
+  const { data: btcBalance, isLoading: btcLoading, refetch: refetchBtc } = useBalance(BTC_CONFIG.network, 0, BTC_ASSET, {
     staleTime: 0,
     refetchInterval: 30_000,
   });
 
-  const { data: sparkBalance, isLoading: sparkLoading } = useBalance(SPARK_CONFIG.network, 0, SPARK_ASSET, {
+  const { data: sparkBalance, isLoading: sparkLoading, refetch: refetchSpark } = useBalance(SPARK_CONFIG.network, 0, SPARK_ASSET, {
     staleTime: 0,
     refetchInterval: 60_000,
   });
 
-  const { data: tronBalance, isLoading: tronLoading } = useBalance(USDT_TRON_CONFIG.network, 0, USDT_TRON_ASSET, {
+  const { data: tronBalance, isLoading: tronLoading, refetch: refetchTron } = useBalance(USDT_TRON_CONFIG.network, 0, USDT_TRON_ASSET, {
     staleTime: 0,
     refetchInterval: 60_000,
   });
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchEvm(), refetchBtc(), refetchSpark(), refetchTron()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchEvm, refetchBtc, refetchSpark, refetchTron]);
 
   const { addresses } = useWallet({ autoLoadAccountIndices: [0] });
   const ethAddress = addresses['ethereum']?.[0];
@@ -101,6 +111,7 @@ export default function DashboardScreen() {
         testID="dashboard-balances"
         data={ALL_ASSET_CONFIGS}
         keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         renderItem={({ item }) => {
           const result = allBalances.find((b) => b.assetId === item.id);
           const raw = result?.success ? result.balance : null;
