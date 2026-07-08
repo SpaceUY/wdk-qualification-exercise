@@ -107,6 +107,6 @@ The `.github/workflows/ci.yml` workflow runs on every push/PR to `main`:
    assumed via OIDC (no long-lived credentials).
 
 For the `deploy` job to work, someone with write access to the AWS account must
-create the IAM role documented in [`infra/aws-deploy-role.md`](./infra/aws-deploy-role.md) and
-upload its ARN as the `AWS_DEPLOY_ROLE_ARN` secret in the GitHub repo settings.
+create an IAM role that GitHub Actions can assume via OIDC to deploy to Elastic Beanstalk,
+and upload its ARN as the `AWS_DEPLOY_ROLE_ARN` secret in the GitHub repo settings.
 Without that secret, the `lint`/`test`/`build` jobs work normally but `deploy` fails.
