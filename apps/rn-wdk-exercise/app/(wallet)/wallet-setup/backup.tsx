@@ -99,7 +99,7 @@ export default function BackupScreen() {
       <ScreenHeader title="Seed Phrase" />
       <View style={styles.container}>
         <Text style={styles.warning}>
-          ⚠️ Never share your seed phrase. Anyone with it has full access to your wallet.
+          Never share your seed phrase. Anyone with it has full access to your wallet.
         </Text>
 
         {!revealed ? (
