@@ -68,4 +68,10 @@ describe('authStore', () => {
       expect(useAuthStore.getState().accessToken).toBeNull();
     });
   });
+
+  describe('persisted storage', () => {
+    it('clearStorage removes the persisted entry without throwing', () => {
+      expect(() => useAuthStore.persist.clearStorage()).not.toThrow();
+    });
+  });
 });
