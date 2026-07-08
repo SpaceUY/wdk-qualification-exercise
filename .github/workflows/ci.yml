@@ -23,10 +23,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: '${{ env.PNPM_VERSION }}' }
       - uses: actions/setup-node@v4
-        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - run: corepack enable
+      - run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
@@ -35,10 +44,19 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: '${{ env.PNPM_VERSION }}' }
       - uses: actions/setup-node@v4
-        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - run: corepack enable
+      - run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
       - name: Cache MongoDB binaries
         uses: actions/cache@v4
@@ -55,10 +73,19 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: '${{ env.PNPM_VERSION }}' }
       - uses: actions/setup-node@v4
-        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - run: corepack enable
+      - run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Package backend for Elastic Beanstalk
@@ -85,11 +112,25 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: backend-deploy }
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials (OIDC, manual exchange)
+        run: |
+          ID_TOKEN=$(curl -sSL -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value')
+          CREDS=$(aws sts assume-role-with-web-identity \
+            --role-arn "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" \
+            --role-session-name "gha-${{ github.run_id }}" \
+            --web-identity-token "$ID_TOKEN" \
+            --duration-seconds 900 \
+            --region "${{ env.AWS_REGION }}")
+          ACCESS_KEY_ID=$(echo "$CREDS" | jq -r '.Credentials.AccessKeyId')
+          SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r '.Credentials.SecretAccessKey')
+          SESSION_TOKEN=$(echo "$CREDS" | jq -r '.Credentials.SessionToken')
+          echo "::add-mask::$ACCESS_KEY_ID"
+          echo "::add-mask::$SECRET_ACCESS_KEY"
+          echo "::add-mask::$SESSION_TOKEN"
+          echo "AWS_ACCESS_KEY_ID=$ACCESS_KEY_ID" >> "$GITHUB_ENV"
+          echo "AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY" >> "$GITHUB_ENV"
+          echo "AWS_SESSION_TOKEN=$SESSION_TOKEN" >> "$GITHUB_ENV"
 
       - name: Upload application bundle to S3
         run: |
