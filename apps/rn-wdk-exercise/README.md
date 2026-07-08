@@ -107,14 +107,16 @@ On iOS, uses `ICloudProvider` (no token required). On Android, uses `GoogleDrive
 
 | Network | Chain | Assets | Notes |
 |---|---|---|---|
-| Ethereum Sepolia | EVM | ETH, USDT, UTL | Testnet |
-| Arbitrum Sepolia | EVM | USDT | Testnet. Wired up, but no test-USDT contract is deployed here yet (`EXPO_PUBLIC_USDT_ARB_ADDRESS` unset) — the asset resolves to the zero address, so it's filtered out of the dashboard's balance list and any real send would fail; the network/address layer itself works |
-| Polygon Amoy | EVM | USDT | Same situation as Arbitrum above — wired up, no test-USDT contract deployed (`EXPO_PUBLIC_USDT_POL_ADDRESS`) |
+| Ethereum Sepolia | EVM | ETH, USDT, UTL | Testnet. USDT uses the same disposable Sepolia test-USDT contract as the sibling `city-wallets-wl-app-mobile` project |
+| Arbitrum | EVM | USDT | **Mainnet** — no test-USDT contract exists on Arbitrum Sepolia, so this chain runs against Arbitrum One mainnet instead, real funds |
+| Polygon | EVM | USDT | **Mainnet** — same no-test-USDT situation as Arbitrum above; real funds |
 | Bitcoin | BTC (Blockbook) | BTC | **Mainnet** — real funds, per project requirement |
 | Spark | Spark (SparkScan) | sBTC | **Mainnet** — same real-funds requirement as Bitcoin (Spark is a Bitcoin L2). Requires `EXPO_PUBLIC_SPARK_SCAN_API_KEY`. Receive shows a real address; there is no deposit/claim UI, so crediting funds into a Spark wallet isn't possible from this app (see [`infra/wdk-stack`](../../infra/wdk-stack/README.md)) |
 | Tron | TVM | USDT (TRC20) | Nile testnet. Fixed — see the patch note below |
 
-Arbitrum and Polygon were previously unwired despite `config/assets.ts` already defining `USDT_ARB_CONFIG`/`USDT_POL_CONFIG` for them, and `wdk.config.js`'s worklet bundle already registering wallet managers for both (keyed by `blockchain: 'arbitrum'`/`'polygon'`) — the only missing piece was the runtime `wdkConfigs.networks` entries in `config/networks.ts`, now added. Full fund-flow verification (an actual send) still needs a disposable test-USDT contract deployed on each testnet, which needs a deployer wallet funded with testnet ETH/MATIC — not done as part of this fix.
+The dashboard shows a Mainnet/Testnet chip per asset (`NETWORK_IS_MAINNET` in `config/assets.ts`) so it's obvious at a glance which balances represent real funds.
+
+Arbitrum and Polygon were previously unwired despite `config/assets.ts` already defining `USDT_ARB_CONFIG`/`USDT_POL_CONFIG` for them, and `wdk.config.js`'s worklet bundle already registering wallet managers for both (keyed by `blockchain: 'arbitrum'`/`'polygon'`) — the only missing piece was the runtime `wdkConfigs.networks` entries in `config/networks.ts`, now added. Since no test-USDT contract exists on Arbitrum Sepolia or Polygon Amoy, both chains were switched to mainnet (real USDT-ERC20 contracts, real RPC endpoints) instead of waiting on a disposable testnet deployment.
 
 ### Fixed — Tron addresses were rejected everywhere
 
@@ -252,20 +254,20 @@ Copy `.env.example` to `.env.local` and fill in the values:
 cp .env.example .env.local
 ```
 
-All variables are prefixed with `EXPO_PUBLIC_` and have safe public-testnet defaults. You only need to set the token contract addresses once the ERC-20 contracts are deployed.
+All variables are prefixed with `EXPO_PUBLIC_` and have working defaults out of the box. Most chains default to testnet; Arbitrum, Polygon, Bitcoin, and Spark default to **mainnet** (real funds) since no test-USDT contract exists for the first two, and the latter two are a project requirement — see the network table above.
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `EXPO_PUBLIC_ETHEREUM_RPC_URL` | `https://rpc.sepolia.org` | Ethereum Sepolia RPC |
-| `EXPO_PUBLIC_ARBITRUM_RPC_URL` | `https://sepolia-rollup.arbitrum.io/rpc` | Arbitrum Sepolia RPC (no API key needed) |
-| `EXPO_PUBLIC_USDT_ARB_ADDRESS` | `0x000…` | USDT contract on Arbitrum Sepolia — unset by default, no test contract deployed yet |
-| `EXPO_PUBLIC_POLYGON_RPC_URL` | `https://rpc-amoy.polygon.technology` | Polygon Amoy RPC (no API key needed) |
-| `EXPO_PUBLIC_USDT_POL_ADDRESS` | `0x000…` | USDT contract on Polygon Amoy — unset by default, no test contract deployed yet |
+| `EXPO_PUBLIC_ARBITRUM_RPC_URL` | `https://arb1.arbitrum.io/rpc` | Arbitrum **One mainnet** RPC (no API key needed) — no test-USDT contract exists on Arbitrum Sepolia |
+| `EXPO_PUBLIC_USDT_ARB_ADDRESS` | `0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9` | Real **mainnet** USDT-ERC20 contract on Arbitrum |
+| `EXPO_PUBLIC_POLYGON_RPC_URL` | `https://polygon-bor-rpc.publicnode.com` | Polygon **mainnet** RPC (no API key needed) — no test-USDT contract exists on Polygon Amoy. `polygon-rpc.com`, still widely documented as the default, returns 403 (API key/tenant disabled) as of verification |
+| `EXPO_PUBLIC_USDT_POL_ADDRESS` | `0xc2132d05d31c914a87c6611c10748aeb04b58e8f` | Real **mainnet** USDT-ERC20 contract on Polygon |
 | `EXPO_PUBLIC_BTC_BLOCKBOOK_URL` | `https://blockbook.btc.zelcore.io/api` | Bitcoin **mainnet** Blockbook (real funds — `btc1.trezor.io` is Cloudflare-blocked for API requests) |
 | `EXPO_PUBLIC_TRON_RPC_URL` | `https://nile.trongrid.io` | Tron Nile testnet RPC (no API key needed; only mainnet requires one) |
 | `EXPO_PUBLIC_USDT_TRON_ADDRESS` | Tron mainnet USDT contract (placeholder) | USDT-TRC20 contract on Tron Nile — set to a real Nile test-token contract (no canonical one exists; see [`infra/wdk-stack`](../../infra/wdk-stack/README.md)) |
 | `EXPO_PUBLIC_SPARK_SCAN_API_KEY` | — | SparkScan API key, required for Spark (**mainnet**) balance/history |
-| `EXPO_PUBLIC_USDT_ETH_ADDRESS` | `0x000…` | USDT contract on Ethereum Sepolia |
+| `EXPO_PUBLIC_USDT_ETH_ADDRESS` | `0xd077a400968890eacc75cdc901f0356c943e4fdb` | Sepolia test-USDT contract — same one used by the sibling `city-wallets-wl-app-mobile` project |
 | `EXPO_PUBLIC_UTL_ADDRESS` | `0x000…` | UTL utility token contract |
 | `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | — | Google OAuth Android client ID (Android Drive backup) |
 | `EXPO_PUBLIC_COGNITO_DOMAIN` | — | Cognito Hosted UI domain, e.g. `https://your-pool.auth.us-east-1.amazoncognito.com` (see [SST/Cognito infra](../../README.md#infrastructure-aws-cognito-via-sst)) |

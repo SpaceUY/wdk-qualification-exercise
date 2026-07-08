@@ -10,18 +10,24 @@ const ethereumConfig: EvmWalletConfig = {
   provider: process.env.EXPO_PUBLIC_ETHEREUM_RPC_URL ?? 'https://rpc.sepolia.org',
 };
 
-// Arbitrum Sepolia testnet. wdk.config.js's worklet bundle already declares a wallet manager
-// for this network (keyed by the same 'arbitrum' blockchain name below) — this runtime config
-// entry was the only missing half of the wiring; without it, wdk-react-native-core never calls
-// registerWallet('arbitrum', ...), so any account method call against this network threw
-// "No wallet manager found for blockchain: arbitrum".
+// Arbitrum ONE MAINNET — no test-USDT contract exists on Arbitrum Sepolia (see USDT_ARB_CONFIG
+// in config/assets.ts), so this chain runs against mainnet instead; real funds. wdk.config.js's
+// worklet bundle already declares a wallet manager for this network (keyed by the same
+// 'arbitrum' blockchain name below) — this runtime config entry was the only missing half of
+// the wiring; without it, wdk-react-native-core never calls registerWallet('arbitrum', ...), so
+// any account method call against this network threw "No wallet manager found for blockchain:
+// arbitrum".
 const arbitrumConfig: EvmWalletConfig = {
-  provider: process.env.EXPO_PUBLIC_ARBITRUM_RPC_URL ?? 'https://sepolia-rollup.arbitrum.io/rpc',
+  provider: process.env.EXPO_PUBLIC_ARBITRUM_RPC_URL ?? 'https://arb1.arbitrum.io/rpc',
 };
 
-// Polygon Amoy testnet — same missing-runtime-wiring situation as arbitrumConfig above.
+// Polygon MAINNET — same no-test-USDT situation as arbitrumConfig above; real funds. Same
+// missing-runtime-wiring history as arbitrumConfig too.
+// polygon-rpc.com's public access is dead (403 "API key disabled, tenant disabled" as of
+// verification) despite still being widely documented as the default public RPC — use
+// publicnode's endpoint instead, verified live (correct chainId 0x89, USDT contract readable).
 const polygonConfig: EvmWalletConfig = {
-  provider: process.env.EXPO_PUBLIC_POLYGON_RPC_URL ?? 'https://rpc-amoy.polygon.technology',
+  provider: process.env.EXPO_PUBLIC_POLYGON_RPC_URL ?? 'https://polygon-bor-rpc.publicnode.com',
 };
 
 // Mainnet — a project requirement, unlike the other chains here which stay on testnet.

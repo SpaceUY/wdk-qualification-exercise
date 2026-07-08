@@ -11,33 +11,44 @@ export const ETH_CONFIG: AssetConfig = {
   decimals: 18,
 };
 
+// Default is the same disposable Sepolia test-USDT contract used by the sibling
+// city-wallets-wl-app-mobile project (packages/app-config/src/tokens.ts) — a known-working
+// testnet deployment, not our own throwaway one.
 export const USDT_ETH_CONFIG: AssetConfig = {
   id: 'ethereum-usdt',
   network: 'ethereum',
   isNative: false,
-  address: process.env.EXPO_PUBLIC_USDT_ETH_ADDRESS?.toLowerCase() ?? '0x0000000000000000000000000000000000000000',
+  address: process.env.EXPO_PUBLIC_USDT_ETH_ADDRESS?.toLowerCase() ?? '0xd077a400968890eacc75cdc901f0356c943e4fdb',
   symbol: 'USDT',
   name: 'Tether USD (Sepolia)',
   decimals: 6,
 };
 
+// No test-USDT contract exists on Arbitrum Sepolia (same "no canonical testnet token" situation
+// documented on USDT_TRON_CONFIG below), so this runs against Arbitrum ONE MAINNET instead —
+// a project decision, not a placeholder. Default is the real mainnet USDT-ERC20 contract.
+// This carries real funds; keep EXPO_PUBLIC_ARBITRUM_RPC_URL (config/networks.ts) pointed at
+// mainnet too, or balance queries will look for this contract on the wrong chain.
 export const USDT_ARB_CONFIG: AssetConfig = {
   id: 'arbitrum-usdt',
   network: 'arbitrum',
   isNative: false,
-  address: process.env.EXPO_PUBLIC_USDT_ARB_ADDRESS?.toLowerCase() ?? '0x0000000000000000000000000000000000000000',
+  address: process.env.EXPO_PUBLIC_USDT_ARB_ADDRESS?.toLowerCase() ?? '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
   symbol: 'USDT',
-  name: 'Tether USD (Arbitrum Sepolia)',
+  name: 'Tether USD (Arbitrum)',
   decimals: 6,
 };
 
+// Same situation as USDT_ARB_CONFIG above — no test-USDT contract on Polygon Amoy, so this runs
+// against Polygon mainnet's real USDT-ERC20 contract. Keep EXPO_PUBLIC_POLYGON_RPC_URL
+// (config/networks.ts) pointed at mainnet too.
 export const USDT_POL_CONFIG: AssetConfig = {
   id: 'polygon-usdt',
   network: 'polygon',
   isNative: false,
-  address: process.env.EXPO_PUBLIC_USDT_POL_ADDRESS?.toLowerCase() ?? '0x0000000000000000000000000000000000000000',
+  address: process.env.EXPO_PUBLIC_USDT_POL_ADDRESS?.toLowerCase() ?? '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',
   symbol: 'USDT',
-  name: 'Tether USD (Polygon Amoy)',
+  name: 'Tether USD (Polygon)',
   decimals: 6,
 };
 
@@ -102,6 +113,17 @@ export const ALL_ASSET_CONFIGS: AssetConfig[] = [
 ];
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+// Keyed by AssetConfig.network — drives the Mainnet/Testnet chip on the dashboard.
+// ethereum (Sepolia) and tron (Nile) are testnets; arbitrum/polygon/bitcoin/spark carry real funds.
+export const NETWORK_IS_MAINNET: Record<string, boolean> = {
+  ethereum: false,
+  arbitrum: true,
+  polygon: true,
+  bitcoin: true,
+  spark: true,
+  tron: false,
+};
 
 export const EVM_ASSETS = EVM_ASSET_CONFIGS
   .filter((c) => c.isNative || (c.address !== null && c.address !== ZERO_ADDRESS))
