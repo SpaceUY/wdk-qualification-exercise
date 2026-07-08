@@ -113,4 +113,10 @@ describe('walletOnboardingStore', () => {
       ).not.toThrow();
     });
   });
+
+  describe('persisted storage', () => {
+    it('clearStorage removes the persisted entry without throwing', () => {
+      expect(() => useWalletOnboardingStore.persist.clearStorage()).not.toThrow();
+    });
+  });
 });
