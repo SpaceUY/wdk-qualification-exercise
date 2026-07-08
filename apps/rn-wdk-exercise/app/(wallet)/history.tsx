@@ -5,11 +5,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { useAppNodeWalletSync } from '@/hooks/useAppNodeWalletSync';
 import { useTransactionHistory } from '@/hooks/useTransactionHistory';
 import type { TokenTransfer } from '@/utils/appNodeApi';
-import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
+import { trimDisplayDecimals } from '@/utils/balance';
 import { ScreenHeader } from '@/components/ScreenHeader';
-
-// Matches infra/wdk-stack's wdk-app-node schema (workers/lib/schemas/common.js `tokens` enum).
-const TOKEN_DECIMALS: Record<string, number> = { usdt: 6, xaut: 6, usat: 6, btc: 8 };
 
 function truncateHash(hash: string): string {
   return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
@@ -69,11 +66,7 @@ export default function HistoryScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const decimals = TOKEN_DECIMALS[item.token?.toLowerCase()] ?? 8;
-          const amount = trimDisplayDecimals(
-            formatBalanceFromRaw(item.amount, decimals) ?? '0',
-            6,
-          );
+          const amount = trimDisplayDecimals(item.amount || '0', 6);
           const received = isReceived(item, myAddresses);
 
           return (

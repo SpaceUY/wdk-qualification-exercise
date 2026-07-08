@@ -25,7 +25,7 @@ function buildTransfer(overrides: Partial<TokenTransfer> = {}): TokenTransfer {
     token: 'usdt',
     from: '0xSenderAddress',
     to: '0xEthAddress',
-    amount: '1500000',
+    amount: '1.5',
     ts: 1700000000,
     type: 'received',
     ...overrides,
@@ -101,7 +101,7 @@ describe('HistoryScreen', () => {
 
   it('renders a sent transfer with a minus-prefixed amount', async () => {
     mockUseTransactionHistory.mockReturnValue({
-      data: [buildTransfer({ type: 'sent', amount: '250000000', token: 'btc', blockchain: 'bitcoin' })],
+      data: [buildTransfer({ type: 'sent', amount: '2.5', token: 'btc', blockchain: 'bitcoin' })],
       isLoading: false,
       isError: false,
     });
@@ -110,6 +110,18 @@ describe('HistoryScreen', () => {
 
     expect(screen.getByText('Sent')).toBeTruthy();
     expect(screen.getByText('-2.5')).toBeTruthy();
+  });
+
+  it('renders a fractional amount without crashing (amount is already a decimal string from the API)', async () => {
+    mockUseTransactionHistory.mockReturnValue({
+      data: [buildTransfer({ type: 'received', amount: '0.5', token: 'btc', blockchain: 'bitcoin' })],
+      isLoading: false,
+      isError: false,
+    });
+
+    await render(<HistoryScreen />);
+
+    expect(screen.getByText('+0.5')).toBeTruthy();
   });
 
   it('infers "received" by address match when the transfer type is neither sent nor received', async () => {
