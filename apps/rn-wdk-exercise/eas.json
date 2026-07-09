@@ -45,7 +45,7 @@
       "autoIncrement": true,
       "environment": "production",
       "env": {
-        "EXPO_PUBLIC_ETHEREUM_RPC_URL": "https://rpc.sepolia.org",
+        "EXPO_PUBLIC_ETHEREUM_RPC_URL": "https://ethereum-sepolia-rpc.publicnode.com",
         "EXPO_PUBLIC_ARBITRUM_RPC_URL": "https://arb1.arbitrum.io/rpc",
         "EXPO_PUBLIC_USDT_ARB_ADDRESS": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
         "EXPO_PUBLIC_POLYGON_RPC_URL": "https://polygon-bor-rpc.publicnode.com",
@@ -56,7 +56,7 @@
         "EXPO_PUBLIC_USDT_ETH_ADDRESS": "0xd077a400968890eacc75cdc901f0356c943e4fdb",
         "EXPO_PUBLIC_UTL_ADDRESS": "0x90E927Df1f072cd29254603Cc36Da32E51E33E88",
         "EXPO_PUBLIC_API_URL": "https://cashback-api.spacedev.io",
-        "EXPO_PUBLIC_APP_NODE_URL": "https://cashback-wdk-stack.spacedev.io/api/v1/ready"
+        "EXPO_PUBLIC_APP_NODE_URL": "https://cashback-wdk-stack.spacedev.io"
       }
     }
   },
