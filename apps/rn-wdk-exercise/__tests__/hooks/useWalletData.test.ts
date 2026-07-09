@@ -171,6 +171,41 @@ describe('useWalletData', () => {
         act(async () => { await result.current.restoreWallet('bad', 'wallet-001'); }),
       ).rejects.toThrow('Invalid mnemonic');
     });
+
+    it('deletes the existing wallet and retries when restoreWallet throws "already exists"', async () => {
+      mockRestoreWallet
+        .mockRejectedValueOnce(new Error('A wallet with the ID "wallet-001" already exists.'))
+        .mockResolvedValueOnce(undefined);
+      mockDeleteWallet.mockResolvedValue(undefined);
+
+      const { result } = await renderHook(() => useWalletData());
+      await act(async () => {
+        await result.current.restoreWallet('word1 word2 word3', 'wallet-001');
+      });
+
+      expect(mockDeleteWallet).toHaveBeenCalledWith('wallet-001');
+      expect(mockRestoreWallet).toHaveBeenCalledTimes(2);
+      expect(mockRestoreWallet).toHaveBeenNthCalledWith(2, 'word1 word2 word3', 'wallet-001');
+    });
+
+    it('re-throws when restoreWallet fails again after delete-and-retry', async () => {
+      mockRestoreWallet.mockRejectedValue(new Error('already exists'));
+      mockDeleteWallet.mockResolvedValue(undefined);
+
+      const { result } = await renderHook(() => useWalletData());
+      let caughtError: Error | undefined;
+      await act(async () => {
+        try {
+          await result.current.restoreWallet('word1 word2', 'wallet-001');
+        } catch (err) {
+          caughtError = err as Error;
+        }
+      });
+
+      expect(caughtError?.message).toBe('already exists');
+      expect(mockDeleteWallet).toHaveBeenCalledWith('wallet-001');
+      expect(mockRestoreWallet).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('passthrough properties', () => {
