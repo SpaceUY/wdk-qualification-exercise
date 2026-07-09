@@ -123,7 +123,8 @@ export default function ConfirmSendScreen() {
   const isCashbackEligibleAsset = params.assetId === CASHBACK_ELIGIBLE_ASSET_ID;
   const showCashbackBadge = isMerchantAddress && isCashbackEligibleAsset;
   const merchantName = merchants?.names[recipientLower] ?? DEFAULT_MERCHANT_NAME;
-  const estimatedCashback = merchants ? (Number(params.amount) * merchants.cashbackRate).toFixed(4) : '0.0000';
+  const normalizedAmount = params.amount ? Number(params.amount.replace(',', '.')) : 0;
+  const estimatedCashback = merchants ? (normalizedAmount * merchants.cashbackRate).toFixed(4) : '0.0000';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

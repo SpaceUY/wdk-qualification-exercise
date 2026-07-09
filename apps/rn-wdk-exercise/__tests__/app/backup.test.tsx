@@ -175,13 +175,16 @@ describe('BackupScreen', () => {
 
     await uploadAndEnterPassphrase('Upload to iCloud');
 
-    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE);
+    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE, expect.any(Function));
     await waitFor(() =>
       expect(mockCreateCloudBackup).toHaveBeenCalledWith('encrypted-blob', 'user@test.com'),
     );
     expect(mockSignIn).not.toHaveBeenCalled();
-    expect(mockRestoreFromCloudBackup).toHaveBeenCalledWith('user@test.com', undefined);
-    expect(mockPostWalletBackup).toHaveBeenCalledWith('cloud-ciphertext');
+    // iOS skips the read-back-from-iCloud verification (iCloud writes are eventually
+    // consistent, so re-reading immediately after write is unreliable) — it posts the
+    // ciphertext it already has in memory instead.
+    expect(mockRestoreFromCloudBackup).not.toHaveBeenCalled();
+    expect(mockPostWalletBackup).toHaveBeenCalledWith('encrypted-blob');
     expect(toast.success).toHaveBeenCalledWith('Backed Up', {
       description: 'Seed phrase backed up to iCloud and our servers.',
     });
@@ -196,7 +199,7 @@ describe('BackupScreen', () => {
 
     await uploadAndEnterPassphrase('Upload to Google Drive');
 
-    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE);
+    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE, expect.any(Function));
     await waitFor(() =>
       expect(mockCreateCloudBackup).toHaveBeenCalledWith(
         'encrypted-blob',
@@ -229,14 +232,17 @@ describe('BackupScreen', () => {
   });
 
   it('shows a backup-failed alert when no cloud ciphertext can be read back', async () => {
-    Platform.OS = 'ios';
+    // Only Android reads the ciphertext back from cloud storage before posting it — iOS
+    // sends the in-memory ciphertext directly (see useSeedBackup.ts) since iCloud writes
+    // are eventually consistent and an immediate read-back is unreliable.
+    Platform.OS = 'android';
     mockRestoreFromCloudBackup.mockResolvedValue(null);
 
     await render(<BackupScreen />);
     await reveal();
     await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
-    await uploadAndEnterPassphrase('Upload to iCloud');
+    await uploadAndEnterPassphrase('Upload to Google Drive');
 
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(

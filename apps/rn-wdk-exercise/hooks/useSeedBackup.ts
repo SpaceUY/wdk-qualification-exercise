@@ -8,11 +8,17 @@ import { encryptMnemonic } from '@/utils/seedEncryption';
 const GOOGLE_SIGN_IN_TIMEOUT_MS = 30000;
 
 // Encrypts a mnemonic client-side and uploads it to the platform's cloud backup (iCloud /
-// Google Drive) plus this app's own backend, mirroring the ciphertext read back from the
-// cloud so the two copies are proven to match before returning.
+// Google Drive) plus this app's own backend. On Android the ciphertext sent to the backend
+// is read back from Google Drive first, proving the two copies match. iCloud's writes are
+// eventually consistent, so on iOS we skip that read-back (createCloudBackup() already
+// confirms the file exists) and send the ciphertext we already have in memory.
+export type BackupStage = 'encrypting' | 'uploading' | null;
+
 export function useSeedBackup() {
   const { signIn } = useGoogleAuth();
   const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<BackupStage>(null);
+  const [encryptProgress, setEncryptProgress] = useState(0);
 
   async function signInWithTimeout(): Promise<string | null> {
     const timedOut = Symbol('timeout');
@@ -40,12 +46,20 @@ export function useSeedBackup() {
   // a success message. Throws on any failure past that point.
   async function backupToCloud(userId: string, mnemonic: string, passphrase: string): Promise<boolean> {
     setUploading(true);
+    setStage('encrypting');
+    setEncryptProgress(0);
     try {
-      const ciphertext = await encryptMnemonic(mnemonic, passphrase);
+      const ciphertext = await encryptMnemonic(mnemonic, passphrase, (fraction) => {
+        setEncryptProgress(Math.round(fraction * 100) / 100);
+      });
+      setStage('uploading');
 
       if (Platform.OS === 'ios') {
         await createCloudBackup(ciphertext, userId);
-        await postWalletBackup(await getCloudCiphertext(userId));
+        // createCloudBackup() already verifies the file exists right after writing it —
+        // re-reading it back from iCloud here just races iCloud's eventual-consistency
+        // sync and can block the UI for many seconds. Send the ciphertext we already have.
+        await postWalletBackup(ciphertext);
         return true;
       }
 
@@ -56,8 +70,9 @@ export function useSeedBackup() {
       return true;
     } finally {
       setUploading(false);
+      setStage(null);
     }
   }
 
-  return { uploading, backupToCloud };
+  return { uploading, stage, encryptProgress, backupToCloud };
 }

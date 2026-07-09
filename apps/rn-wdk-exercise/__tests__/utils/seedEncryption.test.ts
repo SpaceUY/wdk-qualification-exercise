@@ -50,7 +50,7 @@ describe('seedEncryption', () => {
   it('throws IncorrectPassphraseError on a wrong version byte', async () => {
     const ciphertext = await encryptMnemonic(MNEMONIC, PASSPHRASE);
     const bytes = Buffer.from(ciphertext, 'base64');
-    bytes[0] = 0x03;
+    bytes[0] = 0x99;
     const wrongVersion = bytes.toString('base64');
 
     await expect(decryptMnemonic(wrongVersion, PASSPHRASE)).rejects.toThrow(
@@ -87,10 +87,42 @@ describe('seedEncryption', () => {
     expect(decrypted).toBe(MNEMONIC);
   });
 
-  it('encryptMnemonic always writes the current version byte (0x02)', async () => {
+  it('encryptMnemonic always writes the current version byte (0x03)', async () => {
     const ciphertext = await encryptMnemonic(MNEMONIC, PASSPHRASE);
     const bytes = Buffer.from(ciphertext, 'base64');
-    expect(bytes[0]).toBe(0x02);
+    expect(bytes[0]).toBe(0x03);
+  });
+
+  it('decrypts a version-0x02 blob using the previous (heavier) scrypt params', async () => {
+    const salt = await Crypto.getRandomBytesAsync(16);
+    const iv = await Crypto.getRandomBytesAsync(12);
+    const v2Key = await scryptAsync(utf8ToBytes(PASSPHRASE), salt, {
+      N: 131072,
+      r: 8,
+      p: 1,
+      dkLen: 32,
+    });
+    const ciphertext = gcm(v2Key, iv).encrypt(utf8ToBytes(MNEMONIC));
+
+    const blob = new Uint8Array(1 + 16 + 12 + ciphertext.length);
+    blob[0] = 0x02;
+    blob.set(salt, 1);
+    blob.set(iv, 17);
+    blob.set(ciphertext, 29);
+
+    let binary = '';
+    for (let i = 0; i < blob.length; i++) binary += String.fromCharCode(blob[i]);
+    const v2BlobBase64 = btoa(binary);
+
+    const decrypted = await decryptMnemonic(v2BlobBase64, PASSPHRASE);
+    expect(decrypted).toBe(MNEMONIC);
+  });
+
+  it('reports scrypt progress via onProgress when encrypting', async () => {
+    const progressValues: number[] = [];
+    await encryptMnemonic(MNEMONIC, PASSPHRASE, (fraction) => progressValues.push(fraction));
+    expect(progressValues.length).toBeGreaterThan(0);
+    expect(progressValues[progressValues.length - 1]).toBe(1);
   });
 
   it('exports a minimum passphrase length of 8', () => {

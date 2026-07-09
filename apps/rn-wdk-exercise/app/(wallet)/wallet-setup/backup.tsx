@@ -31,7 +31,7 @@ export default function BackupScreen() {
   const userId = useAuthStore((s) => s.userId);
   const { getMnemonic } = useWalletData();
   const { authenticate } = useBiometrics();
-  const { uploading, backupToCloud } = useSeedBackup();
+  const { uploading, stage, encryptProgress, backupToCloud } = useSeedBackup();
 
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -184,7 +184,17 @@ export default function BackupScreen() {
         {uploading ? (
           <View style={styles.uploadingOverlay}>
             <ActivityIndicator size="large" color={colors.textOnPrimary} />
-            <Text style={styles.uploadingText}>Backing up...</Text>
+            <Text style={styles.uploadingText}>
+              {stage === 'encrypting' ? 'Encrypting seed phrase...' : 'Uploading backup...'}
+            </Text>
+            {stage === 'encrypting' ? (
+              <>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${encryptProgress * 100}%` }]} />
+                </View>
+                <Text style={styles.uploadingHint}>This can take a few seconds on some devices.</Text>
+              </>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -263,4 +273,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
   uploadingText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600', marginTop: 12 },
+  progressTrack: {
+    width: 180,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    marginTop: 14,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: colors.textOnPrimary },
+  uploadingHint: { color: colors.textOnPrimary, fontSize: 12, marginTop: 10, opacity: 0.8 },
 });

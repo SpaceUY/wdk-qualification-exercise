@@ -36,10 +36,11 @@ type ScryptParams = { N: number; r: number; p: number; dkLen: number };
 // remain decryptable. Only ADD entries below — never remove or mutate an existing one.
 const SCRYPT_PARAMS_BY_VERSION: Record<number, ScryptParams> = {
   0x01: { N: 16384, r: 8, p: 1, dkLen: KEY_LENGTH }, // legacy — below OWASP's minimum, kept only for decrypting old backups
-  0x02: { N: 131072, r: 8, p: 1, dkLen: KEY_LENGTH }, // current — OWASP Password Storage Cheat Sheet minimum (2^17)
+  0x02: { N: 131072, r: 8, p: 1, dkLen: KEY_LENGTH }, // OWASP Password Storage Cheat Sheet minimum (2^17) — too slow as a pure-JS mobile KDF, kept only for decrypting old backups
+  0x03: { N: 32768, r: 8, p: 1, dkLen: KEY_LENGTH }, // current — OWASP's reduced-resource tier (2^15), ~4x faster/lighter than 2^17 on-device
 };
 
-const CURRENT_VERSION = 0x02;
+const CURRENT_VERSION = 0x03;
 
 export class IncorrectPassphraseError extends Error {
   constructor() {
@@ -65,15 +66,24 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-async function deriveKey(passphrase: string, salt: Uint8Array, version: number): Promise<Uint8Array> {
+async function deriveKey(
+  passphrase: string,
+  salt: Uint8Array,
+  version: number,
+  onProgress?: (fraction: number) => void,
+): Promise<Uint8Array> {
   const params = SCRYPT_PARAMS_BY_VERSION[version];
-  return scryptAsync(utf8ToBytes(passphrase), salt, params);
+  return scryptAsync(utf8ToBytes(passphrase), salt, { ...params, onProgress });
 }
 
-export async function encryptMnemonic(mnemonic: string, passphrase: string): Promise<string> {
+export async function encryptMnemonic(
+  mnemonic: string,
+  passphrase: string,
+  onProgress?: (fraction: number) => void,
+): Promise<string> {
   const salt = await Crypto.getRandomBytesAsync(SALT_LENGTH);
   const iv = await Crypto.getRandomBytesAsync(IV_LENGTH);
-  const key = await deriveKey(passphrase, salt, CURRENT_VERSION);
+  const key = await deriveKey(passphrase, salt, CURRENT_VERSION, onProgress);
   const ciphertext = gcm(key, iv).encrypt(utf8ToBytes(mnemonic));
 
   const blob = new Uint8Array(HEADER_LENGTH + ciphertext.length);

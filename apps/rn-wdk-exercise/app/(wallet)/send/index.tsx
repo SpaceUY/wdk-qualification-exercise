@@ -39,7 +39,11 @@ export default function SendScreen() {
       setError('Recipient address is required');
       return false;
     }
-    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+    // iOS's decimal-pad keyboard shows a locale decimal separator (e.g. ',' on es-AR/es-ES
+    // devices) instead of '.', so normalize before parsing — humanAmountToRaw() does the
+    // same downstream, but validation runs first and needs its own normalized copy.
+    const normalizedAmount = amount.trim().replace(',', '.');
+    if (!normalizedAmount || isNaN(Number(normalizedAmount)) || Number(normalizedAmount) <= 0) {
       setError('Enter a valid amount');
       return false;
     }
