@@ -35,6 +35,7 @@ jest.mock('../../stores/walletOnboardingStore', () => ({
 }));
 
 import { useWalletBootstrap } from '../../hooks/useWalletBootstrap';
+import { useAppLockStore } from '../../stores/appLockStore';
 
 function setupWdkReady(isReady: boolean) {
   mockUseWdkApp.mockReturnValue({ workletState: { isReady } });
@@ -52,6 +53,9 @@ describe('useWalletBootstrap', () => {
     jest.clearAllMocks();
     setupWdkReady(true);
     setupStoreMock();
+    // Default: the app's own biometric gate already checked out and isn't locked, so
+    // existing tests exercise bootstrap without needing to care about the lock screen.
+    useAppLockStore.setState({ checked: true, locked: false });
   });
 
   it('stays idle when userId is null', async () => {
@@ -65,6 +69,33 @@ describe('useWalletBootstrap', () => {
     const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
     expect(result.current.status).toBe('idle');
     expect(mockHasLocalWallet).not.toHaveBeenCalled();
+  });
+
+  it('stays idle while the app-level biometric check has not resolved yet', async () => {
+    useAppLockStore.setState({ checked: false, locked: false });
+    const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
+    expect(result.current.status).toBe('idle');
+    expect(mockHasLocalWallet).not.toHaveBeenCalled();
+  });
+
+  it('stays idle while the app lock screen is locked, even once the check has resolved', async () => {
+    useAppLockStore.setState({ checked: true, locked: true });
+    const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
+    expect(result.current.status).toBe('idle');
+    expect(mockHasLocalWallet).not.toHaveBeenCalled();
+  });
+
+  it('starts bootstrapping once the app lock screen clears', async () => {
+    useAppLockStore.setState({ checked: true, locked: true });
+    mockHasLocalWallet.mockResolvedValue(true);
+    mockUnlock.mockResolvedValue(undefined);
+
+    const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
+    expect(result.current.status).toBe('idle');
+
+    await act(async () => { useAppLockStore.setState({ locked: false }); });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
   });
 
   it('immediately sets status to loading when bootstrap starts', async () => {

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useBalancesForWallet, useBalance, useWallet } from '@tetherto/wdk-react-native-core';
 import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
+import { useWalletData } from '@/hooks/useWalletData';
+import { signOutFromCognito } from '@/hooks/useCognito';
 import { useAuthStore } from '@/stores/authStore';
 import { EVM_ASSETS, BTC_ASSET, SPARK_ASSET, USDT_TRON_ASSET, ALL_ASSET_CONFIGS, BTC_CONFIG, SPARK_CONFIG, USDT_TRON_CONFIG, NETWORK_IS_MAINNET } from '@/config/assets';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
@@ -15,6 +17,7 @@ export default function DashboardScreen() {
   const userId = useAuthStore((s) => s.userId);
   const clearUserId = useAuthStore((s) => s.clear);
   const { status, error, retry } = useWalletBootstrap(userId);
+  const { lock } = useWalletData();
   const registeredRef = useRef(false);
 
   const { data: evmBalances, isLoading: evmLoading, refetch: refetchEvm } = useBalancesForWallet(
@@ -47,6 +50,18 @@ export default function DashboardScreen() {
       setRefreshing(false);
     }
   }, [refetchEvm, refetchBtc, refetchSpark, refetchTron]);
+
+  const settledRefetchRan = useRef(false);
+  useEffect(() => {
+    if (status !== 'ready' || settledRefetchRan.current) return;
+    settledRefetchRan.current = true;
+    // Right after the wallet finishes unlocking, WDK's underlying account/provider context
+    // can still be warming up - the very first balance fetch can silently succeed with a
+    // stale/zero value. One delayed refetch (the same thing pull-to-refresh already does)
+    // catches that without making the user wait for the 30-60s auto refetchInterval.
+    const timeout = setTimeout(() => { handleRefresh(); }, 2000);
+    return () => clearTimeout(timeout);
+  }, [status, handleRefresh]);
 
   const { addresses } = useWallet({ autoLoadAccountIndices: [0] });
   const ethAddress = addresses['ethereum']?.[0];
@@ -94,7 +109,12 @@ export default function DashboardScreen() {
         <Text style={styles.title}>Wallet</Text>
         <TouchableOpacity
           testID="dashboard-logout"
-          onPress={() => {
+          onPress={async () => {
+            // Unloads the current wallet's seed from the WDK worklet and clears
+            // activeWalletId - without this, a different user logging in afterwards can
+            // read balances fetched against this wallet's still-loaded seed.
+            lock();
+            await signOutFromCognito();
             clearUserId();
             router.replace('/(auth)');
           }}

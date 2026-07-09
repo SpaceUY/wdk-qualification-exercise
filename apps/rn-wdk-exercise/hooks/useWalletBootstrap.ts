@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWdkApp } from '@tetherto/wdk-react-native-core';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useWalletOnboardingStore } from '@/stores/walletOnboardingStore';
+import { useAppLockStore } from '@/stores/appLockStore';
 
 type BootstrapStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -15,6 +16,13 @@ export function useWalletBootstrap(userId: string | null): {
   const setWalletOnboardingCompleted = useWalletOnboardingStore(
     (s) => s.setWalletOnboardingCompleted,
   );
+  // WDK's own secure-storage unlock only re-prompts for biometrics when its internal cache
+  // is cold - it can silently skip the OS prompt on a later call within the same process.
+  // Waiting for the app's own biometric gate here means our lock screen is always the single
+  // source of truth for "did the user just prove presence", instead of racing WDK's prompt
+  // (or riding along on whatever it happens to have cached).
+  const appLockChecked = useAppLockStore((s) => s.checked);
+  const appLocked = useAppLockStore((s) => s.locked);
 
   const [status, setStatus] = useState<BootstrapStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +68,10 @@ export function useWalletBootstrap(userId: string | null): {
   useEffect(() => {
     if (!userId || bootstrapRan.current) return;
     if (!workletState.isReady) return;
+    if (!appLockChecked || appLocked) return;
     bootstrapRan.current = true;
     runBootstrap(userId);
-  }, [userId, runBootstrap, workletState.isReady]);
+  }, [userId, runBootstrap, workletState.isReady, appLockChecked, appLocked]);
 
   const retry = useCallback(() => {
     bootstrapRan.current = false;

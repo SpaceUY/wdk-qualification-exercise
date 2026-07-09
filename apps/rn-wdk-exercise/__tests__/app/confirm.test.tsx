@@ -181,6 +181,48 @@ describe('ConfirmSendScreen', () => {
     expect(screen.getByText('Confirm & Send')).toBeTruthy();
   });
 
+  it.each([
+    [
+      'insufficient funds (transaction={ ... }, info={ ... }, code=INSUFFICIENT_FUNDS, version=6.17.0)',
+      "You don't have enough balance to cover this transaction and its network fee.",
+    ],
+    [
+      'invalid address (argument="to", value="0xShortAddr", code=INVALID_ARGUMENT, version=6.17.0)',
+      'The recipient address looks invalid. Please check it and try again.',
+    ],
+    [
+      'network does not support ENS (operation="getEnsAddress", code=UNCONFIGURED_NAME, version=6.17.0)',
+      "We couldn't resolve that recipient address. Please check it and try again.",
+    ],
+    [
+      'execution reverted (reason="...", code=CALL_EXCEPTION, version=6.17.0)',
+      'The network rejected this transaction. Double check the recipient and amount, then try again.',
+    ],
+    [
+      'could not detect network (code=NETWORK_ERROR, version=6.17.0)',
+      'Network connection issue. Please check your connection and try again.',
+    ],
+    ['timeout exceeded (code=TIMEOUT, version=6.17.0)', 'The request timed out. Please try again.'],
+    [
+      'nonce has already been used (code=NONCE_EXPIRED, version=6.17.0)',
+      'This transaction conflicts with another pending one. Please wait a moment and try again.',
+    ],
+  ])('maps "%s" to a friendly message', async (rawMessage, friendlyMessage) => {
+    setParams({
+      assetId: ETH_CONFIG.id,
+      network: 'ethereum',
+      recipient: '0xRecipientAddress',
+      amount: '0.01',
+      symbol: 'ETH',
+    });
+    mockCallAccountMethod.mockRejectedValue(new Error(rawMessage));
+
+    await renderScreen();
+    await fireEvent.press(screen.getByText('Confirm & Send'));
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Error', friendlyMessage));
+  });
+
   describe('merchant cashback badge', () => {
     it('shows the badge with the estimated cashback for a known merchant address and USDT-Ethereum asset', async () => {
       mockGetMerchants.mockResolvedValue({

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '../../utils/balance';
@@ -27,6 +27,16 @@ jest.mock('../../hooks/useWalletBootstrap', () => ({
 
 jest.mock('../../utils/api', () => ({
   putWalletAddress: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockSignOutFromCognito = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../hooks/useCognito', () => ({
+  signOutFromCognito: () => mockSignOutFromCognito(),
+}));
+
+const mockLock = jest.fn();
+jest.mock('../../hooks/useWalletData', () => ({
+  useWalletData: () => ({ lock: mockLock }),
 }));
 
 import DashboardScreen from '../../app/(wallet)/index';
@@ -101,6 +111,51 @@ describe('DashboardScreen', () => {
     expect(screen.getAllByText('—')).toHaveLength(ALL_ASSET_CONFIGS.length);
   });
 
+  it('automatically refetches balances once, shortly after the wallet finishes bootstrapping', async () => {
+    // Regression test: right after unlock, WDK's account/provider context can still be
+    // warming up, so the very first automatic balance fetch can silently return a stale
+    // or zero value. This delayed refetch (mirroring pull-to-refresh) should fire once on
+    // its own, without the user having to pull-to-refresh manually.
+    //
+    // Uses a setTimeout spy (invoked manually) instead of jest.useFakeTimers(): this file
+    // never mocks global timers elsewhere, and toggling fake/real timers mid-suite was
+    // observed to corrupt unrelated renders in later tests in this same file.
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    const refetchEvm = jest.fn().mockResolvedValue(undefined);
+    const refetchNonEvm = jest.fn().mockResolvedValue(undefined);
+    mockUseBalancesForWallet.mockReturnValue({ data: [], isLoading: false, refetch: refetchEvm });
+    mockUseBalance.mockReturnValue({ data: undefined, isLoading: false, refetch: refetchNonEvm });
+
+    const { unmount } = await render(<DashboardScreen />);
+
+    expect(refetchEvm).not.toHaveBeenCalled();
+    const scheduled = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 2000);
+    expect(scheduled).toBeDefined();
+
+    await act(async () => { (scheduled![0] as () => void)(); await Promise.resolve(); });
+
+    expect(refetchEvm).toHaveBeenCalledTimes(1);
+    expect(refetchNonEvm).toHaveBeenCalledTimes(3);
+
+    unmount();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('does not schedule a second automatic refetch on re-renders while status stays ready', async () => {
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    mockUseBalancesForWallet.mockReturnValue({ data: [], isLoading: false, refetch: jest.fn().mockResolvedValue(undefined) });
+    mockUseBalance.mockReturnValue({ data: undefined, isLoading: false, refetch: jest.fn().mockResolvedValue(undefined) });
+
+    const { rerender, unmount } = await render(<DashboardScreen />);
+    await rerender(<DashboardScreen />);
+
+    const scheduledCount = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 2000).length;
+    expect(scheduledCount).toBe(1);
+
+    unmount();
+    setTimeoutSpy.mockRestore();
+  });
+
   it('registers the ethereum address with the backend once it resolves', async () => {
     await render(<DashboardScreen />);
 
@@ -122,6 +177,8 @@ describe('DashboardScreen', () => {
 
     await fireEvent.press(screen.getByText('Logout'));
 
+    expect(mockLock).toHaveBeenCalled();
+    expect(mockSignOutFromCognito).toHaveBeenCalled();
     expect(useAuthStore.getState().userId).toBeNull();
     expect(router.replace).toHaveBeenCalledWith('/(auth)');
   });

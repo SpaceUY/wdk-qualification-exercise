@@ -75,3 +75,26 @@ export function useCognito(): { promptAsync: () => Promise<void>, ready: boolean
 
   return { promptAsync: async () => { await promptAsync(); }, ready: !!request };
 }
+
+// Logging out locally only clears this app's own tokens - Cognito's Hosted UI keeps its own
+// browser session cookie alive, and the refresh token stays valid server-side until revoked.
+// Without this, a later login can silently resume the old session instead of prompting again.
+export async function signOutFromCognito(): Promise<void> {
+  const { refreshToken } = useAuthStore.getState();
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'space-utl' });
+
+  if (refreshToken) {
+    try {
+      await AuthSession.revokeAsync({ clientId: CLIENT_ID, token: refreshToken }, discovery);
+    } catch {
+      // Refresh token may already be expired/revoked - nothing more to do server-side.
+    }
+  }
+
+  try {
+    const logoutUrl = `${DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${encodeURIComponent(redirectUri)}`;
+    await WebBrowser.openAuthSessionAsync(logoutUrl, redirectUri);
+  } catch {
+    // Hosted UI logout is best-effort - local state is cleared by the caller regardless.
+  }
+}

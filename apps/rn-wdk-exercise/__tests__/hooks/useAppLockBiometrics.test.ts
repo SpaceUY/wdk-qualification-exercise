@@ -2,6 +2,7 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { useAppLockBiometrics } from '@/hooks/useAppLockBiometrics';
 import { useAuthStore } from '@/stores/authStore';
+import { useAppLockStore } from '@/stores/appLockStore';
 
 const mockIsAvailable = jest.fn();
 const mockAuthenticate = jest.fn();
@@ -17,6 +18,7 @@ let appStateListener: ((state: string) => void) | null = null;
 
 beforeEach(() => {
   useAuthStore.getState().clear();
+  useAppLockStore.setState({ locked: false, checked: false });
   mockIsAvailable.mockReset();
   mockAuthenticate.mockReset();
   appStateListener = null;
@@ -142,6 +144,24 @@ describe('useAppLockBiometrics', () => {
     });
 
     expect(result.current.locked).toBe(false);
+  });
+
+  it('marks the app-lock check unresolved (checked=false) while isAvailable() is still pending', async () => {
+    // Regression test: WDK's own wallet-unlock only re-prompts for biometrics when its
+    // internal cache is cold, so it can silently skip the OS prompt on a later call within
+    // the same process. useWalletBootstrap must wait for this hook's own check to resolve
+    // (checked=true) before triggering WDK's unlock, instead of racing it - otherwise the
+    // app's lock screen can be skipped entirely whenever WDK happens to unlock instantly.
+    useAuthStore.getState().setUserId('alice@example.com');
+    let resolveIsAvailable: (value: boolean) => void = () => {};
+    mockIsAvailable.mockReturnValue(new Promise((resolve) => { resolveIsAvailable = resolve; }));
+
+    await renderHook(() => useAppLockBiometrics());
+    expect(useAppLockStore.getState().checked).toBe(false);
+
+    await act(async () => { resolveIsAvailable(true); await Promise.resolve(); });
+    await waitFor(() => expect(useAppLockStore.getState().checked).toBe(true));
+    expect(useAppLockStore.getState().locked).toBe(true);
   });
 
   it('re-locks on foreground when isAvailable() rejects (fail closed)', async () => {

@@ -14,6 +14,45 @@ import { getMerchants } from '@/utils/api';
 const CASHBACK_ELIGIBLE_ASSET_ID = 'ethereum-usdt';
 const DEFAULT_MERCHANT_NAME = 'Affiliated merchant';
 
+// Rules match against the raw ethers.js / provider error message. Ordered by how
+// commonly they occur when sending a transaction; first match wins.
+const SEND_ERROR_RULES: Array<{ pattern: RegExp; message: string }> = [
+  {
+    pattern: /insufficient funds|code=INSUFFICIENT_FUNDS/i,
+    message: "You don't have enough balance to cover this transaction and its network fee.",
+  },
+  {
+    pattern: /invalid address|bad address checksum/i,
+    message: 'The recipient address looks invalid. Please check it and try again.',
+  },
+  {
+    pattern: /code=UNCONFIGURED_NAME|network does not support ens/i,
+    message: "We couldn't resolve that recipient address. Please check it and try again.",
+  },
+  {
+    pattern: /execution reverted|code=CALL_EXCEPTION/i,
+    message: 'The network rejected this transaction. Double check the recipient and amount, then try again.',
+  },
+  {
+    pattern: /code=NETWORK_ERROR|code=SERVER_ERROR|could not detect network/i,
+    message: 'Network connection issue. Please check your connection and try again.',
+  },
+  {
+    pattern: /code=TIMEOUT/i,
+    message: 'The request timed out. Please try again.',
+  },
+  {
+    pattern: /code=NONCE_EXPIRED|code=REPLACEMENT_UNDERPRICED|code=TRANSACTION_REPLACED/i,
+    message: 'This transaction conflicts with another pending one. Please wait a moment and try again.',
+  },
+];
+
+function getSendErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : 'Transaction failed';
+  const rule = SEND_ERROR_RULES.find(({ pattern }) => pattern.test(raw));
+  return rule ? rule.message : raw;
+}
+
 export default function ConfirmSendScreen() {
   const router = useRouter();
   const { authenticate } = useBiometrics();
@@ -62,8 +101,7 @@ export default function ConfirmSendScreen() {
         { text: 'OK', onPress: () => router.replace('/(wallet)') },
       ]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Transaction failed';
-      Alert.alert('Error', message);
+      Alert.alert('Error', getSendErrorMessage(err));
     } finally {
       setSending(false);
     }

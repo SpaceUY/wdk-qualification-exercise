@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useBiometrics } from './useBiometrics';
 import { useAuthStore } from '@/stores/authStore';
+import { useAppLockStore } from '@/stores/appLockStore';
 
 export function useAppLockBiometrics(): {
   locked: boolean;
@@ -10,18 +11,29 @@ export function useAppLockBiometrics(): {
 } {
   const userId = useAuthStore((s) => s.userId);
   const { isAvailable, authenticate } = useBiometrics();
-  const [locked, setLocked] = useState(false);
+  const locked = useAppLockStore((s) => s.locked);
+  const setLocked = useAppLockStore((s) => s.setLocked);
+  const setChecked = useAppLockStore((s) => s.setChecked);
   const [verifying, setVerifying] = useState(false);
   const wentToBackgroundRef = useRef(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setChecked(true);
+      setLocked(false);
+      return;
+    }
 
+    setChecked(false);
     isAvailable()
       .then((available) => {
-        if (available) setLocked(true);
+        setLocked(available);
+        setChecked(true);
       })
-      .catch(() => setLocked(true));
+      .catch(() => {
+        setLocked(true);
+        setChecked(true);
+      });
 
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background') {

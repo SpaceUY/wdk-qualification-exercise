@@ -1,10 +1,12 @@
 import { renderHook, act } from '@testing-library/react-native';
-import { useCognito } from '@/hooks/useCognito';
+import { useCognito, signOutFromCognito } from '@/hooks/useCognito';
 import { useAuthStore } from '@/stores/authStore';
 import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 
 jest.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: jest.fn(),
+  openAuthSessionAsync: jest.fn().mockResolvedValue({ type: 'dismiss' }),
 }));
 
 jest.mock('expo-auth-session', () => ({
@@ -15,6 +17,7 @@ jest.mock('expo-auth-session', () => ({
     jest.fn().mockResolvedValue({ type: 'success' }),
   ]),
   exchangeCodeAsync: jest.fn(),
+  revokeAsync: jest.fn().mockResolvedValue(true),
   ResponseType: { Code: 'code' },
 }));
 
@@ -76,5 +79,46 @@ describe('useCognito', () => {
 
     expect(AuthSession.exchangeCodeAsync).not.toHaveBeenCalled();
     expect(useAuthStore.getState().userId).toBeNull();
+  });
+});
+
+describe('signOutFromCognito', () => {
+  it('revokes the refresh token and opens the Hosted UI logout endpoint', async () => {
+    useAuthStore.getState().setRefreshToken('refresh-token-123');
+
+    await signOutFromCognito();
+
+    expect(AuthSession.revokeAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'refresh-token-123' }),
+      expect.any(Object),
+    );
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+      expect.stringContaining('/logout?client_id='),
+      'space-utl://',
+    );
+  });
+
+  it('skips revocation but still opens the Hosted UI logout endpoint when there is no refresh token', async () => {
+    useAuthStore.getState().setRefreshToken(null);
+
+    await signOutFromCognito();
+
+    expect(AuthSession.revokeAsync).not.toHaveBeenCalled();
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled();
+  });
+
+  it('does not throw when revocation fails', async () => {
+    useAuthStore.getState().setRefreshToken('refresh-token-123');
+    (AuthSession.revokeAsync as jest.Mock).mockRejectedValueOnce(new Error('revoke failed'));
+
+    await expect(signOutFromCognito()).resolves.toBeUndefined();
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled();
+  });
+
+  it('does not throw when the Hosted UI logout fails to open', async () => {
+    useAuthStore.getState().setRefreshToken('refresh-token-123');
+    (WebBrowser.openAuthSessionAsync as jest.Mock).mockRejectedValueOnce(new Error('browser failed'));
+
+    await expect(signOutFromCognito()).resolves.toBeUndefined();
   });
 });

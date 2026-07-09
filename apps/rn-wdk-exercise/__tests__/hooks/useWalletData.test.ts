@@ -4,6 +4,7 @@ const mockCreateWallet = jest.fn<Promise<void>, [string]>();
 const mockRestoreWallet = jest.fn<Promise<void>, [string, string]>();
 const mockDeleteWallet = jest.fn<Promise<void>, [string]>();
 const mockUnlock = jest.fn<Promise<void>, [string]>();
+const mockLock = jest.fn<void, []>();
 const mockGetMnemonic = jest.fn<Promise<string | null>, [string]>();
 const mockGetEncryptedSeed = jest.fn<Promise<string | null>, [string]>();
 const mockSetActiveWalletId = jest.fn<void, [string]>();
@@ -14,6 +15,7 @@ jest.mock('@tetherto/wdk-react-native-core', () => ({
     restoreWallet: mockRestoreWallet,
     deleteWallet: mockDeleteWallet,
     unlock: mockUnlock,
+    lock: mockLock,
     getMnemonic: mockGetMnemonic,
     getEncryptedSeed: mockGetEncryptedSeed,
     setActiveWalletId: mockSetActiveWalletId,
@@ -217,6 +219,11 @@ describe('useWalletData', () => {
     it('exposes unlock from useWalletManager', async () => {
       const { result } = await renderHook(() => useWalletData());
       expect(result.current.unlock).toBe(mockUnlock);
+    });
+
+    it('exposes lock from useWalletManager', async () => {
+      const { result } = await renderHook(() => useWalletData());
+      expect(result.current.lock).toBe(mockLock);
     });
 
     it('exposes getMnemonic from useWalletManager', async () => {
