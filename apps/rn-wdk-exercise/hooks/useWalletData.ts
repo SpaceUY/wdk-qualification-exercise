@@ -33,7 +33,16 @@ export function useWalletData() {
 
   async function safeRestoreWallet(mnemonic: string, walletId: string): Promise<void> {
     const normalized = mnemonic.toLowerCase().trim().split(/\s+/).join(' ');
-    await restoreWallet(normalized, walletId);
+    try {
+      await restoreWallet(normalized, walletId);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('already exists')) {
+        await deleteWallet(walletId);
+        await restoreWallet(normalized, walletId);
+      } else {
+        throw err;
+      }
+    }
   }
 
   return {
