@@ -48,6 +48,8 @@ cd apps/backend && pnpm test
 cd apps/backend && pnpm test:coverage
 ```
 
+A Husky `pre-push` hook runs `pnpm test` (all apps, via Turborepo) and blocks the push if any test fails. It's installed automatically on `pnpm install` (root `prepare` script).
+
 ## Apps
 
 | App | Description |
