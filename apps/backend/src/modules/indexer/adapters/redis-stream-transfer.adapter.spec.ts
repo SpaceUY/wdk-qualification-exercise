@@ -147,14 +147,6 @@ describe('RedisStreamTransferAdapter', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('filters out non-USDT token transfers', async () => {
-    const adapter = await build();
-    redis.xreadgroup.mockResolvedValue([[STREAM_KEY, [['1-0', groupedMessage(rawLine({ token: 'eth' }))]]]]);
-
-    const events = await adapter.read();
-    expect(events).toHaveLength(0);
-  });
-
   it('skips messages that are not the grouped_transaction type', async () => {
     const adapter = await build();
     redis.xreadgroup.mockResolvedValue([

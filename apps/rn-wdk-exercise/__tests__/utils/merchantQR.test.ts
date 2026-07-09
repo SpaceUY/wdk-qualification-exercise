@@ -28,9 +28,10 @@ describe('parseMerchantQR', () => {
       });
     });
 
-    it('strips trailing path segments from ethereum: URI', () => {
+    it('reads recipient from "address" query param on EIP-681 token-transfer URIs', () => {
+      // Path segment (0xDef456) is the ERC-20 contract, not the recipient — must not be used as "address".
       expect(parseMerchantQR('ethereum:0xDef456/transfer?address=0xOther&uint256=1000')).toEqual({
-        address: '0xDef456',
+        address: '0xOther',
         amount: null,
       });
     });
