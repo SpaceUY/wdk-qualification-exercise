@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Space UTL",
+    "name": "Northstar",
     "scheme": "space-utl",
     "slug": "space-utl",
     "version": "1.0.0",
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1E252F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
