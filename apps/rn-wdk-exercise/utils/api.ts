@@ -111,3 +111,14 @@ export async function getAppNodeToken(): Promise<string> {
   const { data } = await apiClient.get<{ token: string }>('/wdk-app-node/token');
   return data.token;
 }
+
+export type MerchantsResponse = {
+  addresses: string[];
+  names: Record<string, string>;
+  cashbackRate: number;
+};
+
+export async function getMerchants(): Promise<MerchantsResponse> {
+  const { data } = await apiClient.get<MerchantsResponse>('/merchants');
+  return data;
+}
