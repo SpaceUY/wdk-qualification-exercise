@@ -44,12 +44,6 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
-      "ios": {
-        "simulator": true
-      },
-      "android": {
-        "buildType": "apk"
-      },
       "env": {
         "EXPO_PUBLIC_ETHEREUM_RPC_URL": "https://rpc.sepolia.org",
         "EXPO_PUBLIC_ARBITRUM_RPC_URL": "https://arb1.arbitrum.io/rpc",
