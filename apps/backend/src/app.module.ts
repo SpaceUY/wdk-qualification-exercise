@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { CouponsModule } from './coupons/coupons.module';
+import { MerchantsModule } from './merchants/merchants.module';
 import { IndexerModule } from './modules/indexer/indexer.module';
 import { WdkModule } from './wdk/wdk.module';
 import { WdkAppNodeModule } from './wdk-app-node/wdk-app-node.module';
@@ -54,6 +55,7 @@ import { HealthModule } from './health/health.module';
     UsersModule,
     WalletsModule,
     CouponsModule,
+    MerchantsModule,
     IndexerModule,
     WdkModule,
     WdkAppNodeModule,

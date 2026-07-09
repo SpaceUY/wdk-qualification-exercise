@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import { humanAmountToRaw } from '@/utils/balance';
 import { useBiometrics } from '@/hooks/useBiometrics';
+import { getMerchants } from '@/utils/api';
+
+// The only entry in ALL_ASSET_CONFIGS with network: 'ethereum' and symbol: 'USDT' — the
+// asset the indexer/transfer.processor.ts actually watches for cashback-eligible transfers.
+const CASHBACK_ELIGIBLE_ASSET_ID = 'ethereum-usdt';
+const DEFAULT_MERCHANT_NAME = 'Affiliated merchant';
 
 export default function ConfirmSendScreen() {
   const router = useRouter();
@@ -20,6 +27,7 @@ export default function ConfirmSendScreen() {
   }>();
 
   const [sending, setSending] = useState(false);
+  const { data: merchants } = useQuery({ queryKey: ['merchants'], queryFn: getMerchants });
 
   const assetConfig = ALL_ASSET_CONFIGS.find((a) => a.id === params.assetId);
   const { callAccountMethod } = useWallet();
@@ -69,9 +77,25 @@ export default function ConfirmSendScreen() {
     );
   }
 
+  const recipientLower = params.recipient?.toLowerCase() ?? '';
+  const isMerchantAddress = merchants?.addresses.includes(recipientLower) ?? false;
+  const isCashbackEligibleAsset = params.assetId === CASHBACK_ELIGIBLE_ASSET_ID;
+  const showCashbackBadge = isMerchantAddress && isCashbackEligibleAsset;
+  const merchantName = merchants?.names[recipientLower] ?? DEFAULT_MERCHANT_NAME;
+  const estimatedCashback = merchants ? (Number(params.amount) * merchants.cashbackRate).toFixed(4) : '0.0000';
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Text style={styles.title}>Confirm Transaction</Text>
+
+      {showCashbackBadge && (
+        <View style={styles.merchantBadge} testID="merchant-cashback-badge">
+          <Text style={styles.merchantBadgeTitle}>✓ {merchantName}</Text>
+          <Text style={styles.merchantBadgeSubtitle}>
+            You&apos;ll earn ~{estimatedCashback} UTL cashback
+          </Text>
+        </View>
+      )}
 
       <View style={styles.detailCard}>
         <Row label="Token" value={`${params.symbol} (${assetConfig.network})`} />
@@ -114,6 +138,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 24 },
+  merchantBadge: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+  },
+  merchantBadgeTitle: { fontSize: 14, fontWeight: '700', color: '#047857' },
+  merchantBadgeSubtitle: { fontSize: 13, color: '#047857', marginTop: 4 },
   detailCard: {
     backgroundColor: '#fff',
     borderRadius: 12,

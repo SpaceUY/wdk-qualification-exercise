@@ -35,19 +35,21 @@ function parseLine(line: string): RawGroupedTransfer | null {
   const parts = line.split(',');
   if (parts.length < RAW_FIELD_COUNT) return null;
 
+  // parts.length >= RAW_FIELD_COUNT is already checked above, so indices 0-11 are always
+  // defined — no `?? ''` fallback needed (and none would ever be reachable to test).
   return {
-    txHash: parts[0] ?? '',
+    txHash: parts[0],
     transferIndex: Number(parts[1]),
     blockNumber: Number(parts[2]),
-    from: parts[3] ?? '',
-    to: parts[4] ?? '',
-    amount: parts[5] ?? '',
+    from: parts[3],
+    to: parts[4],
+    amount: parts[5],
     timestamp: Number(parts[6]),
-    blockchain: parts[7] ?? '',
-    token: parts[8] ?? '',
+    blockchain: parts[7],
+    token: parts[8],
     transactionIndex: Number(parts[9]),
     logIndex: Number(parts[10]),
-    label: parts[11] ?? '',
+    label: parts[11],
     metadata: parts.length > RAW_FIELD_COUNT ? parts.slice(RAW_FIELD_COUNT).join(',') : null,
   };
 }
