@@ -24,9 +24,17 @@ export function parseMerchantQR(data: string): MerchantQRPayload {
   if (matchedScheme) {
     const withoutScheme = data.slice(matchedScheme.length);
     const [addressPart, queryString] = withoutScheme.split('?');
-    const address = addressPart.split('/')[0];
-    const amount = queryString ? new URLSearchParams(queryString).get('amount') : null;
-    return { address, amount };
+    const query = queryString ? new URLSearchParams(queryString) : null;
+    const [pathAddress, functionName] = addressPart.split('/');
+
+    // EIP-681 token-transfer calls (e.g. "ethereum:<token>/transfer?address=<recipient>&uint256=<amount>")
+    // put the ERC-20 CONTRACT address in the path and the real recipient in the "address" query
+    // param — using the path address as the recipient sends tokens to the contract itself.
+    if (functionName && query?.has('address')) {
+      return { address: query.get('address')!, amount: query.get('amount') };
+    }
+
+    return { address: pathAddress, amount: query ? query.get('amount') : null };
   }
 
   // 3. Plain address fallback
