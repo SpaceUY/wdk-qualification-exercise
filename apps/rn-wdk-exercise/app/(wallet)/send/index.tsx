@@ -12,9 +12,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function SendScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ scannedAddress?: string; scannedAmount?: string }>();
   const [selectedAsset, setSelectedAsset] = useState<AssetConfig>(ALL_ASSET_CONFIGS[0]);
   const [recipient, setRecipient] = useState('');
@@ -80,12 +84,14 @@ export default function SendScreen() {
               <Text style={[styles.tokenChipText, selectedAsset.id === asset.id && styles.tokenChipTextActive]}>
                 {asset.symbol}
               </Text>
-              <Text style={[styles.tokenNetwork, selectedAsset.id === asset.id && { color: '#93c5fd' }]}>
+              <Text style={[styles.tokenNetwork, selectedAsset.id === asset.id && styles.tokenNetworkActive]}>
                 {asset.network}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        <NetworkFundsBanner network={selectedAsset.network} />
 
         <Text style={styles.label}>Recipient</Text>
         <View style={styles.recipientRow}>
@@ -94,6 +100,7 @@ export default function SendScreen() {
             value={recipient}
             onChangeText={setRecipient}
             placeholder="Address or scan QR"
+            placeholderTextColor={colors.textSubtle}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -108,6 +115,7 @@ export default function SendScreen() {
           value={amount}
           onChangeText={setAmount}
           placeholder={`0.00 ${selectedAsset.symbol}`}
+          placeholderTextColor={colors.textSubtle}
           keyboardType="decimal-pad"
         />
 
@@ -121,49 +129,51 @@ export default function SendScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fff' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.surface },
   container: { padding: 24 },
-  label: { fontSize: 13, fontWeight: '600', color: '#6b7280', marginBottom: 8, marginTop: 16 },
+  label: { fontSize: 13, fontWeight: '600', color: colors.textMuted, marginBottom: 8, marginTop: 16 },
   tokenScroll: { marginBottom: 4 },
   tokenChip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#fff',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
     marginRight: 8,
     alignItems: 'center',
   },
-  tokenChipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  tokenChipText: { fontSize: 14, fontWeight: '600', color: '#111' },
-  tokenChipTextActive: { color: '#fff' },
-  tokenNetwork: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+  tokenChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tokenChipText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  tokenChipTextActive: { color: colors.textOnPrimary },
+  tokenNetwork: { fontSize: 11, color: colors.textSubtle, marginTop: 2 },
+  tokenNetworkActive: { color: colors.textOnPrimary, opacity: 0.85 },
   recipientRow: { flexDirection: 'row', gap: 8 },
   recipientInput: { flex: 1 },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     padding: 14,
     fontSize: 15,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
   },
   scanButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 18,
     justifyContent: 'center',
   },
-  scanButtonText: { color: '#fff', fontWeight: '700' },
-  error: { color: '#ef4444', marginTop: 12 },
+  scanButtonText: { color: colors.textOnPrimary, fontWeight: '700' },
+  error: { color: colors.danger, marginTop: 12 },
   continueButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 32,
   },
-  continueButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  continueButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

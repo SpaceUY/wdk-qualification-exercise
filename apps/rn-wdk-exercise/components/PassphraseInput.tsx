@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { MIN_PASSPHRASE_LENGTH, validatePassphraseStrength } from '@/utils/seedEncryption';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 type PassphraseInputProps = {
   confirm?: boolean;
@@ -20,6 +21,8 @@ export function PassphraseInput({
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
 
   function handleSubmit() {
     const strengthError = validateStrength
@@ -45,6 +48,7 @@ export function PassphraseInput({
       <TextInput
         style={styles.input}
         placeholder="Enter passphrase"
+        placeholderTextColor={colors.textSubtle}
         secureTextEntry
         autoComplete="off"
         textContentType="none"
@@ -56,6 +60,7 @@ export function PassphraseInput({
         <TextInput
           style={styles.input}
           placeholder="Confirm passphrase"
+          placeholderTextColor={colors.textSubtle}
           secureTextEntry
           autoComplete="off"
           textContentType="none"
@@ -75,26 +80,27 @@ export function PassphraseInput({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 24, backgroundColor: '#fff', borderRadius: 12, margin: 24 },
-  label: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { padding: 24, backgroundColor: colors.surface, borderRadius: 12, margin: 24 },
+  label: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: colors.textPrimary },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
     fontSize: 15,
+    color: colors.textPrimary,
   },
-  error: { color: '#dc2626', fontSize: 13, marginBottom: 12 },
+  error: { color: colors.dangerStrong, fontSize: 13, marginBottom: 12 },
   submitButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
     marginBottom: 8,
   },
-  submitButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  submitButtonText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
   cancelButton: { padding: 14, alignItems: 'center' },
-  cancelButtonText: { color: '#6b7280', fontSize: 15 },
+  cancelButtonText: { color: colors.textMuted, fontSize: 15 },
 });

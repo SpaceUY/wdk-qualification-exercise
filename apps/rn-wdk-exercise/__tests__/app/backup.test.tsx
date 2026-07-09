@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
+import { toast } from 'sonner-native';
 import * as Clipboard from 'expo-clipboard';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 import { useAuthStore } from '../../stores/authStore';
 import BackupScreen from '../../app/(wallet)/wallet-setup/backup';
 
@@ -65,6 +67,12 @@ describe('BackupScreen', () => {
     mockEncryptMnemonic.mockResolvedValue('encrypted-blob');
   });
 
+  it('blocks screenshots and screen recording while the screen is mounted', async () => {
+    await render(<BackupScreen />);
+
+    expect(usePreventScreenCapture).toHaveBeenCalled();
+  });
+
   it('does nothing when there is no signed-in user', async () => {
     useAuthStore.setState({ userId: null, accessToken: null });
 
@@ -84,14 +92,40 @@ describe('BackupScreen', () => {
     expect(screen.getByText('Reveal Seed Phrase')).toBeTruthy();
   });
 
-  it('reveals the word grid after successful authentication', async () => {
+  it('reveals the word grid after successful authentication, with each word masked', async () => {
     await render(<BackupScreen />);
     await reveal();
 
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
-    expect(screen.getByText('bravo')).toBeTruthy();
-    expect(screen.getByText('charlie')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
+    expect(screen.queryByText('alpha')).toBeNull();
+    expect(screen.queryByText('bravo')).toBeNull();
+    expect(screen.queryByText('charlie')).toBeNull();
+    expect(screen.getAllByText('••••••')).toHaveLength(3);
     expect(screen.queryByText('Reveal Seed Phrase')).toBeNull();
+  });
+
+  it('reveals an individual word only after it is tapped', async () => {
+    await render(<BackupScreen />);
+    await reveal();
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('seed-word-1'));
+
+    expect(screen.getByText('bravo')).toBeTruthy();
+    expect(screen.queryByText('alpha')).toBeNull();
+    expect(screen.queryByText('charlie')).toBeNull();
+  });
+
+  it('hides a word again when tapped a second time', async () => {
+    await render(<BackupScreen />);
+    await reveal();
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('seed-word-1'));
+    expect(screen.getByText('bravo')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('seed-word-1'));
+    expect(screen.queryByText('bravo')).toBeNull();
   });
 
   it('shows an error alert when retrieving the mnemonic fails', async () => {
@@ -109,15 +143,14 @@ describe('BackupScreen', () => {
   it('copies the revealed mnemonic to the clipboard', async () => {
     await render(<BackupScreen />);
     await reveal();
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Copy to Clipboard'));
 
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith(MNEMONIC);
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Copied',
-      'Seed phrase copied. Store it securely and never share it.',
-    );
+    expect(toast.success).toHaveBeenCalledWith('Copied', {
+      description: 'Store it securely and never share it.',
+    });
   });
 
   it('does not show the passphrase prompt when cloud-backup authorization is denied', async () => {
@@ -126,7 +159,7 @@ describe('BackupScreen', () => {
 
     await render(<BackupScreen />);
     await reveal();
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Upload to iCloud'));
 
@@ -138,7 +171,7 @@ describe('BackupScreen', () => {
 
     await render(<BackupScreen />);
     await reveal();
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
     await uploadAndEnterPassphrase('Upload to iCloud');
 
@@ -149,10 +182,9 @@ describe('BackupScreen', () => {
     expect(mockSignIn).not.toHaveBeenCalled();
     expect(mockRestoreFromCloudBackup).toHaveBeenCalledWith('user@test.com', undefined);
     expect(mockPostWalletBackup).toHaveBeenCalledWith('cloud-ciphertext');
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Backed Up',
-      'Seed phrase backed up to iCloud and our servers.',
-    );
+    expect(toast.success).toHaveBeenCalledWith('Backed Up', {
+      description: 'Seed phrase backed up to iCloud and our servers.',
+    });
   });
 
   it('encrypts and backs up to Google Drive on Android via Google sign-in', async () => {
@@ -160,7 +192,7 @@ describe('BackupScreen', () => {
 
     await render(<BackupScreen />);
     await reveal();
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
     await uploadAndEnterPassphrase('Upload to Google Drive');
 
@@ -177,10 +209,9 @@ describe('BackupScreen', () => {
       'google-access-token',
     );
     expect(mockPostWalletBackup).toHaveBeenCalledWith('cloud-ciphertext');
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Backed Up',
-      'Seed phrase backed up to Google Drive and our servers.',
-    );
+    expect(toast.success).toHaveBeenCalledWith('Backed Up', {
+      description: 'Seed phrase backed up to Google Drive and our servers.',
+    });
   });
 
   it('stops the Android upload when Google sign-in is cancelled', async () => {
@@ -189,7 +220,7 @@ describe('BackupScreen', () => {
 
     await render(<BackupScreen />);
     await reveal();
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
     await uploadAndEnterPassphrase('Upload to Google Drive');
 
@@ -203,7 +234,7 @@ describe('BackupScreen', () => {
 
     await render(<BackupScreen />);
     await reveal();
-    await waitFor(() => expect(screen.getByText('alpha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
 
     await uploadAndEnterPassphrase('Upload to iCloud');
 

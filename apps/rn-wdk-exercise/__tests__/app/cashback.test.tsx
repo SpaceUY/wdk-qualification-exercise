@@ -1,16 +1,31 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
+import { toast } from 'sonner-native';
+import * as Clipboard from 'expo-clipboard';
 import type { CouponListItem, ClaimedCouponListItem } from '../../utils/api';
 
 const mockGetCoupons = jest.fn();
 const mockGetClaimedCoupons = jest.fn();
 const mockApiPost = jest.fn();
+const mockUseWallet = jest.fn();
 
 jest.mock('../../utils/api', () => ({
   getCoupons: () => mockGetCoupons(),
   getClaimedCoupons: () => mockGetClaimedCoupons(),
   apiClient: { post: (...args: unknown[]) => mockApiPost(...args) },
+}));
+
+jest.mock('@tetherto/wdk-react-native-core', () => ({
+  useWallet: (...args: unknown[]) => mockUseWallet(...args),
+  // The screen imports config/assets (for token decimals), which constructs
+  // BaseAssets at module load time.
+  BaseAsset: class {
+    config: unknown;
+    constructor(config: unknown) {
+      this.config = config;
+    }
+  },
 }));
 
 import CashbackScreen from '../../app/(wallet)/cashback/index';
@@ -34,6 +49,7 @@ function coupon(overrides: Partial<CouponListItem> = {}): CouponListItem {
     code: 'SAVE5',
     usdtAmountRaw: '100000000',
     utlAmountRaw: '2000000000000000000',
+    merchantAddress: '0xMerchantAddress1234',
     createdAt: '2024-01-15T00:00:00.000Z',
     ...overrides,
   };
@@ -44,6 +60,7 @@ function claimedCoupon(overrides: Partial<ClaimedCouponListItem> = {}): ClaimedC
     id: 'claimed-1',
     usdtAmountRaw: '100000000',
     utlAmountRaw: '2000000000000000000',
+    merchantAddress: '0xMerchantAddress1234',
     redeemedAt: '2024-02-01T00:00:00.000Z',
     redemptionTxHash: '0x1234567890abcdef',
     createdAt: '2024-01-15T00:00:00.000Z',
@@ -57,6 +74,7 @@ describe('CashbackScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetCoupons.mockResolvedValue([]);
     mockGetClaimedCoupons.mockResolvedValue([]);
+    mockUseWallet.mockReturnValue({ addresses: { ethereum: { 0: '0xMyWalletAddress' } } });
   });
 
   it('shows an empty state when there are no available coupons', async () => {
@@ -106,10 +124,9 @@ describe('CashbackScreen', () => {
       expect(mockApiPost).toHaveBeenCalledWith('/coupons/claim', { code: 'SAVE5' }),
     );
     await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Coupon Redeemed!',
-        '5% cashback applied to your UTL balance.',
-      ),
+      expect(toast.success).toHaveBeenCalledWith('Coupon Redeemed!', {
+        description: '5% cashback applied to your UTL balance.',
+      }),
     );
     await waitFor(() => expect(mockGetCoupons).toHaveBeenCalledTimes(2));
   });
@@ -157,7 +174,75 @@ describe('CashbackScreen', () => {
     await waitFor(() =>
       expect(screen.getByText('$100.00 USDT → 2.0000 UTL')).toBeTruthy(),
     );
-    expect(screen.getByText(/✓ Claimed .* · 0x1234...cdef/)).toBeTruthy();
+    expect(screen.getByText(/✓ Claimed /)).toBeTruthy();
+    expect(screen.getByText('0x1234...cdef')).toBeTruthy();
+  });
+
+  it('shows the cashback destination address with a copy button', async () => {
+    await renderScreen();
+
+    expect(screen.getByText('Cashback goes to')).toBeTruthy();
+    expect(screen.getByText('0xMyWalletAddress')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Copy'));
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xMyWalletAddress');
+    expect(toast.success).toHaveBeenCalledWith('Copied', {
+      description: 'Your address copied to clipboard.',
+    });
+  });
+
+  it('copies the merchant address for an available coupon', async () => {
+    mockGetCoupons.mockResolvedValue([coupon()]);
+
+    await renderScreen();
+    await waitFor(() => expect(screen.getByText('Merchant: 0xMerc...1234')).toBeTruthy());
+
+    await fireEvent.press(screen.getAllByText('Copy')[1]);
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xMerchantAddress1234');
+    expect(toast.success).toHaveBeenCalledWith('Copied', {
+      description: 'Merchant address copied to clipboard.',
+    });
+  });
+
+  it('copies the merchant address and tx hash, and opens the explorer link, for a claimed coupon', async () => {
+    const openURLSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    mockGetClaimedCoupons.mockResolvedValue([claimedCoupon()]);
+
+    await renderScreen();
+    await fireEvent.press(screen.getByText('Claimed'));
+    await waitFor(() => expect(screen.getByText('0x1234...cdef')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Explorer'));
+    expect(openURLSpy).toHaveBeenCalledWith(
+      'https://sepolia.etherscan.io/tx/0x1234567890abcdef',
+    );
+
+    const copyLinks = screen.getAllByText('Copy');
+    await fireEvent.press(copyLinks[1]);
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xMerchantAddress1234');
+
+    await fireEvent.press(copyLinks[2]);
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0x1234567890abcdef');
+
+    openURLSpy.mockRestore();
+  });
+
+  it('renders a legacy claimed coupon without a merchant address instead of crashing', async () => {
+    // Regression test: coupons created before merchantAddress existed in the schema
+    // arrive without it — truncateMiddle(undefined) used to crash the Claimed tab.
+    mockGetClaimedCoupons.mockResolvedValue([claimedCoupon({ merchantAddress: null })]);
+
+    await renderScreen();
+    await fireEvent.press(screen.getByText('Claimed'));
+
+    await waitFor(() =>
+      expect(screen.getByText('$100.00 USDT → 2.0000 UTL')).toBeTruthy(),
+    );
+    expect(screen.queryByText(/Merchant:/)).toBeNull();
+    // The tx-hash row is unaffected.
+    expect(screen.getByText('0x1234...cdef')).toBeTruthy();
   });
 
   it('shows an empty state on the Claimed tab with no claimed coupons', async () => {

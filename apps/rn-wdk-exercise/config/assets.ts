@@ -114,17 +114,6 @@ export const ALL_ASSET_CONFIGS: AssetConfig[] = [
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-// Keyed by AssetConfig.network — drives the Mainnet/Testnet chip on the dashboard.
-// ethereum (Sepolia) and tron (Nile) are testnets; arbitrum/polygon/bitcoin/spark carry real funds.
-export const NETWORK_IS_MAINNET: Record<string, boolean> = {
-  ethereum: false,
-  arbitrum: true,
-  polygon: true,
-  bitcoin: true,
-  spark: true,
-  tron: false,
-};
-
 export const EVM_ASSETS = EVM_ASSET_CONFIGS
   .filter((c) => c.isNative || (c.address !== null && c.address !== ZERO_ADDRESS))
   .map((c) => new BaseAsset(c));

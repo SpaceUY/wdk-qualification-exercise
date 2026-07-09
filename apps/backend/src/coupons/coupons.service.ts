@@ -195,44 +195,50 @@ export class CouponsService implements OnModuleInit {
   }
 
   async findUnredeemedByUser(cognitoSub: string): Promise<CouponListItemDto[]> {
-    const user = await this.usersService.findByCognitoSub(cognitoSub);
-    if (!user) return [];
-    if (user.walletAddress) {
-      await this.linkOrphanedCoupons(user.id, user.walletAddress);
-    }
-    const docs = await this.couponModel
-      .find({ userId: user.id, redeemed: false })
-      .sort({ createdAt: -1 })
-      .select(['code', 'usdtAmountRaw', 'utlAmountRaw', 'createdAt'])
-      .lean();
+    const docs = await this.findCouponDocsByUser(cognitoSub, false);
     return docs.map((d) => ({
       id: d._id.toString(),
       code: d.code,
       usdtAmountRaw: d.usdtAmountRaw,
       utlAmountRaw: d.utlAmountRaw,
+      merchantAddress: d.merchantAddress ?? null,
       createdAt: d.createdAt as Date,
     }));
   }
 
   async findRedeemedByUser(cognitoSub: string): Promise<ClaimedCouponListItemDto[]> {
-    const user = await this.usersService.findByCognitoSub(cognitoSub);
-    if (!user) return [];
-    if (user.walletAddress) {
-      await this.linkOrphanedCoupons(user.id, user.walletAddress);
-    }
-    const docs = await this.couponModel
-      .find({ userId: user.id, redeemed: true })
-      .sort({ redeemedAt: -1 })
-      .select(['usdtAmountRaw', 'utlAmountRaw', 'redeemedAt', 'redemptionTxHash', 'createdAt'])
-      .lean();
+    const docs = await this.findCouponDocsByUser(cognitoSub, true);
     // redeemed: true guarantees redeemedAt and redemptionTxHash are non-null
     return docs.map((d) => ({
       id: d._id.toString(),
       usdtAmountRaw: d.usdtAmountRaw,
       utlAmountRaw: d.utlAmountRaw,
+      merchantAddress: d.merchantAddress ?? null,
       redeemedAt: d.redeemedAt as Date,
       redemptionTxHash: d.redemptionTxHash as string,
       createdAt: d.createdAt as Date,
     }));
+  }
+
+  // Pure read — coupon→user linking happens exclusively at write time: when a coupon is
+  // issued (transfer.processor looks up the user by payer address) and when a wallet
+  // address is registered (PUT /wallets/address calls linkOrphanedCoupons). Listing
+  // endpoints must never mutate state, so GETs stay cacheable and safely retriable.
+  private async findCouponDocsByUser(cognitoSub: string, redeemed: boolean) {
+    const user = await this.usersService.findByCognitoSub(cognitoSub);
+    if (!user) return [];
+    return this.couponModel
+      .find({ userId: user.id, redeemed })
+      .sort(redeemed ? { redeemedAt: -1 } : { createdAt: -1 })
+      .select([
+        'code',
+        'usdtAmountRaw',
+        'utlAmountRaw',
+        'merchantAddress',
+        'redeemedAt',
+        'redemptionTxHash',
+        'createdAt',
+      ])
+      .lean();
   }
 }

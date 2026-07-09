@@ -33,3 +33,23 @@ export function humanAmountToRaw(human: string, decimals: number): string {
   const combined = whole + fracPadded;
   return combined.replace(/^0+/, '') || '0';
 }
+
+// Fixed-decimal display formatting (e.g. always 2 or 4 digits) done via BigInt, never
+// `Number(raw) / 10 ** decimals` — that conversion silently loses precision past
+// Number.MAX_SAFE_INTEGER (2^53-1), which raw base-unit amounts (18-decimal UTL, etc.)
+// routinely exceed.
+export function formatFixedFromRaw(raw: string, decimals: number, fractionDigits: number): string {
+  const value = BigInt(raw);
+  const divisor = 10n ** BigInt(decimals);
+  const whole = value / divisor;
+  const remainder = value % divisor;
+
+  if (fractionDigits === 0) return whole.toString();
+
+  const fractionStr = remainder
+    .toString()
+    .padStart(decimals, '0')
+    .slice(0, fractionDigits)
+    .padEnd(fractionDigits, '0');
+  return `${whole}.${fractionStr}`;
+}

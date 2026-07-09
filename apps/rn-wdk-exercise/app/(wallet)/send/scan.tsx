@@ -4,9 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { parseMerchantQR } from '@/utils/merchantQR';
+import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function QRScanScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -62,13 +64,15 @@ export default function QRScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  permText: { textAlign: 'center', marginBottom: 16, fontSize: 15 },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center', paddingHorizontal: 24 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background },
+  permText: { textAlign: 'center', marginBottom: 16, fontSize: 15, color: colors.textPrimary },
+  button: { backgroundColor: colors.primary, borderRadius: 8, padding: 14, alignItems: 'center', paddingHorizontal: 24 },
+  buttonText: { color: colors.textOnPrimary, fontWeight: '600' },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  // Camera chrome is intentionally theme-independent: it sits on the live camera
+  // feed, not on an app surface, so it must stay white-on-dark in both themes.
   frame: {
     width: 250,
     height: 250,

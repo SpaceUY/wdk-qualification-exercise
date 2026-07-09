@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useBiometrics } from './useBiometrics';
+import { useWalletData } from './useWalletData';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppLockStore } from '@/stores/appLockStore';
+
+// How long the app may sit in the background before returning to the foreground
+// requires re-authentication. Short absences (copying a code, sharing, using the
+// camera) must not force another biometric prompt; a wallet left in the background
+// for longer must not stay open indefinitely.
+export const RELOCK_GRACE_MS = 10 * 60 * 1000;
 
 export function useAppLockBiometrics(): {
   locked: boolean;
@@ -11,11 +18,11 @@ export function useAppLockBiometrics(): {
 } {
   const userId = useAuthStore((s) => s.userId);
   const { isAvailable, authenticate } = useBiometrics();
+  const { hasLocalWallet } = useWalletData();
   const locked = useAppLockStore((s) => s.locked);
   const setLocked = useAppLockStore((s) => s.setLocked);
   const setChecked = useAppLockStore((s) => s.setChecked);
   const [verifying, setVerifying] = useState(false);
-  const wentToBackgroundRef = useRef(false);
 
   useEffect(() => {
     if (!userId) {
@@ -24,36 +31,41 @@ export function useAppLockBiometrics(): {
       return;
     }
 
-    setChecked(false);
-    isAvailable()
-      .then((available) => {
-        setLocked(available);
-        setChecked(true);
-      })
-      .catch(() => {
-        setLocked(true);
-        setChecked(true);
-      });
+    // The one place the lock decision is made — at process launch and again when
+    // returning to the foreground past the grace period. Only first-time signups
+    // (no local wallet yet) skip the lock: WDK's own creation-time biometric prompt
+    // already gates them, so an app-level lock screen would just be a second,
+    // redundant prompt in front of it. Fails closed: if availability can't be
+    // determined, lock.
+    const applyLockDecision = () => {
+      Promise.all([isAvailable(), hasLocalWallet(userId)])
+        .then(([available, hasWallet]) => {
+          setLocked(available && hasWallet);
+          setChecked(true);
+        })
+        .catch(() => {
+          setLocked(true);
+          setChecked(true);
+        });
+    };
 
+    setChecked(false);
+    applyLockDecision();
+
+    // Only 'background' arms the re-lock timer. Native system dialogs (Face ID /
+    // Touch ID sheets, including the WDK SDK's own wallet-unlock prompt) drive
+    // AppState through active -> inactive -> active without ever reaching
+    // 'background', and must not re-trigger the lock screen.
+    let backgroundedAt: number | null = null;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background') {
-        wentToBackgroundRef.current = true;
+        backgroundedAt = Date.now();
+        return;
       }
-
-      // Only treat this as "returning from background" if the app actually
-      // backgrounded. Native system dialogs (e.g. Face ID/Touch ID prompts -
-      // including the WDK SDK's own biometric prompt for wallet unlock) also
-      // drive AppState through active -> inactive -> active without ever
-      // reaching 'background', and must not re-trigger the lock screen.
-      const comingToForeground = wentToBackgroundRef.current && nextState === 'active';
-
-      if (comingToForeground && userId) {
-        wentToBackgroundRef.current = false;
-        isAvailable()
-          .then((available) => {
-            if (available) setLocked(true);
-          })
-          .catch(() => setLocked(true));
+      if (nextState === 'active' && backgroundedAt != null) {
+        const elapsed = Date.now() - backgroundedAt;
+        backgroundedAt = null;
+        if (elapsed >= RELOCK_GRACE_MS) applyLockDecision();
       }
     });
 

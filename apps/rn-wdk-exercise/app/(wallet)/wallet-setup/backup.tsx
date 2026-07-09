@@ -10,26 +10,33 @@ import {
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { usePreventScreenCapture } from 'expo-screen-capture';
+import { toast } from 'sonner-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useBiometrics } from '@/hooks/useBiometrics';
-import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { createCloudBackup, restoreFromCloudBackup } from '@/utils/cloudBackup';
-import { postWalletBackup } from '@/utils/api';
-import { encryptMnemonic } from '@/utils/seedEncryption';
+import { useSeedBackup } from '@/hooks/useSeedBackup';
 import { PassphraseInput } from '@/components/PassphraseInput';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function BackupScreen() {
+  // Blocks screenshots/screen recording (and Android's app-switcher preview) while
+  // this screen is mounted — a captured seed phrase is a fully compromised wallet.
+  usePreventScreenCapture();
+
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const userId = useAuthStore((s) => s.userId);
   const { getMnemonic } = useWalletData();
   const { authenticate } = useBiometrics();
-  const { signIn } = useGoogleAuth();
+  const { uploading, backupToCloud } = useSeedBackup();
 
   const [mnemonic, setMnemonic] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [revealedWords, setRevealedWords] = useState<Set<number>>(new Set());
   const [showPassphrasePrompt, setShowPassphrasePrompt] = useState(false);
 
   async function reveal() {
@@ -43,6 +50,7 @@ export default function BackupScreen() {
       const phrase = await getMnemonic(userId);
       setMnemonic(phrase);
       setRevealed(true);
+      setRevealedWords(new Set());
     } catch {
       Alert.alert('Error', 'Could not retrieve seed phrase');
     } finally {
@@ -50,10 +58,22 @@ export default function BackupScreen() {
     }
   }
 
+  function toggleWord(index: number) {
+    setRevealedWords((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
   async function copy() {
     if (!mnemonic) return;
     await Clipboard.setStringAsync(mnemonic);
-    Alert.alert('Copied', 'Seed phrase copied. Store it securely and never share it.');
+    toast.success('Copied', { description: 'Store it securely and never share it.' });
   }
 
   async function uploadToCloud() {
@@ -68,28 +88,19 @@ export default function BackupScreen() {
     if (!userId || !mnemonic) return;
 
     try {
-      const ciphertext = await encryptMnemonic(mnemonic, passphrase);
-
-      if (Platform.OS === 'ios') {
-        await createCloudBackup(ciphertext, userId);
-        await postWalletBackup(await getCloudCiphertext(userId));
-        Alert.alert('Backed Up', 'Seed phrase backed up to iCloud and our servers.');
-      } else {
-        const accessToken = await signIn();
-        if (!accessToken) return;
-        await createCloudBackup(ciphertext, userId, accessToken);
-        await postWalletBackup(await getCloudCiphertext(userId, accessToken));
-        Alert.alert('Backed Up', 'Seed phrase backed up to Google Drive and our servers.');
+      const uploaded = await backupToCloud(userId, mnemonic, passphrase);
+      if (uploaded) {
+        // Success is a toast (non-blocking confirmation); errors stay as alerts.
+        toast.success('Backed Up', {
+          description:
+            Platform.OS === 'ios'
+              ? 'Seed phrase backed up to iCloud and our servers.'
+              : 'Seed phrase backed up to Google Drive and our servers.',
+        });
       }
     } catch (err) {
       Alert.alert('Backup Failed', err instanceof Error ? err.message : 'Backup failed.');
     }
-  }
-
-  async function getCloudCiphertext(walletId: string, accessToken?: string): Promise<string> {
-    const ciphertext = await restoreFromCloudBackup(walletId, accessToken);
-    if (!ciphertext) throw new Error('Could not read backup ciphertext from cloud storage');
-    return ciphertext;
   }
 
   const words = mnemonic?.split(' ') ?? [];
@@ -105,20 +116,29 @@ export default function BackupScreen() {
         {!revealed ? (
           <TouchableOpacity style={styles.revealButton} onPress={reveal} disabled={loading}>
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.textOnPrimary} />
             ) : (
               <Text style={styles.revealButtonText}>Reveal Seed Phrase</Text>
             )}
           </TouchableOpacity>
         ) : (
           <>
+            <Text style={styles.tapHint}>Tap a word to reveal it.</Text>
             <View style={styles.grid}>
-              {words.map((word, i) => (
-                <View key={i} style={styles.wordCard}>
-                  <Text style={styles.wordIndex}>{i + 1}</Text>
-                  <Text style={styles.word}>{word}</Text>
-                </View>
-              ))}
+              {words.map((word, i) => {
+                const isWordRevealed = revealedWords.has(i);
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.wordCard}
+                    onPress={() => toggleWord(i)}
+                    testID={`seed-word-${i}`}
+                  >
+                    <Text style={styles.wordIndex}>{i + 1}</Text>
+                    <Text style={styles.word}>{isWordRevealed ? word : '••••••'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <TouchableOpacity style={styles.copyButton} onPress={copy}>
@@ -126,36 +146,58 @@ export default function BackupScreen() {
             </TouchableOpacity>
 
             {Platform.OS === 'ios' ? (
-              <TouchableOpacity style={styles.icloudButton} onPress={uploadToCloud}>
+              <TouchableOpacity
+                style={styles.icloudButton}
+                onPress={uploadToCloud}
+                disabled={uploading}
+              >
                 <Text style={styles.icloudButtonText}>Upload to iCloud</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.driveButton} onPress={uploadToCloud}>
+              <TouchableOpacity
+                style={styles.driveButton}
+                onPress={uploadToCloud}
+                disabled={uploading}
+              >
                 <Text style={styles.driveButtonText}>Upload to Google Drive</Text>
               </TouchableOpacity>
             )}
           </>
         )}
 
-        <Modal visible={showPassphrasePrompt} animationType="slide" transparent>
-          <PassphraseInput
-            confirm
-            submitLabel="Encrypt & Upload"
-            onSubmit={performUpload}
-            onCancel={() => setShowPassphrasePrompt(false)}
-          />
+        <Modal
+          visible={showPassphrasePrompt}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowPassphrasePrompt(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <PassphraseInput
+              confirm
+              submitLabel="Encrypt & Upload"
+              onSubmit={performUpload}
+              onCancel={() => setShowPassphrasePrompt(false)}
+            />
+          </View>
         </Modal>
+
+        {uploading ? (
+          <View style={styles.uploadingOverlay}>
+            <ActivityIndicator size="large" color={colors.textOnPrimary} />
+            <Text style={styles.uploadingText}>Backing up...</Text>
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f9fafb' },
-  container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
   warning: {
-    color: '#b45309',
-    backgroundColor: '#fef3c7',
+    color: colors.warningText,
+    backgroundColor: colors.warningBg,
     padding: 14,
     borderRadius: 8,
     fontSize: 13,
@@ -163,48 +205,62 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   revealButton: {
-    backgroundColor: '#dc2626',
+    backgroundColor: colors.dangerStrong,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
-  revealButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  revealButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  tapHint: { fontSize: 12, color: colors.textSubtle, marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   wordCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
     width: '30%',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  wordIndex: { fontSize: 11, color: '#9ca3af', minWidth: 16 },
-  word: { fontSize: 14, fontWeight: '500' },
+  wordIndex: { fontSize: 11, color: colors.textSubtle, minWidth: 16 },
+  word: { fontSize: 14, fontWeight: '500', color: colors.textPrimary },
   copyButton: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
-  copyButtonText: { color: '#374151', fontSize: 15 },
+  copyButtonText: { color: colors.textMuted, fontSize: 15 },
   icloudButton: {
     backgroundColor: '#0070c9',
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
   },
-  icloudButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  icloudButtonText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
   driveButton: {
     backgroundColor: '#1a73e8',
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
   },
-  driveButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  driveButtonText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.overlay,
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadingText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600', marginTop: 12 },
 });

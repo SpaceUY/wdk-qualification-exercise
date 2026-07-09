@@ -14,9 +14,12 @@ import { validateMnemonic } from '@tetherto/wdk-react-native-core';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function RestoreWalletScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const userId = useAuthStore((s) => s.userId);
   const { restoreWallet } = useWalletData();
 
@@ -71,6 +74,7 @@ export default function RestoreWalletScreen() {
           value={phrase}
           onChangeText={setPhrase}
           placeholder="word1 word2 word3 …"
+          placeholderTextColor={colors.textSubtle}
           multiline
           numberOfLines={5}
           autoCapitalize="none"
@@ -82,7 +86,7 @@ export default function RestoreWalletScreen() {
 
         <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
             <Text style={styles.buttonText}>Restore Wallet</Text>
           )}
@@ -92,13 +96,13 @@ export default function RestoreWalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fff' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.surface },
   container: { padding: 24 },
-  subtitle: { fontSize: 15, color: '#6b7280', marginTop: 16, marginBottom: 16 },
+  subtitle: { fontSize: 15, color: colors.textMuted, marginTop: 16, marginBottom: 16 },
   warning: {
-    color: '#b45309',
-    backgroundColor: '#fef3c7',
+    color: colors.warningText,
+    backgroundColor: colors.warningBg,
     padding: 14,
     borderRadius: 8,
     fontSize: 13,
@@ -106,22 +110,23 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     padding: 14,
     fontSize: 15,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
     minHeight: 120,
     textAlignVertical: 'top',
     marginBottom: 12,
   },
-  error: { color: '#ef4444', marginBottom: 12 },
+  error: { color: colors.danger, marginBottom: 12 },
   button: {
-    backgroundColor: '#dc2626',
+    backgroundColor: colors.dangerStrong,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

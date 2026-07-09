@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
+import { toast } from 'sonner-native';
 import { ScreenHeader } from '@/components/ScreenHeader';
-
-const NETWORKS = ['ethereum', 'arbitrum', 'polygon', 'bitcoin', 'spark', 'tron'] as const;
-type Network = (typeof NETWORKS)[number];
+import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
+import { NetworkDot } from '@/components/NetworkDot';
+import { KNOWN_NETWORKS, getNetworkDisplayName, type KnownNetwork } from '@/config/networkMeta';
+import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function ReceiveScreen() {
-  const [selectedNetwork, setSelectedNetwork] = useState<Network>('ethereum');
+  const styles = useThemedStyles(createStyles);
+  const [selectedNetwork, setSelectedNetwork] = useState<KnownNetwork>('ethereum');
 
   const { addresses } = useWallet({ autoLoadAccountIndices: [0] });
   const address = addresses[selectedNetwork]?.[0] ?? null;
@@ -18,7 +21,7 @@ export default function ReceiveScreen() {
   async function copyAddress() {
     if (!address) return;
     await Clipboard.setStringAsync(address);
-    Alert.alert('Copied', 'Address copied to clipboard');
+    toast.success('Copied', { description: 'Address copied to clipboard' });
   }
 
   return (
@@ -26,19 +29,22 @@ export default function ReceiveScreen() {
       <ScreenHeader title="Receive" />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.networkRow}>
-          {NETWORKS.map((n) => (
+          {KNOWN_NETWORKS.map((n) => (
             <TouchableOpacity
               key={n}
               testID={`network-chip-${n}`}
               style={[styles.networkChip, selectedNetwork === n && styles.networkChipActive]}
               onPress={() => setSelectedNetwork(n)}
             >
+              <NetworkDot network={n} size={7} />
               <Text style={[styles.networkChipText, selectedNetwork === n && styles.networkChipTextActive]}>
-                {n.charAt(0).toUpperCase() + n.slice(1, 3)}
+                {getNetworkDisplayName(n)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        <NetworkFundsBanner network={selectedNetwork} />
 
         <View testID="receive-qr" style={styles.qrContainer}>
           {address ? (
@@ -64,21 +70,26 @@ export default function ReceiveScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f9fafb' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, alignItems: 'center' },
   networkRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   networkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#fff',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
   },
-  networkChipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  networkChipText: { fontSize: 13, color: '#374151' },
-  networkChipTextActive: { color: '#fff' },
+  networkChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  networkChipText: { fontSize: 13, color: colors.textMuted },
+  networkChipTextActive: { color: colors.textOnPrimary },
+  // Deliberately white in both themes: the padding acts as the QR's quiet zone,
+  // and scanners need dark modules on a light background to read it reliably.
   qrContainer: {
     padding: 20,
     backgroundColor: '#fff',
@@ -94,17 +105,17 @@ const styles = StyleSheet.create({
     height: 220,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
   },
-  qrPlaceholderText: { color: '#9ca3af' },
-  addressLabel: { fontSize: 13, color: '#6b7280', marginBottom: 6 },
-  address: { fontSize: 13, color: '#111', textAlign: 'center', marginBottom: 20, paddingHorizontal: 16 },
+  qrPlaceholderText: { color: colors.textSubtle },
+  addressLabel: { fontSize: 13, color: colors.textMuted, marginBottom: 6 },
+  address: { fontSize: 13, color: colors.textPrimary, textAlign: 'center', marginBottom: 20, paddingHorizontal: 16 },
   copyButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 32,
     paddingVertical: 14,
   },
-  copyButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  copyButtonText: { color: colors.textOnPrimary, fontWeight: '600', fontSize: 15 },
 });

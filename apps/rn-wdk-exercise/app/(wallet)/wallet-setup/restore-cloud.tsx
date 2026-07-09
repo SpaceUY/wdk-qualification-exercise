@@ -9,9 +9,12 @@ import { restoreFromCloudBackup } from '@/utils/cloudBackup';
 import { decryptMnemonic } from '@/utils/seedEncryption';
 import { PassphraseInput } from '@/components/PassphraseInput';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function RestoreCloudScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const userId = useAuthStore((s) => s.userId);
   const { restoreWallet } = useWalletData();
   const { signIn } = useGoogleAuth();
@@ -80,7 +83,7 @@ export default function RestoreCloudScreen() {
 
         <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
             <Text style={styles.buttonText}>
               {Platform.OS === 'android' ? 'Sign in with Google' : 'Restore from iCloud'}
@@ -104,15 +107,15 @@ export default function RestoreCloudScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f9fafb' },
-  container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
-  subtitle: { fontSize: 15, color: '#6b7280', marginTop: 16, marginBottom: 32, lineHeight: 22 },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  subtitle: { fontSize: 15, color: colors.textMuted, marginTop: 16, marginBottom: 32, lineHeight: 22 },
   button: {
     backgroundColor: '#1a73e8',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

@@ -83,6 +83,9 @@ export type CouponListItem = {
   code: string;
   usdtAmountRaw: string;
   utlAmountRaw: string;
+  // null (or absent, from backends predating the field) for coupons created
+  // before merchantAddress existed in the schema.
+  merchantAddress?: string | null;
   createdAt: string;
 };
 
@@ -95,6 +98,9 @@ export type ClaimedCouponListItem = {
   id: string;
   usdtAmountRaw: string;
   utlAmountRaw: string;
+  // null (or absent, from backends predating the field) for coupons created
+  // before merchantAddress existed in the schema.
+  merchantAddress?: string | null;
   redeemedAt: string;
   redemptionTxHash: string;
   createdAt: string;

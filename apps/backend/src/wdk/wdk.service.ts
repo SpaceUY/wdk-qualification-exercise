@@ -28,6 +28,9 @@ export class WdkService {
     return response.data.tokenBalance.amount;
   }
 
+  // Return type is intentionally `unknown[]`, not a fixed interface: the per-item field
+  // names on this endpoint aren't documented by the provider — see the field-mapping
+  // fallback in WdkIndexerTransferAdapter.toTransferEvent, which is why this stays loose.
   async getUsdtTransfers(
     chain: UsdtChain,
     address: string,

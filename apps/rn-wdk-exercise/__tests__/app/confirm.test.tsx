@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import ConfirmSendScreen from '../../app/(wallet)/send/confirm';
 import { humanAmountToRaw } from '../../utils/balance';
-import { ETH_CONFIG, USDT_ETH_CONFIG } from '../../config/assets';
+import { ETH_CONFIG, USDT_ETH_CONFIG, BTC_CONFIG } from '../../config/assets';
 import type { MerchantsResponse } from '../../utils/api';
 
 const mockUseWallet = jest.fn();
@@ -83,6 +83,34 @@ describe('ConfirmSendScreen', () => {
     expect(screen.getByText('ETH (ethereum)')).toBeTruthy();
     expect(screen.getByText('0.01 ETH')).toBeTruthy();
     expect(screen.getByText('0xRecipientAddress')).toBeTruthy();
+  });
+
+  it('does not show a real-funds warning for a testnet asset', async () => {
+    setParams({
+      assetId: ETH_CONFIG.id,
+      network: 'ethereum',
+      recipient: '0xRecipientAddress',
+      amount: '0.01',
+      symbol: 'ETH',
+    });
+
+    await renderScreen();
+
+    expect(screen.queryByTestId('mainnet-funds-banner')).toBeNull();
+  });
+
+  it('shows a real-funds warning for a mainnet asset', async () => {
+    setParams({
+      assetId: BTC_CONFIG.id,
+      network: 'bitcoin',
+      recipient: 'bc1RecipientAddress',
+      amount: '0.001',
+      symbol: 'BTC',
+    });
+
+    await renderScreen();
+
+    expect(screen.getByTestId('mainnet-funds-banner')).toBeTruthy();
   });
 
   it('blocks the send and shows an alert when biometric authentication is denied', async () => {

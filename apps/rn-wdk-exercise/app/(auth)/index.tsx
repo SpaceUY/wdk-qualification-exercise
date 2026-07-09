@@ -1,8 +1,11 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useCognito } from '@/hooks/useCognito';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function LoginScreen() {
   const { promptAsync, ready } = useCognito();
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <View style={styles.container}>
@@ -15,7 +18,7 @@ export default function LoginScreen() {
         disabled={!ready}
       >
         {!ready ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.textOnPrimary} />
         ) : (
           <Text style={styles.buttonText}>Sign in with Cognito</Text>
         )}
@@ -24,16 +27,16 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24 },
-  title: { fontSize: 28, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#555', marginBottom: 48 },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: colors.background },
+  title: { fontSize: 28, fontWeight: '700', marginBottom: 8, color: colors.textPrimary },
+  subtitle: { fontSize: 16, color: colors.textMuted, marginBottom: 48 },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

@@ -2,9 +2,12 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 export default function WalletSetupScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useThemedStyles(createStyles);
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
@@ -32,7 +35,7 @@ export default function WalletSetupScreen() {
           style={[styles.option, styles.optionDanger]}
           onPress={() => router.push('/(wallet)/wallet-setup/restore')}
         >
-          <Text style={[styles.optionTitle, { color: '#dc2626' }]}>Restore Wallet</Text>
+          <Text style={[styles.optionTitle, { color: colors.dangerStrong }]}>Restore Wallet</Text>
           <Text style={styles.optionDesc}>Import a wallet using an existing seed phrase.</Text>
         </TouchableOpacity>
       </View>
@@ -40,19 +43,19 @@ export default function WalletSetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f9fafb' },
-  container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
-  subtitle: { fontSize: 15, color: '#6b7280', marginTop: 16, marginBottom: 32 },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  subtitle: { fontSize: 15, color: colors.textMuted, marginTop: 16, marginBottom: 32 },
   option: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
-  optionDanger: { borderColor: '#fca5a5' },
-  optionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  optionDesc: { fontSize: 14, color: '#6b7280' },
+  optionDanger: { borderColor: colors.danger },
+  optionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 6, color: colors.textPrimary },
+  optionDesc: { fontSize: 14, color: colors.textMuted },
 });

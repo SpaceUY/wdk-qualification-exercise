@@ -98,6 +98,20 @@ describe('SendScreen', () => {
     });
   });
 
+  it('does not show a real-funds warning for the default (testnet) asset', async () => {
+    await render(<SendScreen />);
+
+    expect(screen.queryByTestId('mainnet-funds-banner')).toBeNull();
+  });
+
+  it('shows a real-funds warning after switching to a mainnet asset', async () => {
+    await render(<SendScreen />);
+
+    await fireEvent.press(screen.getByText('BTC'));
+
+    expect(screen.getByTestId('mainnet-funds-banner')).toBeTruthy();
+  });
+
   it('navigates to the QR scanner when the scan button is pressed', async () => {
     await render(<SendScreen />);
 

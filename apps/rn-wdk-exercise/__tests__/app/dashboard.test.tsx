@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { formatBalanceFromRaw, trimDisplayDecimals } from '../../utils/balance';
@@ -46,6 +47,22 @@ function formattedAmount(raw: string, decimals: number) {
   return trimDisplayDecimals(formatBalanceFromRaw(raw, decimals) ?? '0', 6);
 }
 
+// useWalletRegistration needs a QueryClient. gcTime: 0 avoids leaving a 5-minute
+// garbage-collection setTimeout alive per test, which otherwise keeps the Jest worker
+// process from exiting.
+async function renderScreen() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false, gcTime: 0 } },
+  });
+  const ui = (
+    <QueryClientProvider client={queryClient}>
+      <DashboardScreen />
+    </QueryClientProvider>
+  );
+  const result = await render(ui);
+  return { ...result, rerenderScreen: () => result.rerender(ui) };
+}
+
 describe('DashboardScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -59,7 +76,7 @@ describe('DashboardScreen', () => {
   it('shows an initializing message while the wallet is bootstrapping', async () => {
     mockUseWalletBootstrap.mockReturnValue({ status: 'loading', error: null, retry: jest.fn() });
 
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     expect(screen.getByText('Initializing wallet…')).toBeTruthy();
   });
@@ -68,7 +85,7 @@ describe('DashboardScreen', () => {
     const mockRetry = jest.fn();
     mockUseWalletBootstrap.mockReturnValue({ status: 'error', error: 'Bootstrap failed', retry: mockRetry });
 
-    await render(<DashboardScreen />);
+    await renderScreen();
     expect(screen.getByText('Bootstrap failed')).toBeTruthy();
 
     await fireEvent.press(screen.getByText('Retry'));
@@ -83,7 +100,7 @@ describe('DashboardScreen', () => {
       isLoading: false,
     });
 
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     expect(screen.getByText(formattedAmount('5000000000000000', ETH_CONFIG.decimals))).toBeTruthy();
     // USDT_ETH_CONFIG has no matching balance result in evmBalances above.
@@ -98,17 +115,18 @@ describe('DashboardScreen', () => {
       isLoading: false,
     });
 
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     expect(screen.queryByText(formattedAmount('5000000000000000', ETH_CONFIG.decimals))).toBeNull();
   });
 
-  it('shows a placeholder for every asset while balances are still loading', async () => {
+  it('shows a skeleton row for every asset while balances are still loading', async () => {
     mockUseBalance.mockReturnValue({ data: undefined, isLoading: true });
 
-    await render(<DashboardScreen />);
+    await renderScreen();
 
-    expect(screen.getAllByText('—')).toHaveLength(ALL_ASSET_CONFIGS.length);
+    expect(screen.getAllByTestId('balance-row-skeleton')).toHaveLength(ALL_ASSET_CONFIGS.length);
+    expect(screen.queryByTestId('dashboard-balances')).toBeNull();
   });
 
   it('automatically refetches balances once, shortly after the wallet finishes bootstrapping', async () => {
@@ -126,7 +144,7 @@ describe('DashboardScreen', () => {
     mockUseBalancesForWallet.mockReturnValue({ data: [], isLoading: false, refetch: refetchEvm });
     mockUseBalance.mockReturnValue({ data: undefined, isLoading: false, refetch: refetchNonEvm });
 
-    const { unmount } = await render(<DashboardScreen />);
+    const { unmount } = await renderScreen();
 
     expect(refetchEvm).not.toHaveBeenCalled();
     const scheduled = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 2000);
@@ -146,8 +164,8 @@ describe('DashboardScreen', () => {
     mockUseBalancesForWallet.mockReturnValue({ data: [], isLoading: false, refetch: jest.fn().mockResolvedValue(undefined) });
     mockUseBalance.mockReturnValue({ data: undefined, isLoading: false, refetch: jest.fn().mockResolvedValue(undefined) });
 
-    const { rerender, unmount } = await render(<DashboardScreen />);
-    await rerender(<DashboardScreen />);
+    const { rerenderScreen, unmount } = await renderScreen();
+    await rerenderScreen();
 
     const scheduledCount = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 2000).length;
     expect(scheduledCount).toBe(1);
@@ -157,7 +175,7 @@ describe('DashboardScreen', () => {
   });
 
   it('registers the ethereum address with the backend once it resolves', async () => {
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     await waitFor(() => expect(putWalletAddress).toHaveBeenCalledWith('0xEthAddress'));
     expect(putWalletAddress).toHaveBeenCalledTimes(1);
@@ -166,14 +184,14 @@ describe('DashboardScreen', () => {
   it('does not show an address row before the address resolves', async () => {
     mockUseWallet.mockReturnValue({ addresses: {} });
 
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     expect(screen.queryByText('0xEthAddress')).toBeNull();
     expect(putWalletAddress).not.toHaveBeenCalled();
   });
 
   it('logs out and returns to the auth screen', async () => {
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     await fireEvent.press(screen.getByText('Logout'));
 
@@ -184,7 +202,7 @@ describe('DashboardScreen', () => {
   });
 
   it('navigates to each wallet action screen', async () => {
-    await render(<DashboardScreen />);
+    await renderScreen();
 
     await fireEvent.press(screen.getByText('Send'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/send');
@@ -200,5 +218,16 @@ describe('DashboardScreen', () => {
 
     await fireEvent.press(screen.getByText('History'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/history');
+  });
+
+  it('navigates to that token\'s history when a balance row is tapped', async () => {
+    await renderScreen();
+
+    await fireEvent.press(screen.getByText(ETH_CONFIG.symbol));
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/(wallet)/history',
+      params: { network: ETH_CONFIG.network, symbol: ETH_CONFIG.symbol },
+    });
   });
 });

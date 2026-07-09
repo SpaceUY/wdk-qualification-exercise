@@ -345,6 +345,7 @@ describe('CouponsService', () => {
           _id: 'c2',
           usdtAmountRaw: '2000000',
           utlAmountRaw: '100000000000000000',
+          merchantAddress: '0xMerchantAddress',
           redeemedAt: new Date('2024-01-02T00:00:00.000Z'),
           redemptionTxHash: '0xdeadbeef',
           createdAt: new Date('2024-01-01T00:00:00.000Z'),
@@ -360,8 +361,10 @@ describe('CouponsService', () => {
       expect(couponModel.find).toHaveBeenCalledWith({ userId: 'user-id', redeemed: true });
       expect(query.sort).toHaveBeenCalledWith({ redeemedAt: -1 });
       expect(query.select).toHaveBeenCalledWith([
+        'code',
         'usdtAmountRaw',
         'utlAmountRaw',
+        'merchantAddress',
         'redeemedAt',
         'redemptionTxHash',
         'createdAt',
@@ -371,6 +374,7 @@ describe('CouponsService', () => {
           id: 'c2',
           usdtAmountRaw: '2000000',
           utlAmountRaw: '100000000000000000',
+          merchantAddress: '0xMerchantAddress',
           redeemedAt: rows[0]?.redeemedAt,
           redemptionTxHash: '0xdeadbeef',
           createdAt: rows[0]?.createdAt,
@@ -387,25 +391,27 @@ describe('CouponsService', () => {
       expect(couponModel.find).not.toHaveBeenCalled();
     });
 
-    it('links any orphaned coupons for this wallet before listing, when the user has a wallet address', async () => {
+    it('maps a legacy coupon created before merchantAddress existed to merchantAddress: null', async () => {
       (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as UserDocument);
-      couponModel.updateMany.mockResolvedValue(undefined);
-      const query = createChainableFind([]);
+      const query = createChainableFind([
+        {
+          _id: 'c2',
+          usdtAmountRaw: '2000000',
+          utlAmountRaw: '100000000000000000',
+          redeemedAt: new Date('2024-01-02T00:00:00.000Z'),
+          redemptionTxHash: '0xdeadbeef',
+          createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        },
+      ]);
       couponModel.find.mockReturnValue(query);
 
-      await service.findRedeemedByUser('cognito-sub');
+      const result = await service.findRedeemedByUser('cognito-sub');
 
-      expect(couponModel.updateMany).toHaveBeenCalledWith(
-        { payerAddress: (mockUser.walletAddress as string).toLowerCase(), userId: null },
-        { $set: { userId: mockUser.id } },
-      );
+      expect(result[0]?.merchantAddress).toBeNull();
     });
 
-    it('skips the orphan-linking sweep when the user has no wallet address yet', async () => {
-      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue({
-        ...mockUser,
-        walletAddress: null,
-      } as UserDocument);
+    it('is a pure read — never runs the orphan-linking sweep (linking happens at write time: coupon issuance and PUT /wallets/address)', async () => {
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as UserDocument);
       const query = createChainableFind([]);
       couponModel.find.mockReturnValue(query);
 
@@ -424,6 +430,7 @@ describe('CouponsService', () => {
           code: 'aabbcc1234567890aabbcc1234567890',
           usdtAmountRaw: '1000000',
           utlAmountRaw: '50000000000000000',
+          merchantAddress: '0xMerchantAddress',
           createdAt: new Date('2024-01-01T00:00:00.000Z'),
         },
       ];
@@ -440,6 +447,9 @@ describe('CouponsService', () => {
         'code',
         'usdtAmountRaw',
         'utlAmountRaw',
+        'merchantAddress',
+        'redeemedAt',
+        'redemptionTxHash',
         'createdAt',
       ]);
       expect(result).toEqual([
@@ -448,6 +458,7 @@ describe('CouponsService', () => {
           code: 'aabbcc1234567890aabbcc1234567890',
           usdtAmountRaw: '1000000',
           utlAmountRaw: '50000000000000000',
+          merchantAddress: '0xMerchantAddress',
           createdAt: rows[0]?.createdAt,
         },
       ]);
@@ -462,25 +473,26 @@ describe('CouponsService', () => {
       expect(couponModel.find).not.toHaveBeenCalled();
     });
 
-    it('links any orphaned coupons for this wallet before listing, when the user has a wallet address', async () => {
+    it('maps a legacy coupon created before merchantAddress existed to merchantAddress: null', async () => {
       (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as UserDocument);
-      couponModel.updateMany.mockResolvedValue(undefined);
-      const query = createChainableFind([]);
+      const query = createChainableFind([
+        {
+          _id: 'c1',
+          code: 'aabbcc1234567890aabbcc1234567890',
+          usdtAmountRaw: '1000000',
+          utlAmountRaw: '50000000000000000',
+          createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        },
+      ]);
       couponModel.find.mockReturnValue(query);
 
-      await service.findUnredeemedByUser('cognito-sub');
+      const result = await service.findUnredeemedByUser('cognito-sub');
 
-      expect(couponModel.updateMany).toHaveBeenCalledWith(
-        { payerAddress: (mockUser.walletAddress as string).toLowerCase(), userId: null },
-        { $set: { userId: mockUser.id } },
-      );
+      expect(result[0]?.merchantAddress).toBeNull();
     });
 
-    it('skips the orphan-linking sweep when the user has no wallet address yet', async () => {
-      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue({
-        ...mockUser,
-        walletAddress: null,
-      } as UserDocument);
+    it('is a pure read — never runs the orphan-linking sweep (linking happens at write time: coupon issuance and PUT /wallets/address)', async () => {
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as UserDocument);
       const query = createChainableFind([]);
       couponModel.find.mockReturnValue(query);
 

@@ -8,6 +8,8 @@ import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import { humanAmountToRaw } from '@/utils/balance';
 import { useBiometrics } from '@/hooks/useBiometrics';
 import { getMerchants } from '@/utils/api';
+import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
+import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 
 // The only entry in ALL_ASSET_CONFIGS with network: 'ethereum' and symbol: 'USDT' — the
 // asset the indexer/transfer.processor.ts actually watches for cashback-eligible transfers.
@@ -55,6 +57,7 @@ function getSendErrorMessage(err: unknown): string {
 
 export default function ConfirmSendScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(createStyles);
   const { authenticate } = useBiometrics();
   const params = useLocalSearchParams<{
     assetId: string;
@@ -135,6 +138,8 @@ export default function ConfirmSendScreen() {
         </View>
       )}
 
+      <NetworkFundsBanner network={assetConfig.network} />
+
       <View style={styles.detailCard}>
         <Row label="Token" value={`${params.symbol} (${assetConfig.network})`} />
         <Row label="Amount" value={`${params.amount} ${params.symbol}`} />
@@ -162,6 +167,7 @@ export default function ConfirmSendScreen() {
 }
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -172,44 +178,44 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, padding: 24, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 24 },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 24, color: colors.textPrimary },
   merchantBadge: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#a7f3d0',
+    backgroundColor: colors.successBg,
+    borderColor: colors.success,
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     marginBottom: 20,
   },
-  merchantBadgeTitle: { fontSize: 14, fontWeight: '700', color: '#047857' },
-  merchantBadgeSubtitle: { fontSize: 13, color: '#047857', marginTop: 4 },
+  merchantBadgeTitle: { fontSize: 14, fontWeight: '700', color: colors.successText },
+  merchantBadgeSubtitle: { fontSize: 13, color: colors.successText, marginTop: 4 },
   detailCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     gap: 16,
     marginBottom: 20,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontSize: 14, color: '#6b7280', flex: 0, minWidth: 60 },
-  rowValue: { fontSize: 14, fontWeight: '500', color: '#111', flex: 1, textAlign: 'right' },
+  rowLabel: { fontSize: 14, color: colors.textMuted, flex: 0, minWidth: 60 },
+  rowValue: { fontSize: 14, fontWeight: '500', color: colors.textPrimary, flex: 1, textAlign: 'right' },
   mono: { fontFamily: 'monospace', fontSize: 12 },
-  biometricHint: { color: '#6b7280', fontSize: 13, textAlign: 'center', marginBottom: 32 },
+  biometricHint: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 32 },
   confirmButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
   },
-  confirmButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  confirmButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
   cancelButton: {
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
-  cancelButtonText: { color: '#6b7280', fontSize: 16 },
+  cancelButtonText: { color: colors.textMuted, fontSize: 16 },
 });

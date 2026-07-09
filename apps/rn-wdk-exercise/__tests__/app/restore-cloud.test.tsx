@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
@@ -166,5 +166,102 @@ describe('RestoreCloudScreen', () => {
     await enterPassphraseAndSubmit();
 
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Restore Failed', 'Corrupt backup'));
+  });
+
+  it('shows a failure alert with the error message when fetching the cloud backup throws', async () => {
+    Platform.OS = 'ios';
+    mockRestoreFromCloudBackup.mockRejectedValue(new Error('iCloud unavailable'));
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Restore from iCloud'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith('Restore Failed', 'iCloud unavailable'),
+    );
+    expect(screen.queryByTestId('passphrase-input')).toBeNull();
+  });
+
+  it('falls back to a generic message when the cloud backup fetch throws a non-Error', async () => {
+    Platform.OS = 'ios';
+    mockRestoreFromCloudBackup.mockRejectedValue('string error');
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Restore from iCloud'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Restore Failed',
+        'Could not restore from cloud backup.',
+      ),
+    );
+  });
+
+  it('falls back to a generic message when decryption throws a non-Error', async () => {
+    Platform.OS = 'android';
+    mockDecryptMnemonic.mockRejectedValue('string error');
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+    await waitFor(() => expect(screen.getByTestId('passphrase-input')).toBeTruthy());
+    await enterPassphraseAndSubmit();
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Restore Failed',
+        'Could not restore from cloud backup.',
+      ),
+    );
+    expect(mockRestoreWallet).not.toHaveBeenCalled();
+  });
+
+  it('dismisses the passphrase prompt and discards the ciphertext on Cancel', async () => {
+    Platform.OS = 'android';
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+    await waitFor(() => expect(screen.getByTestId('passphrase-input')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Cancel'));
+
+    expect(screen.queryByTestId('passphrase-input')).toBeNull();
+    expect(mockDecryptMnemonic).not.toHaveBeenCalled();
+    expect(mockRestoreWallet).not.toHaveBeenCalled();
+  });
+
+  it('replaces the button label with a spinner while the restore is in flight', async () => {
+    Platform.OS = 'ios';
+    let resolveFetch: (value: string | null) => void = () => {};
+    mockRestoreFromCloudBackup.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    await render(<RestoreCloudScreen />);
+    // Not awaited: awaiting the press would wait for handleRestore to finish, and
+    // handleRestore is deliberately parked on the still-pending fetch.
+    const press = fireEvent.press(screen.getByText('Restore from iCloud'));
+
+    await waitFor(() => expect(screen.queryByText('Restore from iCloud')).toBeNull());
+
+    await act(async () => {
+      resolveFetch(null);
+      await press;
+    });
+    expect(screen.getByText('Restore from iCloud')).toBeTruthy();
+  });
+
+  it('aborts the restore if the session is cleared while the passphrase prompt is open', async () => {
+    Platform.OS = 'android';
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+    await waitFor(() => expect(screen.getByTestId('passphrase-input')).toBeTruthy());
+
+    useAuthStore.setState({ userId: null, accessToken: null });
+    await enterPassphraseAndSubmit();
+
+    expect(mockDecryptMnemonic).not.toHaveBeenCalled();
+    expect(mockRestoreWallet).not.toHaveBeenCalled();
   });
 });
