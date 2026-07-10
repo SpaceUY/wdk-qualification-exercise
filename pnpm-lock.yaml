@@ -176,7 +176,7 @@ importers:
         version: 5.2.1
       mongodb-memory-server:
         specifier: ^11.2.0
-        version: 11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)
+        version: 11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-buffer@3.4.4)
       supertest:
         specifier: ^7.2.2
         version: 7.2.2
@@ -218,7 +218,7 @@ importers:
         version: 1.0.0-beta.2(react-native-cloud-storage@3.0.1(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))
       '@tetherto/wdk-react-native-core':
         specifier: github:tetherto/wdk-react-native-core#temp-rw-patch
-        version: https://codeload.github.com/tetherto/wdk-react-native-core/tar.gz/f6c27482991cf26f24bad5b134f65e56163e3294(patch_hash=a96a1a1234e0600c091e83b7cea33a8a8562221bb813847fc557b84efefb3e08)(@types/react@19.1.10)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(expo@54.0.35)(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))
+        version: https://codeload.github.com/tetherto/wdk-react-native-core/tar.gz/f6c27482991cf26f24bad5b134f65e56163e3294(patch_hash=a96a1a1234e0600c091e83b7cea33a8a8562221bb813847fc557b84efefb3e08)(@types/react@19.1.10)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(expo@54.0.35)(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))
       '@tetherto/wdk-wallet-btc':
         specifier: 1.0.0-beta.7
         version: 1.0.0-beta.7(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(ledger-bitcoin@0.2.3)
@@ -308,16 +308,16 @@ importers:
         version: 3.0.1(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       react-native-mmkv:
         specifier: ^4.1.0
-        version: 4.3.2(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+        version: 4.3.2(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       react-native-nitro-modules:
-        specifier: ^0.33.2
-        version: 0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+        specifier: ^0.36.1
+        version: 0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       react-native-qrcode-svg:
         specifier: ^6.3.21
         version: 6.3.21(react-native-svg@15.12.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       react-native-quick-crypto:
         specifier: ^1.0.6
-        version: 1.1.6(expo-build-properties@1.0.10(expo@54.0.35))(expo@54.0.35)(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native-quick-base64@3.0.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+        version: 1.1.6(expo-build-properties@1.0.10(expo@54.0.35))(expo@54.0.35)(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native-quick-base64@3.0.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       react-native-reanimated:
         specifier: ~4.1.1
         version: 4.1.7(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
@@ -8120,8 +8120,8 @@ packages:
       react-native: '*'
       react-native-nitro-modules: '*'
 
-  react-native-nitro-modules@0.33.9:
-    resolution: {integrity: sha512-BM9C5mCGYYjrc8CDWZZ0anLWU/knH2xaEuFzvzogKTOW6fzgS6mmsCdM3ty+AhImJNSYwK19DLrHaqwnrrwEzw==}
+  react-native-nitro-modules@0.36.1:
+    resolution: {integrity: sha512-kBv/VvKqAmkXAvP1DxJMC9b/fRhh7JdSO4EUnPP46hJjrIFeFR8AwKm8mYaKZEuF014M/TVdv2vomVUW0umsQQ==}
     peerDependencies:
       react: '*'
       react-native: '*'
@@ -13513,7 +13513,7 @@ snapshots:
 
   '@tetherto/wdk-failover-provider@1.0.0-beta.2': {}
 
-  '@tetherto/wdk-react-native-core@https://codeload.github.com/tetherto/wdk-react-native-core/tar.gz/f6c27482991cf26f24bad5b134f65e56163e3294(patch_hash=a96a1a1234e0600c091e83b7cea33a8a8562221bb813847fc557b84efefb3e08)(@types/react@19.1.10)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(expo@54.0.35)(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))':
+  '@tetherto/wdk-react-native-core@https://codeload.github.com/tetherto/wdk-react-native-core/tar.gz/f6c27482991cf26f24bad5b134f65e56163e3294(patch_hash=a96a1a1234e0600c091e83b7cea33a8a8562221bb813847fc557b84efefb3e08)(@types/react@19.1.10)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(expo@54.0.35)(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))':
     dependencies:
       '@tanstack/react-query': 5.101.2(react@19.1.0)
       '@tetherto/pear-wrk-wdk': 1.0.0-beta.8(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))
@@ -13522,7 +13522,7 @@ snapshots:
       immer: 11.1.9
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
       react-native-bare-kit: 0.13.3(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
-      react-native-mmkv: 4.3.2(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+      react-native-mmkv: 4.3.2(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       zod: 3.24.2
       zustand: 5.0.14(@types/react@19.1.10)(immer@11.1.9)(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))
     transitivePeerDependencies:
@@ -19303,7 +19303,7 @@ snapshots:
       '@types/whatwg-url': 13.0.0
       whatwg-url: 14.2.0
 
-  mongodb-memory-server-core@11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4):
+  mongodb-memory-server-core@11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-buffer@3.4.4):
     dependencies:
       async-mutex: 0.5.0
       camelcase: 6.3.0
@@ -19314,7 +19314,7 @@ snapshots:
       mongodb: 7.2.0(@aws-sdk/credential-providers@3.1079.0)
       new-find-package-json: 2.0.0
       semver: 7.8.5
-      tar-stream: 3.2.0(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)
+      tar-stream: 3.2.0(bare-buffer@3.4.4)
       tslib: 2.8.1
       yauzl: 3.4.0
     transitivePeerDependencies:
@@ -19330,9 +19330,9 @@ snapshots:
       - socks
       - supports-color
 
-  mongodb-memory-server@11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4):
+  mongodb-memory-server@11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-buffer@3.4.4):
     dependencies:
-      mongodb-memory-server-core: 11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)
+      mongodb-memory-server-core: 11.2.0(@aws-sdk/credential-providers@3.1079.0)(bare-buffer@3.4.4)
       tslib: 2.8.1
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
@@ -20131,13 +20131,13 @@ snapshots:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
 
-  react-native-mmkv@4.3.2(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
+  react-native-mmkv@4.3.2(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
-      react-native-nitro-modules: 0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+      react-native-nitro-modules: 0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
 
-  react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
+  react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
@@ -20156,13 +20156,13 @@ snapshots:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
 
-  react-native-quick-crypto@1.1.6(expo-build-properties@1.0.10(expo@54.0.35))(expo@54.0.35)(react-native-nitro-modules@0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native-quick-base64@3.0.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
+  react-native-quick-crypto@1.1.6(expo-build-properties@1.0.10(expo@54.0.35))(expo@54.0.35)(react-native-nitro-modules@0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native-quick-base64@3.0.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
     dependencies:
       '@craftzdog/react-native-buffer': 6.1.2(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       events: 3.3.0
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
-      react-native-nitro-modules: 0.33.9(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
+      react-native-nitro-modules: 0.36.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       react-native-quick-base64: 3.0.1(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)
       readable-stream: 4.7.0
       safe-buffer: 5.2.1
@@ -21146,7 +21146,7 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  tar-stream@3.2.0(bare-abort-controller@1.1.2)(bare-buffer@3.4.4):
+  tar-stream@3.2.0(bare-buffer@3.4.4):
     dependencies:
       b4a: 1.8.1
       bare-fs: 4.7.3(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)
