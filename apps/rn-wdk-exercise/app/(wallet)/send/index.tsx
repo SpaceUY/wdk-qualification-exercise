@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { toast } from 'sonner-native';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -32,22 +33,32 @@ export default function SendScreen() {
       setAmount(params.scannedAmount);
     }
   }, [params.scannedAddress, params.scannedAmount]);
-  const [error, setError] = useState<string | null>(null);
 
   function validate(): boolean {
     if (!recipient.trim()) {
-      setError('Recipient address is required');
+      toast.error('Recipient Required', {
+        description: 'Enter a recipient address or scan a QR code.',
+      });
       return false;
     }
     // iOS's decimal-pad keyboard shows a locale decimal separator (e.g. ',' on es-AR/es-ES
-    // devices) instead of '.', so normalize before parsing — humanAmountToRaw() does the
-    // same downstream, but validation runs first and needs its own normalized copy.
-    const normalizedAmount = amount.trim().replace(',', '.');
-    if (!normalizedAmount || isNaN(Number(normalizedAmount)) || Number(normalizedAmount) <= 0) {
-      setError('Enter a valid amount');
+    // devices) instead of '.', so accept either — humanAmountToRaw() normalizes the same
+    // way downstream. The strict shape check (digits with at most one separator) also
+    // rejects pasted values like '1e3' or '0x10' that Number() would accept but
+    // humanAmountToRaw() would silently mangle.
+    const trimmedAmount = amount.trim();
+    if (!/^\d*[.,]?\d+$/.test(trimmedAmount)) {
+      toast.error('Invalid Amount', {
+        description: 'Use digits with one decimal separator (e.g. 0.5).',
+      });
       return false;
     }
-    setError(null);
+    if (Number(trimmedAmount.replace(',', '.')) <= 0) {
+      toast.error('Invalid Amount', {
+        description: 'Amount must be greater than zero.',
+      });
+      return false;
+    }
     return true;
   }
 
@@ -123,8 +134,6 @@ export default function SendScreen() {
           keyboardType="decimal-pad"
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
         <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
           <Text style={styles.continueButtonText}>Review Transaction</Text>
         </TouchableOpacity>
@@ -171,7 +180,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   scanButtonText: { color: colors.textOnPrimary, fontWeight: '700' },
-  error: { color: colors.danger, marginTop: 12 },
   continueButton: {
     backgroundColor: colors.primary,
     borderRadius: 8,

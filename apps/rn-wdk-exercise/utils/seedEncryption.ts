@@ -1,7 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import { gcm } from '@noble/ciphers/aes';
-import { scryptAsync } from '@noble/hashes/scrypt';
 import { utf8ToBytes, bytesToUtf8 } from '@noble/hashes/utils';
+
+type QuickCryptoModule = typeof import('react-native-quick-crypto');
 
 export const MIN_PASSPHRASE_LENGTH = 8;
 
@@ -36,16 +37,29 @@ type ScryptParams = { N: number; r: number; p: number; dkLen: number };
 // remain decryptable. Only ADD entries below — never remove or mutate an existing one.
 const SCRYPT_PARAMS_BY_VERSION: Record<number, ScryptParams> = {
   0x01: { N: 16384, r: 8, p: 1, dkLen: KEY_LENGTH }, // legacy — below OWASP's minimum, kept only for decrypting old backups
-  0x02: { N: 131072, r: 8, p: 1, dkLen: KEY_LENGTH }, // OWASP Password Storage Cheat Sheet minimum (2^17) — too slow as a pure-JS mobile KDF, kept only for decrypting old backups
-  0x03: { N: 32768, r: 8, p: 1, dkLen: KEY_LENGTH }, // current — OWASP's reduced-resource tier (2^15), ~4x faster/lighter than 2^17 on-device
+  0x02: { N: 131072, r: 8, p: 1, dkLen: KEY_LENGTH }, // OWASP Password Storage Cheat Sheet minimum (2^17) — retired while the KDF ran in pure JS (multi-second on device)
+  0x03: { N: 32768, r: 8, p: 1, dkLen: KEY_LENGTH }, // reduced-resource tier (2^15) from the pure-JS era, kept only for decrypting old backups
+  0x04: { N: 131072, r: 8, p: 1, dkLen: KEY_LENGTH }, // current — OWASP minimum again, affordable now that scrypt runs natively
 };
 
-const CURRENT_VERSION = 0x03;
+const CURRENT_VERSION = 0x04;
 
 export class IncorrectPassphraseError extends Error {
   constructor() {
     super('Incorrect passphrase or corrupted backup');
     this.name = 'IncorrectPassphraseError';
+  }
+}
+
+// Thrown when the scrypt engine itself fails (native module missing, out of memory) —
+// deliberately NOT IncorrectPassphraseError: telling the user their passphrase is wrong
+// when the engine broke would send them down the wrong recovery path. The message is
+// user-safe because both backup and restore screens display error messages verbatim.
+export class KeyDerivationError extends Error {
+  constructor(cause: unknown) {
+    super('Could not prepare encryption on this device. Please update the app and try again.');
+    this.name = 'KeyDerivationError';
+    this.cause = cause;
   }
 }
 
@@ -66,24 +80,40 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-async function deriveKey(
-  passphrase: string,
-  salt: Uint8Array,
-  version: number,
-  onProgress?: (fraction: number) => void,
-): Promise<Uint8Array> {
-  const params = SCRYPT_PARAMS_BY_VERSION[version];
-  return scryptAsync(utf8ToBytes(passphrase), salt, { ...params, onProgress });
+// scrypt needs 128 * r * N bytes of working memory (quick-crypto/Node default the cap to
+// 32MB, far too small for N=131072). OpenSSL's real requirement is slightly above the
+// theoretical minimum, so give 2x headroom over the hungriest table entry — derived from
+// the table itself so adding a stronger version can never silently exceed the cap.
+const SCRYPT_MAXMEM =
+  2 * Math.max(...Object.values(SCRYPT_PARAMS_BY_VERSION).map(({ N, r, p }) => 128 * r * (N + p)));
+
+function deriveKey(passphrase: string, salt: Uint8Array, version: number): Promise<Uint8Array> {
+  const { N, r, p, dkLen } = SCRYPT_PARAMS_BY_VERSION[version];
+  // Inline require: Metro executes a module on first require, not at startup, keeping
+  // quick-crypto's large un-tree-shaken barrel (subtle, x509, ciphers, stream/util
+  // polyfills) and its import-time side effects off the app-launch path.
+  const QuickCrypto = (require('react-native-quick-crypto') as QuickCryptoModule).default;
+  return new Promise((resolve, reject) => {
+    QuickCrypto.scrypt(
+      utf8ToBytes(passphrase),
+      salt,
+      dkLen,
+      { N, r, p, maxmem: SCRYPT_MAXMEM },
+      (err, derivedKey) => {
+        if (err || !derivedKey) {
+          reject(new KeyDerivationError(err));
+          return;
+        }
+        resolve(new Uint8Array(derivedKey));
+      },
+    );
+  });
 }
 
-export async function encryptMnemonic(
-  mnemonic: string,
-  passphrase: string,
-  onProgress?: (fraction: number) => void,
-): Promise<string> {
+export async function encryptMnemonic(mnemonic: string, passphrase: string): Promise<string> {
   const salt = await Crypto.getRandomBytesAsync(SALT_LENGTH);
   const iv = await Crypto.getRandomBytesAsync(IV_LENGTH);
-  const key = await deriveKey(passphrase, salt, CURRENT_VERSION, onProgress);
+  const key = await deriveKey(passphrase, salt, CURRENT_VERSION);
   const ciphertext = gcm(key, iv).encrypt(utf8ToBytes(mnemonic));
 
   const blob = new Uint8Array(HEADER_LENGTH + ciphertext.length);

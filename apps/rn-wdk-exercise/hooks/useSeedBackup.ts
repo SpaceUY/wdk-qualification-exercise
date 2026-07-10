@@ -12,13 +12,9 @@ const GOOGLE_SIGN_IN_TIMEOUT_MS = 30000;
 // is read back from Google Drive first, proving the two copies match. iCloud's writes are
 // eventually consistent, so on iOS we skip that read-back (createCloudBackup() already
 // confirms the file exists) and send the ciphertext we already have in memory.
-export type BackupStage = 'encrypting' | 'uploading' | null;
-
 export function useSeedBackup() {
   const { signIn } = useGoogleAuth();
   const [uploading, setUploading] = useState(false);
-  const [stage, setStage] = useState<BackupStage>(null);
-  const [encryptProgress, setEncryptProgress] = useState(0);
 
   async function signInWithTimeout(): Promise<string | null> {
     const timedOut = Symbol('timeout');
@@ -46,13 +42,8 @@ export function useSeedBackup() {
   // a success message. Throws on any failure past that point.
   async function backupToCloud(userId: string, mnemonic: string, passphrase: string): Promise<boolean> {
     setUploading(true);
-    setStage('encrypting');
-    setEncryptProgress(0);
     try {
-      const ciphertext = await encryptMnemonic(mnemonic, passphrase, (fraction) => {
-        setEncryptProgress(Math.round(fraction * 100) / 100);
-      });
-      setStage('uploading');
+      const ciphertext = await encryptMnemonic(mnemonic, passphrase);
 
       if (Platform.OS === 'ios') {
         await createCloudBackup(ciphertext, userId);
@@ -70,9 +61,8 @@ export function useSeedBackup() {
       return true;
     } finally {
       setUploading(false);
-      setStage(null);
     }
   }
 
-  return { uploading, stage, encryptProgress, backupToCloud };
+  return { uploading, backupToCloud };
 }

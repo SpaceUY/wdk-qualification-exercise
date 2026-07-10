@@ -2,6 +2,7 @@ import {
   encryptMnemonic,
   decryptMnemonic,
   IncorrectPassphraseError,
+  KeyDerivationError,
   MIN_PASSPHRASE_LENGTH,
   validatePassphraseStrength,
 } from '../../utils/seedEncryption';
@@ -9,6 +10,7 @@ import { gcm } from '@noble/ciphers/aes';
 import { scryptAsync } from '@noble/hashes/scrypt';
 import { utf8ToBytes } from '@noble/hashes/utils';
 import * as Crypto from 'expo-crypto';
+import QuickCrypto from 'react-native-quick-crypto';
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -87,10 +89,10 @@ describe('seedEncryption', () => {
     expect(decrypted).toBe(MNEMONIC);
   });
 
-  it('encryptMnemonic always writes the current version byte (0x03)', async () => {
+  it('encryptMnemonic always writes the current version byte (0x04)', async () => {
     const ciphertext = await encryptMnemonic(MNEMONIC, PASSPHRASE);
     const bytes = Buffer.from(ciphertext, 'base64');
-    expect(bytes[0]).toBe(0x03);
+    expect(bytes[0]).toBe(0x04);
   });
 
   it('decrypts a version-0x02 blob using the previous (heavier) scrypt params', async () => {
@@ -118,11 +120,46 @@ describe('seedEncryption', () => {
     expect(decrypted).toBe(MNEMONIC);
   });
 
-  it('reports scrypt progress via onProgress when encrypting', async () => {
-    const progressValues: number[] = [];
-    await encryptMnemonic(MNEMONIC, PASSPHRASE, (fraction) => progressValues.push(fraction));
-    expect(progressValues.length).toBeGreaterThan(0);
-    expect(progressValues[progressValues.length - 1]).toBe(1);
+  it('decrypts a version-0x03 blob using the reduced-resource scrypt params', async () => {
+    const salt = await Crypto.getRandomBytesAsync(16);
+    const iv = await Crypto.getRandomBytesAsync(12);
+    const v3Key = await scryptAsync(utf8ToBytes(PASSPHRASE), salt, {
+      N: 32768,
+      r: 8,
+      p: 1,
+      dkLen: 32,
+    });
+    const ciphertext = gcm(v3Key, iv).encrypt(utf8ToBytes(MNEMONIC));
+
+    const blob = new Uint8Array(1 + 16 + 12 + ciphertext.length);
+    blob[0] = 0x03;
+    blob.set(salt, 1);
+    blob.set(iv, 17);
+    blob.set(ciphertext, 29);
+
+    let binary = '';
+    for (let i = 0; i < blob.length; i++) binary += String.fromCharCode(blob[i]);
+    const v3BlobBase64 = btoa(binary);
+
+    const decrypted = await decryptMnemonic(v3BlobBase64, PASSPHRASE);
+    expect(decrypted).toBe(MNEMONIC);
+  });
+
+  it('wraps scrypt engine failures in KeyDerivationError with a user-safe message', async () => {
+    const spy = jest.spyOn(QuickCrypto, 'scrypt').mockImplementation(((...args: unknown[]) => {
+      const callback = args[args.length - 1] as (err: Error | null) => void;
+      callback(new Error("Couldn't create HybridObject 'Scrypt'"));
+    }) as unknown as typeof QuickCrypto.scrypt);
+
+    try {
+      const attempt = encryptMnemonic(MNEMONIC, PASSPHRASE);
+      await expect(attempt).rejects.toThrow(KeyDerivationError);
+      await expect(attempt).rejects.toThrow(
+        'Could not prepare encryption on this device. Please update the app and try again.',
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('exports a minimum passphrase length of 8', () => {

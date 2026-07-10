@@ -175,7 +175,7 @@ describe('BackupScreen', () => {
 
     await uploadAndEnterPassphrase('Upload to iCloud');
 
-    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE, expect.any(Function));
+    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE);
     await waitFor(() =>
       expect(mockCreateCloudBackup).toHaveBeenCalledWith('encrypted-blob', 'user@test.com'),
     );
@@ -199,7 +199,7 @@ describe('BackupScreen', () => {
 
     await uploadAndEnterPassphrase('Upload to Google Drive');
 
-    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE, expect.any(Function));
+    expect(mockEncryptMnemonic).toHaveBeenCalledWith(MNEMONIC, PASSPHRASE);
     await waitFor(() =>
       expect(mockCreateCloudBackup).toHaveBeenCalledWith(
         'encrypted-blob',

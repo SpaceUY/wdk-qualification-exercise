@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { toast } from 'sonner-native';
 
 // config/assets.ts constructs BaseAsset instances at import time — stub it so the real
 // @tetherto/wdk-react-native-core package (and its ESM-only immer dependency) never loads.
@@ -39,23 +40,58 @@ describe('SendScreen', () => {
     expect(screen.getByDisplayValue('1.23')).toBeTruthy();
   });
 
-  it('shows an error when recipient is empty', async () => {
+  it('shows an error toast when recipient is empty', async () => {
     await render(<SendScreen />);
 
     await fillForm('', '1');
     await fireEvent.press(screen.getByText('Review Transaction'));
 
-    expect(screen.getByText('Recipient address is required')).toBeTruthy();
+    expect(toast.error).toHaveBeenCalledWith('Recipient Required', {
+      description: 'Enter a recipient address or scan a QR code.',
+    });
     expect(router.push).not.toHaveBeenCalled();
   });
 
-  it('shows an error for a non-numeric or zero amount', async () => {
+  it('shows a specific error toast for a zero amount', async () => {
     await render(<SendScreen />);
 
     await fillForm('0xRecipient', '0');
     await fireEvent.press(screen.getByText('Review Transaction'));
 
-    expect(screen.getByText('Enter a valid amount')).toBeTruthy();
+    expect(toast.error).toHaveBeenCalledWith('Invalid Amount', {
+      description: 'Amount must be greater than zero.',
+    });
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('accepts a comma decimal separator (iOS locale keyboards) and navigates', async () => {
+    await render(<SendScreen />);
+
+    await fillForm('0xRecipientAddress', '0,5');
+    await fireEvent.press(screen.getByText('Review Transaction'));
+
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(router.push).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathname: '/(wallet)/send/confirm',
+        // The original comma value travels to confirm; humanAmountToRaw normalizes it there.
+        params: expect.objectContaining({ amount: '0,5' }),
+      }),
+    );
+  });
+
+  it('rejects pasted values that Number() accepts but humanAmountToRaw would mangle', async () => {
+    await render(<SendScreen />);
+
+    for (const pasted of ['1e3', '0x10', '1.2.3', 'Infinity']) {
+      (toast.error as jest.Mock).mockClear();
+      await fillForm('0xRecipient', pasted);
+      await fireEvent.press(screen.getByText('Review Transaction'));
+
+      expect(toast.error).toHaveBeenCalledWith('Invalid Amount', {
+        description: 'Use digits with one decimal separator (e.g. 0.5).',
+      });
+    }
     expect(router.push).not.toHaveBeenCalled();
   });
 
