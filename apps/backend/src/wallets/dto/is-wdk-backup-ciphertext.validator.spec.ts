@@ -28,15 +28,29 @@ describe('IsWdkBackupCiphertextConstraint', () => {
     expect(constraint.validate(blob.toString('base64'))).toBe(false);
   });
 
-  it('accepts a version-0x02 blob (the new current version)', () => {
+  it('accepts every version byte the app has ever written (0x02, 0x03, 0x04)', () => {
+    for (const version of [0x02, 0x03, 0x04]) {
+      const blob = Buffer.alloc(45, 0);
+      blob[0] = version;
+      expect(constraint.validate(blob.toString('base64'))).toBe(true);
+    }
+  });
+
+  it('accepts future version bytes within the reserved range without a backend redeploy', () => {
     const blob = Buffer.alloc(45, 0);
-    blob[0] = 0x02;
+    blob[0] = 0x0f;
     expect(constraint.validate(blob.toString('base64'))).toBe(true);
   });
 
-  it('rejects a value with the wrong version byte', () => {
+  it('rejects a zero version byte (never a valid version)', () => {
     const blob = Buffer.alloc(45, 0);
-    blob[0] = 0x03;
+    blob[0] = 0x00;
+    expect(constraint.validate(blob.toString('base64'))).toBe(false);
+  });
+
+  it('rejects a version byte outside the reserved range (arbitrary binary junk)', () => {
+    const blob = Buffer.alloc(45, 0);
+    blob[0] = 0x10;
     expect(constraint.validate(blob.toString('base64'))).toBe(false);
   });
 
