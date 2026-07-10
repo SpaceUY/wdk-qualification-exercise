@@ -258,7 +258,7 @@ All variables are prefixed with `EXPO_PUBLIC_` and have working defaults out of 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `EXPO_PUBLIC_ETHEREUM_RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com` | Ethereum Sepolia RPC |
+| `EXPO_PUBLIC_ETHEREUM_RPC_URL` | `https://rpc.sepolia.org` | Ethereum Sepolia RPC |
 | `EXPO_PUBLIC_ARBITRUM_RPC_URL` | `https://arb1.arbitrum.io/rpc` | Arbitrum **One mainnet** RPC (no API key needed) — no test-USDT contract exists on Arbitrum Sepolia |
 | `EXPO_PUBLIC_USDT_ARB_ADDRESS` | `0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9` | Real **mainnet** USDT-ERC20 contract on Arbitrum |
 | `EXPO_PUBLIC_POLYGON_RPC_URL` | `https://polygon-bor-rpc.publicnode.com` | Polygon **mainnet** RPC (no API key needed) — no test-USDT contract exists on Polygon Amoy. `polygon-rpc.com`, still widely documented as the default, returns 403 (API key/tenant disabled) as of verification |

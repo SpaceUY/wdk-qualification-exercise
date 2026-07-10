@@ -6,10 +6,8 @@ import type { TronWalletConfig } from '@tetherto/wdk-wallet-tron';
 
 type NetworkConfig = EvmWalletConfig | BtcWalletConfig | SparkWalletConfig | TronWalletConfig;
 
-// Fallback must NOT be rpc.sepolia.org — that host was sunset and now serves a plain
-// Apache 404, which broke every Ethereum-network balance in builds that inherited it.
 const ethereumConfig: EvmWalletConfig = {
-  provider: process.env.EXPO_PUBLIC_ETHEREUM_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com',
+  provider: process.env.EXPO_PUBLIC_ETHEREUM_RPC_URL ?? 'https://rpc.sepolia.org',
 };
 
 // Arbitrum ONE MAINNET — no test-USDT contract exists on Arbitrum Sepolia (see USDT_ARB_CONFIG
