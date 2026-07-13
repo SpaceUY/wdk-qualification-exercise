@@ -15,7 +15,7 @@ const config = {
   // These packages ship ESM source — Jest must transform them via Babel.
   // We extend with additional packages used by this project.
   transformIgnorePatterns: [
-    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|react-native-mmkv|zustand|@tetherto|@noble|nativewind))',
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|react-native-mmkv|zustand|@tetherto|@noble))',
     '/node_modules/react-native-reanimated/plugin/',
   ],
 

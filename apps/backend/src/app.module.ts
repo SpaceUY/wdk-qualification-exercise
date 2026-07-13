@@ -10,6 +10,7 @@ import { redisConfig } from './config/redis.config';
 import { wdkEventBusConfig } from './config/wdk-event-bus.config';
 import { indexerConfig } from './config/indexer.config';
 import { wdkAppNodeConfig } from './config/wdk-app-node.config';
+import { pricesConfig } from './config/prices.config';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
@@ -19,6 +20,7 @@ import { IndexerModule } from './modules/indexer/indexer.module';
 import { WdkModule } from './wdk/wdk.module';
 import { WdkAppNodeModule } from './wdk-app-node/wdk-app-node.module';
 import { HealthModule } from './health/health.module';
+import { PricesModule } from './prices/prices.module';
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { HealthModule } from './health/health.module';
         wdkEventBusConfig,
         indexerConfig,
         wdkAppNodeConfig,
+        pricesConfig,
       ],
       envFilePath: ['.env.local', '.env'],
     }),
@@ -60,6 +63,7 @@ import { HealthModule } from './health/health.module';
     WdkModule,
     WdkAppNodeModule,
     HealthModule,
+    PricesModule,
   ],
 })
 export class AppModule {}

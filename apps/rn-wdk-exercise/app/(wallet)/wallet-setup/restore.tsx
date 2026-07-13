@@ -4,7 +4,6 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
 } from 'react-native';
@@ -15,6 +14,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText } from '@/components/ui';
 
 export default function RestoreWalletScreen() {
   const router = useRouter();
@@ -61,13 +62,13 @@ export default function RestoreWalletScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScreenHeader title="Restore Wallet" />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.subtitle}>
+        <AppText color="textMuted" style={styles.subtitle}>
           Enter your 12 or 24-word seed phrase separated by spaces.
-        </Text>
+        </AppText>
 
-        <Text style={styles.warning}>
+        <AppText variant="caption" color="warningText" style={styles.warning}>
           ⚠️ This will replace your current wallet. Your existing funds will only be accessible via the old seed phrase.
-        </Text>
+        </AppText>
 
         <TextInput
           style={styles.input}
@@ -82,13 +83,13 @@ export default function RestoreWalletScreen() {
           autoComplete="off"
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <AppText color="danger" style={styles.error}>{error}</AppText> : null}
 
         <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
           {loading ? (
             <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
-            <Text style={styles.buttonText}>Restore Wallet</Text>
+            <AppText variant="subtitle" color="textOnPrimary">Restore Wallet</AppText>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -98,35 +99,32 @@ export default function RestoreWalletScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
-  container: { padding: 24 },
-  subtitle: { fontSize: 15, color: colors.textMuted, marginTop: 16, marginBottom: 16 },
+  container: { padding: spacing.xl },
+  subtitle: { marginTop: spacing.lg, marginBottom: spacing.lg },
   warning: {
-    color: colors.warningText,
     backgroundColor: colors.warningBg,
     padding: 14,
-    borderRadius: 8,
-    fontSize: 13,
+    borderRadius: radius.sm,
     marginBottom: 20,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: 14,
     fontSize: 15,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
     minHeight: 120,
     textAlignVertical: 'top',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
-  error: { color: colors.danger, marginBottom: 12 },
+  error: { marginBottom: spacing.md },
   button: {
     backgroundColor: colors.dangerStrong,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: radius.sm,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
-  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
 });

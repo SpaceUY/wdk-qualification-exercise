@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { MIN_PASSPHRASE_LENGTH, validatePassphraseStrength } from '@/utils/seedEncryption';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button } from '@/components/ui';
 
 type PassphraseInputProps = {
   confirm?: boolean;
@@ -44,7 +46,7 @@ export function PassphraseInput({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Backup Passphrase</Text>
+      <AppText variant="subtitle" style={styles.label}>Backup Passphrase</AppText>
       <TextInput
         style={styles.input}
         placeholder="Enter passphrase"
@@ -69,38 +71,27 @@ export function PassphraseInput({
           testID="passphrase-confirm-input"
         />
       ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>{submitLabel}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-        <Text style={styles.cancelButtonText}>Cancel</Text>
-      </TouchableOpacity>
+      {error ? (
+        <AppText variant="caption" color="dangerStrong" style={styles.error}>{error}</AppText>
+      ) : null}
+      <Button title={submitLabel} onPress={handleSubmit} style={styles.submitButton} />
+      <Button title="Cancel" variant="ghost" onPress={onCancel} />
     </View>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: { padding: 24, backgroundColor: colors.surface, borderRadius: 12, margin: 24 },
-  label: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: colors.textPrimary },
+  container: { padding: spacing.xl, backgroundColor: colors.surface, borderRadius: radius.md, margin: spacing.xl },
+  label: { marginBottom: spacing.md },
   input: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     fontSize: 15,
     color: colors.textPrimary,
   },
-  error: { color: colors.dangerStrong, fontSize: 13, marginBottom: 12 },
-  submitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  submitButtonText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
-  cancelButton: { padding: 14, alignItems: 'center' },
-  cancelButtonText: { color: colors.textMuted, fontSize: 15 },
+  error: { marginBottom: spacing.md },
+  submitButton: { marginBottom: spacing.sm },
 });

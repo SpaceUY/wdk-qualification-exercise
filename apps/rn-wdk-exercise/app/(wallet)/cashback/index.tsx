@@ -5,7 +5,6 @@ import {
   FlatList,
   Linking,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -27,6 +26,8 @@ import { formatFixedFromRaw } from '@/utils/balance';
 import { getExplorerTxUrl } from '@/utils/explorer';
 import { USDT_ETH_CONFIG, UTL_CONFIG } from '@/config/assets';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button } from '@/components/ui';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { RowSkeleton } from '@/components/RowSkeleton';
 
@@ -72,12 +73,14 @@ function MerchantAddressRow({ merchantAddress }: { merchantAddress?: string | nu
   if (!merchantAddress) return null;
   return (
     <View style={styles.addressRow}>
-      <Text style={styles.addressText}>Merchant: {truncateMiddle(merchantAddress)}</Text>
+      <AppText variant="caption" color="textMuted">
+        Merchant: {truncateMiddle(merchantAddress)}
+      </AppText>
       <TouchableOpacity
         onPress={() => copyToClipboard('Merchant address', merchantAddress)}
         hitSlop={8}
       >
-        <Text style={styles.copyLink}>Copy</Text>
+        <AppText variant="caption" color="primary" style={styles.copyLink}>Copy</AppText>
       </TouchableOpacity>
     </View>
   );
@@ -151,10 +154,8 @@ export default function CashbackScreen() {
     if (availableError) {
       return (
         <View style={styles.center}>
-          <Text style={styles.errorText}>Failed to load coupons.</Text>
-          <TouchableOpacity style={styles.button} onPress={() => refetchAvailable()}>
-            <Text style={styles.buttonText}>Retry</Text>
-          </TouchableOpacity>
+          <AppText color="danger" style={styles.errorText}>Failed to load coupons.</AppText>
+          <Button title="Retry" onPress={() => refetchAvailable()} />
         </View>
       );
     }
@@ -162,8 +163,10 @@ export default function CashbackScreen() {
       return (
         <View style={styles.center}>
           <Ionicons name="pricetag-outline" size={40} color={colors.textSubtle} />
-          <Text style={styles.emptyText}>No cashback coupons yet</Text>
-          <Text style={styles.emptyHint}>Pay a merchant with USDT to earn UTL cashback.</Text>
+          <AppText color="textMuted" style={styles.emptyText}>No cashback coupons yet</AppText>
+          <AppText variant="caption" color="textSubtle" style={styles.emptyHint}>
+            Pay a merchant with USDT to earn UTL cashback.
+          </AppText>
         </View>
       );
     }
@@ -175,12 +178,12 @@ export default function CashbackScreen() {
         renderItem={({ item }) => (
           <View testID="cashback-item" style={styles.row}>
             <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>
+              <AppText style={styles.rowTitle}>
                 5% cashback on ${formatUsdt(item.usdtAmountRaw)} USDT
-              </Text>
-              <Text style={styles.rowSubtitle}>
+              </AppText>
+              <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
                 {formatUtl(item.utlAmountRaw)} UTL · {formatDate(item.createdAt)}
-              </Text>
+              </AppText>
               <MerchantAddressRow merchantAddress={item.merchantAddress} />
             </View>
             <TouchableOpacity
@@ -192,7 +195,7 @@ export default function CashbackScreen() {
               {pendingId === item.id ? (
                 <ActivityIndicator color={colors.textOnPrimary} size="small" />
               ) : (
-                <Text style={styles.claimButtonText}>Claim</Text>
+                <AppText color="textOnPrimary" style={styles.claimButtonText}>Claim</AppText>
               )}
             </TouchableOpacity>
           </View>
@@ -214,10 +217,8 @@ export default function CashbackScreen() {
     if (claimedError) {
       return (
         <View style={styles.center}>
-          <Text style={styles.errorText}>Failed to load claimed coupons.</Text>
-          <TouchableOpacity style={styles.button} onPress={() => refetchClaimed()}>
-            <Text style={styles.buttonText}>Retry</Text>
-          </TouchableOpacity>
+          <AppText color="danger" style={styles.errorText}>Failed to load claimed coupons.</AppText>
+          <Button title="Retry" onPress={() => refetchClaimed()} />
         </View>
       );
     }
@@ -225,8 +226,10 @@ export default function CashbackScreen() {
       return (
         <View style={styles.center}>
           <Ionicons name="checkmark-done-outline" size={40} color={colors.textSubtle} />
-          <Text style={styles.emptyText}>No claimed coupons yet</Text>
-          <Text style={styles.emptyHint}>Coupons you redeem will show up here.</Text>
+          <AppText color="textMuted" style={styles.emptyText}>No claimed coupons yet</AppText>
+          <AppText variant="caption" color="textSubtle" style={styles.emptyHint}>
+            Coupons you redeem will show up here.
+          </AppText>
         </View>
       );
     }
@@ -240,26 +243,28 @@ export default function CashbackScreen() {
           return (
             <View testID="cashback-claimed-item" style={styles.row}>
               <View style={styles.claimedRowContent}>
-                <Text style={styles.rowTitle}>
+                <AppText style={styles.rowTitle}>
                   ${formatUsdt(item.usdtAmountRaw)} USDT → {formatUtl(item.utlAmountRaw)} UTL
-                </Text>
-                <Text style={styles.rowSubtitle}>✓ Claimed {formatDate(item.redeemedAt)}</Text>
+                </AppText>
+                <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
+                  ✓ Claimed {formatDate(item.redeemedAt)}
+                </AppText>
 
                 <MerchantAddressRow merchantAddress={item.merchantAddress} />
 
                 <View style={styles.addressRow}>
-                  <Text style={styles.addressText}>
+                  <AppText variant="caption" color="textMuted">
                     {truncateMiddle(item.redemptionTxHash)}
-                  </Text>
+                  </AppText>
                   <TouchableOpacity
                     onPress={() => copyToClipboard('Transaction hash', item.redemptionTxHash)}
                     hitSlop={8}
                   >
-                    <Text style={styles.copyLink}>Copy</Text>
+                    <AppText variant="caption" color="primary" style={styles.copyLink}>Copy</AppText>
                   </TouchableOpacity>
                   {explorerUrl ? (
                     <TouchableOpacity onPress={() => Linking.openURL(explorerUrl)} hitSlop={8}>
-                      <Text style={styles.copyLink}>Explorer</Text>
+                      <AppText variant="caption" color="primary" style={styles.copyLink}>Explorer</AppText>
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -277,16 +282,18 @@ export default function CashbackScreen() {
 
       {myAddress ? (
         <View style={styles.myAddressBanner}>
-          <Text style={styles.myAddressLabel}>Cashback goes to</Text>
+          <AppText variant="caption" color="textMuted" style={styles.myAddressLabel}>
+            Cashback goes to
+          </AppText>
           <View style={styles.addressRow}>
-            <Text style={styles.myAddressText} numberOfLines={1}>
+            <AppText variant="caption" style={styles.myAddressText} numberOfLines={1}>
               {myAddress}
-            </Text>
+            </AppText>
             <TouchableOpacity
               onPress={() => copyToClipboard('Your address', myAddress)}
               hitSlop={8}
             >
-              <Text style={styles.copyLink}>Copy</Text>
+              <AppText variant="caption" color="primary" style={styles.copyLink}>Copy</AppText>
             </TouchableOpacity>
           </View>
         </View>
@@ -298,18 +305,24 @@ export default function CashbackScreen() {
           style={[styles.tab, activeTab === 'available' && styles.tabActive]}
           onPress={() => setActiveTab('available')}
         >
-          <Text style={[styles.tabText, activeTab === 'available' && styles.tabTextActive]}>
+          <AppText
+            color={activeTab === 'available' ? 'textPrimary' : 'textMuted'}
+            style={styles.tabText}
+          >
             Available
-          </Text>
+          </AppText>
         </TouchableOpacity>
         <TouchableOpacity
           testID="cashback-tab-claimed"
           style={[styles.tab, activeTab === 'claimed' && styles.tabActive]}
           onPress={() => setActiveTab('claimed')}
         >
-          <Text style={[styles.tabText, activeTab === 'claimed' && styles.tabTextActive]}>
+          <AppText
+            color={activeTab === 'claimed' ? 'textPrimary' : 'textMuted'}
+            style={styles.tabText}
+          >
             Claimed
-          </Text>
+          </AppText>
         </TouchableOpacity>
       </View>
 
@@ -320,69 +333,62 @@ export default function CashbackScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  skeletonList: { paddingVertical: 4 },
-  emptyText: { fontSize: 14, color: colors.textMuted, marginTop: 12 },
-  emptyHint: { fontSize: 12, color: colors.textSubtle, marginTop: 4, textAlign: 'center' },
-  errorText: { color: colors.danger, marginBottom: 16, textAlign: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  skeletonList: { paddingVertical: spacing.xs },
+  emptyText: { marginTop: spacing.md },
+  emptyHint: { marginTop: spacing.xs, textAlign: 'center' },
+  errorText: { marginBottom: spacing.lg, textAlign: 'center' },
   tabBar: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
     borderRadius: 10,
-    backgroundColor: colors.border,
-    padding: 4,
+    // surfaceMuted, not border: the hairline border tokens are translucent and
+    // read as invisible when used as a fill.
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.xs,
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: radius.sm,
   },
   tabActive: { backgroundColor: colors.surface },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
-  tabTextActive: { color: colors.textPrimary },
-  list: { paddingHorizontal: 16, paddingBottom: 16 },
+  tabText: { fontWeight: '600' },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: 10,
-    padding: 16,
-    marginBottom: 8,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  rowContent: { flex: 1, marginRight: 12 },
+  rowContent: { flex: 1, marginRight: spacing.md },
   claimedRowContent: { flex: 1 },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  rowSubtitle: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  rowTitle: { fontWeight: '600' },
+  rowSubtitle: { marginTop: spacing.xs },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  addressText: { fontSize: 12, color: colors.textMuted },
-  copyLink: { fontSize: 12, color: colors.primary, fontWeight: '600' },
+  copyLink: { fontWeight: '600' },
   myAddressBanner: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 12,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    padding: spacing.md,
     borderRadius: 10,
     backgroundColor: colors.primarySoft,
   },
-  myAddressLabel: { fontSize: 11, color: colors.textMuted, marginBottom: 4 },
-  myAddressText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+  myAddressLabel: { marginBottom: spacing.xs },
+  myAddressText: { fontWeight: '600', flex: 1 },
   claimButton: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     minWidth: 72,
     alignItems: 'center',
   },
-  claimButtonText: { color: colors.textOnPrimary, fontSize: 14, fontWeight: '600' },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  claimButtonText: { fontWeight: '600' },
 });

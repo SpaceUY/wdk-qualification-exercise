@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,8 @@ import { useBiometrics } from '@/hooks/useBiometrics';
 import { getMerchants } from '@/utils/api';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button, Card, Divider } from '@/components/ui';
 
 // The only entry in ALL_ASSET_CONFIGS with network: 'ethereum' and symbol: 'USDT' — the
 // asset the indexer/transfer.processor.ts actually watches for cashback-eligible transfers.
@@ -113,7 +115,7 @@ export default function ConfirmSendScreen() {
   if (!assetConfig) {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'bottom']}>
-        <Text>Asset not found</Text>
+        <AppText>Asset not found</AppText>
       </SafeAreaView>
     );
   }
@@ -128,39 +130,37 @@ export default function ConfirmSendScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Text style={styles.title}>Confirm Transaction</Text>
+      <AppText variant="title" style={styles.title}>Confirm Transaction</AppText>
 
       {showCashbackBadge && (
         <View style={styles.merchantBadge} testID="merchant-cashback-badge">
-          <Text style={styles.merchantBadgeTitle}>✓ {merchantName}</Text>
-          <Text style={styles.merchantBadgeSubtitle}>
+          <AppText variant="body" color="successText" style={styles.merchantBadgeTitle}>✓ {merchantName}</AppText>
+          <AppText variant="caption" color="successText" style={styles.merchantBadgeSubtitle}>
             You&apos;ll earn ~{estimatedCashback} UTL cashback
-          </Text>
+          </AppText>
         </View>
       )}
 
       <NetworkFundsBanner network={assetConfig.network} />
 
-      <View style={styles.detailCard}>
+      <Card elevated style={styles.detailCard}>
         <Row label="Token" value={`${params.symbol} (${assetConfig.network})`} />
+        <Divider />
         <Row label="Amount" value={`${params.amount} ${params.symbol}`} />
+        <Divider />
         <Row label="To" value={params.recipient ?? ''} mono />
-      </View>
+      </Card>
 
-      <Text style={styles.biometricHint}>
+      <AppText variant="caption" color="textMuted" style={styles.biometricHint}>
         You will be asked to authenticate before sending.
-      </Text>
+      </AppText>
 
       {sending ? (
-        <ActivityIndicator size="large" style={{ marginTop: 32 }} />
+        <ActivityIndicator size="large" style={styles.sendingIndicator} />
       ) : (
         <>
-          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-            <Text style={styles.confirmButtonText}>Confirm & Send</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+          <Button title="Confirm & Send" onPress={handleConfirm} style={styles.confirmButton} />
+          <Button title="Cancel" variant="ghost" onPress={() => router.back()} />
         </>
       )}
     </SafeAreaView>
@@ -171,52 +171,34 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, mono && styles.mono]} numberOfLines={2}>
+      <AppText color="textMuted" style={styles.rowLabel}>{label}</AppText>
+      <AppText variant={mono ? 'mono' : 'body'} style={[styles.rowValue, mono && styles.mono]} numberOfLines={2}>
         {value}
-      </Text>
+      </AppText>
     </View>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  container: { flex: 1, padding: spacing.xl, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 24, color: colors.textPrimary },
+  title: { marginBottom: spacing.xl },
   merchantBadge: {
     backgroundColor: colors.successBg,
     borderColor: colors.success,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: radius.md,
     padding: 14,
     marginBottom: 20,
   },
-  merchantBadgeTitle: { fontSize: 14, fontWeight: '700', color: colors.successText },
-  merchantBadgeSubtitle: { fontSize: 13, color: colors.successText, marginTop: 4 },
-  detailCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    gap: 16,
-    marginBottom: 20,
-  },
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontSize: 14, color: colors.textMuted, flex: 0, minWidth: 60 },
-  rowValue: { fontSize: 14, fontWeight: '500', color: colors.textPrimary, flex: 1, textAlign: 'right' },
-  mono: { fontFamily: 'monospace', fontSize: 12 },
-  biometricHint: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 32 },
-  confirmButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  confirmButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
-  cancelButton: {
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  cancelButtonText: { color: colors.textMuted, fontSize: 16 },
+  merchantBadgeTitle: { fontWeight: '700' },
+  merchantBadgeSubtitle: { marginTop: spacing.xs },
+  detailCard: { marginBottom: 20 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
+  rowLabel: { flex: 0, minWidth: 60 },
+  rowValue: { fontWeight: '500', flex: 1, textAlign: 'right' },
+  mono: { fontSize: 12, lineHeight: 18 },
+  biometricHint: { textAlign: 'center', marginBottom: spacing.xxl },
+  confirmButton: { marginBottom: spacing.md },
+  sendingIndicator: { marginTop: spacing.xxl },
 });

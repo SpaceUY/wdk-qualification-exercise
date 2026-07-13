@@ -28,6 +28,7 @@ jest.mock('../../hooks/useWalletBootstrap', () => ({
 
 jest.mock('../../utils/api', () => ({
   putWalletAddress: jest.fn().mockResolvedValue(undefined),
+  getPrices: jest.fn().mockResolvedValue({ prices: {}, fetchedAt: '2026-07-10T00:00:00.000Z' }),
 }));
 
 const mockSignOutFromCognito = jest.fn().mockResolvedValue(undefined);
@@ -42,6 +43,8 @@ jest.mock('../../hooks/useWalletData', () => ({
 
 import DashboardScreen from '../../app/(wallet)/index';
 import { ALL_ASSET_CONFIGS, ETH_CONFIG } from '../../config/assets';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { getPrices } from '../../utils/api';
 
 function formattedAmount(raw: string, decimals: number) {
   return trimDisplayDecimals(formatBalanceFromRaw(raw, decimals) ?? '0', 6);
@@ -67,6 +70,8 @@ describe('DashboardScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useAuthStore.setState({ userId: 'user@test.com', accessToken: null });
+    useSettingsStore.setState({ isBalanceHidden: false });
+    (getPrices as jest.Mock).mockResolvedValue({ prices: {}, fetchedAt: '2026-07-10T00:00:00.000Z' });
     mockUseWalletBootstrap.mockReturnValue({ status: 'ready', error: null, retry: jest.fn() });
     mockUseBalancesForWallet.mockReturnValue({ data: [], isLoading: false });
     mockUseBalance.mockReturnValue({ data: undefined, isLoading: false });
@@ -218,6 +223,68 @@ describe('DashboardScreen', () => {
 
     await fireEvent.press(screen.getByText('History'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/history');
+  });
+
+  it('shows the fiat total in the hero and per-row fiat once balances and prices resolve', async () => {
+    (getPrices as jest.Mock).mockResolvedValue({
+      prices: { ETH: 2000 },
+      fetchedAt: '2026-07-10T00:00:00.000Z',
+    });
+    mockUseBalancesForWallet.mockReturnValue({
+      data: [
+        { success: true, network: 'ethereum', accountIndex: 0, assetId: ETH_CONFIG.id, balance: '5000000000000000' }, // 0.005 ETH
+      ],
+      isLoading: false,
+    });
+
+    await renderScreen();
+
+    // $10.00 appears twice: the hero total and the ETH row's fiat line.
+    await waitFor(() => expect(screen.getAllByText('$10.00')).toHaveLength(2));
+  });
+
+  it('shows a dash in the hero instead of $0.00 when prices are unavailable', async () => {
+    (getPrices as jest.Mock).mockRejectedValue(new Error('prices down'));
+    mockUseBalancesForWallet.mockReturnValue({
+      data: [
+        { success: true, network: 'ethereum', accountIndex: 0, assetId: ETH_CONFIG.id, balance: '5000000000000000' },
+      ],
+      isLoading: false,
+    });
+
+    await renderScreen();
+
+    await waitFor(() => expect(screen.queryByTestId('balance-hero-skeleton')).toBeNull());
+    expect(screen.queryByText('$0.00')).toBeNull();
+    // Crypto amounts still render — fiat is progressive enhancement.
+    expect(screen.getByText(formattedAmount('5000000000000000', ETH_CONFIG.decimals))).toBeTruthy();
+  });
+
+  it('masks every amount when the visibility toggle is pressed and unmasks on a second press', async () => {
+    (getPrices as jest.Mock).mockResolvedValue({
+      prices: { ETH: 2000 },
+      fetchedAt: '2026-07-10T00:00:00.000Z',
+    });
+    mockUseBalancesForWallet.mockReturnValue({
+      data: [
+        { success: true, network: 'ethereum', accountIndex: 0, assetId: ETH_CONFIG.id, balance: '5000000000000000' },
+      ],
+      isLoading: false,
+    });
+
+    await renderScreen();
+    const visibleAmount = formattedAmount('5000000000000000', ETH_CONFIG.decimals);
+    await waitFor(() => expect(screen.getByText(visibleAmount)).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('balance-visibility-toggle'));
+
+    expect(screen.queryByText(visibleAmount)).toBeNull();
+    expect(screen.getAllByText('••••').length).toBeGreaterThan(1);
+
+    await fireEvent.press(screen.getByTestId('balance-visibility-toggle'));
+
+    expect(screen.getByText(visibleAmount)).toBeTruthy();
+    expect(screen.queryByText('••••')).toBeNull();
   });
 
   it('navigates to that token\'s history when a balance row is tapped', async () => {

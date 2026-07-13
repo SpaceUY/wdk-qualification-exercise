@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
@@ -9,11 +9,12 @@ import { restoreFromCloudBackup } from '@/utils/cloudBackup';
 import { decryptMnemonic } from '@/utils/seedEncryption';
 import { PassphraseInput } from '@/components/PassphraseInput';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { spacing } from '@/theme/tokens';
+import { AppText, Button } from '@/components/ui';
 
 export default function RestoreCloudScreen() {
   const router = useRouter();
-  const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const userId = useAuthStore((s) => s.userId);
   const { restoreWallet } = useWalletData();
@@ -75,21 +76,17 @@ export default function RestoreCloudScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScreenHeader title="Restore from Cloud Backup" />
       <View style={styles.container}>
-        <Text style={styles.subtitle}>
+        <AppText color="textMuted" style={styles.subtitle}>
           {Platform.OS === 'android'
             ? "Sign in with the Google account you used to back up your wallet. You'll then enter your backup passphrase to restore it."
             : "We'll look for a backup in your iCloud account. You'll then enter your backup passphrase to restore it."}
-        </Text>
+        </AppText>
 
-        <TouchableOpacity style={styles.button} onPress={handleRestore} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color={colors.textOnPrimary} />
-          ) : (
-            <Text style={styles.buttonText}>
-              {Platform.OS === 'android' ? 'Sign in with Google' : 'Restore from iCloud'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <Button
+          title={Platform.OS === 'android' ? 'Sign in with Google' : 'Restore from iCloud'}
+          onPress={handleRestore}
+          loading={loading}
+        />
 
         {showPassphrasePrompt ? (
           <PassphraseInput
@@ -109,13 +106,6 @@ export default function RestoreCloudScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: 24, backgroundColor: colors.background },
-  subtitle: { fontSize: 15, color: colors.textMuted, marginTop: 16, marginBottom: 32, lineHeight: 22 },
-  button: {
-    backgroundColor: '#1a73e8',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  container: { flex: 1, padding: spacing.xl, backgroundColor: colors.background },
+  subtitle: { marginTop: spacing.lg, marginBottom: spacing.xxl },
 });

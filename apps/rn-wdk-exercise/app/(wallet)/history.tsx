@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -8,6 +8,8 @@ import { trimDisplayDecimals } from '@/utils/balance';
 import { formatTransferDate, isReceived, truncateHash } from '@/utils/transfers';
 import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHistory';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText } from '@/components/ui';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
 import { RowSkeleton } from '@/components/RowSkeleton';
@@ -36,9 +38,9 @@ export default function HistoryScreen() {
   } else if (syncStatus === 'error' || isError) {
     content = (
       <View style={styles.center}>
-        <Text style={styles.errorText}>
+        <AppText color="danger" style={styles.errorText}>
           {syncError ?? 'Could not load transaction history'}
-        </Text>
+        </AppText>
       </View>
     );
   } else {
@@ -50,12 +52,12 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           <View style={styles.center}>
             <Ionicons name="receipt-outline" size={40} color={colors.textSubtle} />
-            <Text style={styles.statusText}>No transactions yet</Text>
+            <AppText color="textMuted" style={styles.statusText}>No transactions yet</AppText>
             <TouchableOpacity
               style={styles.emptyCta}
               onPress={() => router.push('/(wallet)/receive')}
             >
-              <Text style={styles.emptyCtaText}>Receive funds</Text>
+              <AppText color="primary" style={styles.emptyCtaText}>Receive funds</AppText>
             </TouchableOpacity>
           </View>
         }
@@ -72,20 +74,24 @@ export default function HistoryScreen() {
               onPress={() => setSelected(item)}
             >
               <View>
-                <Text style={styles.direction}>{received ? 'Received' : 'Sent'}</Text>
+                <AppText style={styles.direction}>{received ? 'Received' : 'Sent'}</AppText>
                 <View style={styles.metaRow}>
                   <NetworkDot network={item.blockchain} size={6} />
-                  <Text style={styles.meta}>
+                  <AppText variant="caption" color="textMuted">
                     {item.blockchain} · {item.token?.toUpperCase()}
-                  </Text>
+                  </AppText>
                 </View>
-                <Text style={styles.hash}>{truncateHash(item.transactionHash)}</Text>
-                <Text style={styles.date}>{formatTransferDate(item.ts)}</Text>
+                <AppText variant="caption" color="primary" style={styles.hash}>
+                  {truncateHash(item.transactionHash)}
+                </AppText>
+                <AppText variant="caption" color="textSubtle" style={styles.date}>
+                  {formatTransferDate(item.ts)}
+                </AppText>
               </View>
-              <Text style={[styles.amount, received ? styles.amountIn : styles.amountOut]}>
+              <AppText variant="mono" color={received ? 'success' : 'danger'}>
                 {received ? '+' : '-'}
                 {amount}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           );
         }}
@@ -109,35 +115,31 @@ export default function HistoryScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { flexGrow: 1, backgroundColor: colors.background, padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  skeletonList: { paddingVertical: 12 },
+  container: { flexGrow: 1, backgroundColor: colors.background, padding: spacing.lg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  skeletonList: { paddingVertical: spacing.md },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    padding: 16,
+    padding: spacing.lg,
     borderRadius: 10,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
-  direction: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  direction: { fontWeight: '600' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  meta: { fontSize: 12, color: colors.textMuted },
-  hash: { fontSize: 12, color: colors.primary, marginTop: 4 },
-  date: { fontSize: 11, color: colors.textSubtle, marginTop: 2 },
-  amount: { fontSize: 16, fontWeight: '600' },
-  amountIn: { color: colors.success },
-  amountOut: { color: colors.danger },
-  statusText: { color: colors.textMuted, marginTop: 12 },
-  errorText: { color: colors.danger, textAlign: 'center' },
+  hash: { marginTop: spacing.xs },
+  date: { marginTop: 2 },
+  statusText: { marginTop: spacing.md },
+  errorText: { textAlign: 'center' },
   emptyCta: {
-    marginTop: 16,
+    marginTop: spacing.lg,
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     paddingVertical: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.xl,
   },
-  emptyCtaText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  emptyCtaText: { fontWeight: '600' },
 });

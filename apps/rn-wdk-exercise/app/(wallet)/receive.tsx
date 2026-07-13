@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import QRCode from 'react-native-qrcode-svg';
@@ -10,6 +10,8 @@ import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { NetworkDot } from '@/components/NetworkDot';
 import { KNOWN_NETWORKS, getNetworkDisplayName, type KnownNetwork } from '@/config/networkMeta';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button, Card, Divider } from '@/components/ui';
 
 export default function ReceiveScreen() {
   const styles = useThemedStyles(createStyles);
@@ -28,43 +30,45 @@ export default function ReceiveScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScreenHeader title="Receive" />
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.networkRow}>
-          {KNOWN_NETWORKS.map((n) => (
-            <TouchableOpacity
-              key={n}
-              testID={`network-chip-${n}`}
-              style={[styles.networkChip, selectedNetwork === n && styles.networkChipActive]}
-              onPress={() => setSelectedNetwork(n)}
-            >
-              <NetworkDot network={n} size={7} />
-              <Text style={[styles.networkChipText, selectedNetwork === n && styles.networkChipTextActive]}>
-                {getNetworkDisplayName(n)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
         <NetworkFundsBanner network={selectedNetwork} />
 
-        <View testID="receive-qr" style={styles.qrContainer}>
-          {address ? (
-            <QRCode value={address} size={220} />
-          ) : (
-            <View style={styles.qrPlaceholder}>
-              <Text style={styles.qrPlaceholderText}>Loading address…</Text>
-            </View>
-          )}
-        </View>
+        <Card elevated style={styles.card}>
+          <View style={styles.networkRow}>
+            {KNOWN_NETWORKS.map((n) => (
+              <TouchableOpacity
+                key={n}
+                testID={`network-chip-${n}`}
+                style={[styles.networkChip, selectedNetwork === n && styles.networkChipActive]}
+                onPress={() => setSelectedNetwork(n)}
+              >
+                <NetworkDot network={n} size={7} />
+                <AppText variant="caption" style={[styles.networkChipText, selectedNetwork === n && styles.networkChipTextActive]}>
+                  {getNetworkDisplayName(n)}
+                </AppText>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {address ? (
-          <>
-            <Text style={styles.addressLabel}>Your {selectedNetwork} address</Text>
-            <Text testID="receive-address" style={styles.address}>{address}</Text>
-            <TouchableOpacity style={styles.copyButton} onPress={copyAddress}>
-              <Text style={styles.copyButtonText}>Copy Address</Text>
-            </TouchableOpacity>
-          </>
-        ) : null}
+          <Divider />
+
+          <View testID="receive-qr" style={styles.qrContainer}>
+            {address ? (
+              <QRCode value={address} size={220} />
+            ) : (
+              <View style={styles.qrPlaceholder}>
+                <AppText color="textSubtle">Loading address…</AppText>
+              </View>
+            )}
+          </View>
+
+          {address ? (
+            <>
+              <AppText variant="caption" color="textMuted" style={styles.addressLabel}>Your {selectedNetwork} address</AppText>
+              <AppText variant="mono" testID="receive-address" style={styles.address}>{address}</AppText>
+              <Button title="Copy Address" onPress={copyAddress} style={styles.copyButton} />
+            </>
+          ) : null}
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -72,29 +76,37 @@ export default function ReceiveScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { padding: 24, alignItems: 'center' },
-  networkRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  container: { padding: spacing.xl },
+  card: { alignItems: 'center' },
+  networkRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
   networkChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
   },
   networkChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  networkChipText: { fontSize: 13, color: colors.textMuted },
+  networkChipText: { color: colors.textMuted },
   networkChipTextActive: { color: colors.textOnPrimary },
   // Deliberately white in both themes: the padding acts as the QR's quiet zone,
   // and scanners need dark modules on a light background to read it reliably.
   qrContainer: {
     padding: 20,
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 24,
+    borderRadius: radius.lg,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -106,16 +118,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 8,
+    borderRadius: radius.sm,
   },
-  qrPlaceholderText: { color: colors.textSubtle },
-  addressLabel: { fontSize: 13, color: colors.textMuted, marginBottom: 6 },
-  address: { fontSize: 13, color: colors.textPrimary, textAlign: 'center', marginBottom: 20, paddingHorizontal: 16 },
-  copyButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-  },
-  copyButtonText: { color: colors.textOnPrimary, fontWeight: '600', fontSize: 15 },
+  addressLabel: { marginBottom: 6 },
+  address: { fontSize: 13, lineHeight: 18, textAlign: 'center', marginBottom: 20, paddingHorizontal: spacing.lg },
+  copyButton: { paddingHorizontal: spacing.xxl },
 });

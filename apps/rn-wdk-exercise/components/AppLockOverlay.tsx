@@ -1,25 +1,25 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useAppLockBiometrics } from '@/hooks/useAppLockBiometrics';
-import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { spacing } from '@/theme/tokens';
+import { AppText, Button } from '@/components/ui';
 
 export function AppLockOverlay() {
   const { locked, unlock, verifying } = useAppLockBiometrics();
-  const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
 
   if (!locked) return null;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>WDK Wallet</Text>
-      <Text style={styles.subtitle}>Authenticate to continue</Text>
-      <TouchableOpacity style={styles.button} onPress={unlock} disabled={verifying}>
-        {verifying ? (
-          <ActivityIndicator color={colors.textOnPrimary} />
-        ) : (
-          <Text style={styles.buttonText}>Unlock with Biometrics</Text>
-        )}
-      </TouchableOpacity>
+      <AppText variant="title" style={styles.title}>WDK Wallet</AppText>
+      <AppText color="textMuted" style={styles.subtitle}>Authenticate to continue</AppText>
+      <Button
+        title="Unlock with Biometrics"
+        onPress={unlock}
+        loading={verifying}
+        style={styles.button}
+      />
     </View>
   );
 }
@@ -31,16 +31,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
-    padding: 32,
+    padding: spacing.xxl,
   },
-  title: { fontSize: 28, fontWeight: '700', marginBottom: 8, color: colors.textPrimary },
-  subtitle: { fontSize: 16, color: colors.textMuted, marginBottom: 48 },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 18,
-    alignItems: 'center',
-    width: '100%',
-  },
-  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  title: { marginBottom: spacing.sm },
+  subtitle: { marginBottom: 48 },
+  button: { alignSelf: 'stretch' },
 });
