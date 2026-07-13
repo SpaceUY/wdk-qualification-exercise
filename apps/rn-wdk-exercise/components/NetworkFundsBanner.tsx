@@ -11,7 +11,7 @@ export function NetworkFundsBanner({ network }: { network: string }) {
   return (
     <View style={styles.banner} testID="mainnet-funds-banner">
       <AppText variant="caption" color="warningText" style={styles.text}>
-        ⚠️ This network uses real funds — transactions are irreversible.
+        This network uses real funds — transactions are irreversible.
       </AppText>
     </View>
   );

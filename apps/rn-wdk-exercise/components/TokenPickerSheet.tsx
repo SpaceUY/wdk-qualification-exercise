@@ -1,10 +1,15 @@
-import { FlatList, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, Modal, StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
 import { TokenLogo } from '@/components/TokenLogo';
+
+// Leaves this much clearance above the sheet even when the list is long enough
+// to fill the whole screen, so it never runs into the status bar/notch.
+const TOP_CLEARANCE = spacing.xxl;
 
 type TokenPickerSheetProps = {
   visible: boolean;
@@ -17,6 +22,9 @@ type TokenPickerSheetProps = {
 export function TokenPickerSheet({ visible, assets, selectedId, onSelect, onClose }: TokenPickerSheetProps) {
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const maxSheetHeight = windowHeight - insets.top - TOP_CLEARANCE;
 
   function handleSelect(asset: AssetConfig) {
     onSelect(asset);
@@ -28,7 +36,7 @@ export function TokenPickerSheet({ visible, assets, selectedId, onSelect, onClos
       <View style={styles.modalOverlay}>
         {/* Tapping the dimmed area behind the sheet dismisses it, like a native sheet. */}
         <TouchableOpacity style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { maxHeight: maxSheetHeight }]}>
           <View style={styles.grabHandle} />
           <AppText variant="subtitle" style={styles.title}>Select Token</AppText>
           <FlatList
@@ -69,7 +77,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   backdrop: { flex: 1 },
   sheet: {
     width: '100%',
-    maxHeight: '70%',
     backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

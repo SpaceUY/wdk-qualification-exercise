@@ -86,7 +86,7 @@ export function HeaderBackTitle({ title, onBack }: HeaderBackTitleProps) {
         accessibilityLabel="Back"
         testID="header-back"
       />
-      <AppText variant="subtitle" numberOfLines={1} style={styles.title}>
+      <AppText variant="title" numberOfLines={1} style={styles.title}>
         {title}
       </AppText>
     </View>

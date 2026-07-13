@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   View,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
-import { ChevronDown } from 'lucide-react-native';
+import { ChevronDown, QrCode } from 'lucide-react-native';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 import { Header, HeaderBackTitle } from '@/components/Header';
@@ -18,7 +19,13 @@ import { TokenLogo } from '@/components/TokenLogo';
 import { TokenPickerSheet } from '@/components/TokenPickerSheet';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText, Button, Card, Divider } from '@/components/ui';
+import { AppText, Button, Card } from '@/components/ui';
+
+const INPUT_HEIGHT = 50;
+// Matches the press-scale spring used by HeaderIconButton and AssetRow, so every
+// tappable surface in the app compresses with the same feel.
+const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function SendScreen() {
   const router = useRouter();
@@ -29,6 +36,15 @@ export default function SendScreen() {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  const tokenTriggerScale = useSharedValue(1);
+  const tokenTriggerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: tokenTriggerScale.value }],
+  }));
+  const scanButtonScale = useSharedValue(1);
+  const scanButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scanButtonScale.value }],
+  }));
 
   useEffect(() => {
     if (params.scannedAddress) {
@@ -95,10 +111,12 @@ export default function SendScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Card elevated style={styles.formCard}>
           <AppText variant="caption" color="textMuted" style={styles.label}>Token</AppText>
-          <TouchableOpacity
+          <AnimatedPressable
             testID="token-picker-trigger"
-            style={styles.tokenTrigger}
+            style={[styles.tokenTrigger, tokenTriggerAnimatedStyle]}
             onPress={() => setPickerVisible(true)}
+            onPressIn={() => { tokenTriggerScale.value = withSpring(0.97, PRESS_SPRING); }}
+            onPressOut={() => { tokenTriggerScale.value = withSpring(1, PRESS_SPRING); }}
           >
             <View style={styles.tokenTriggerIdentity}>
               <TokenLogo symbol={selectedAsset.symbol} size={32} />
@@ -108,11 +126,9 @@ export default function SendScreen() {
               </View>
             </View>
             <ChevronDown size={20} color={colors.textMuted} />
-          </TouchableOpacity>
+          </AnimatedPressable>
 
-          <Divider />
-
-          <AppText variant="caption" color="textMuted" style={styles.label}>Recipient</AppText>
+          <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Recipient</AppText>
           <View style={styles.recipientRow}>
             <TextInput
               style={[styles.input, styles.recipientInput]}
@@ -123,14 +139,18 @@ export default function SendScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
-              <AppText variant="body" color="textOnPrimary" style={styles.scanButtonText}>QR</AppText>
-            </TouchableOpacity>
+            <AnimatedPressable
+              style={[styles.scanButton, scanButtonAnimatedStyle]}
+              onPress={handleScan}
+              onPressIn={() => { scanButtonScale.value = withSpring(0.88, PRESS_SPRING); }}
+              onPressOut={() => { scanButtonScale.value = withSpring(1, PRESS_SPRING); }}
+              accessibilityLabel="Scan QR code"
+            >
+              <QrCode size={22} color={colors.textPrimary} />
+            </AnimatedPressable>
           </View>
 
-          <Divider />
-
-          <AppText variant="caption" color="textMuted" style={styles.label}>Amount</AppText>
+          <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Amount</AppText>
           <TextInput
             style={styles.input}
             value={amount}
@@ -140,11 +160,10 @@ export default function SendScreen() {
             keyboardType="decimal-pad"
           />
         </Card>
-
-        <NetworkFundsBanner network={selectedAsset.network} />
       </ScrollView>
 
       <View style={styles.footer}>
+        <NetworkFundsBanner network={selectedAsset.network} />
         <Button title="Review Transaction" onPress={handleContinue} />
       </View>
 
@@ -164,6 +183,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { padding: spacing.xl },
   formCard: { marginBottom: spacing.lg },
   label: { fontWeight: '600', marginBottom: spacing.sm },
+  sectionLabel: { marginTop: spacing.md },
   tokenTrigger: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -179,7 +199,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   tokenTriggerIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   tokenTriggerSymbol: { fontWeight: '600' },
   recipientRow: { flexDirection: 'row', gap: spacing.sm },
-  recipientInput: { flex: 1 },
+  recipientInput: { flex: 1, height: INPUT_HEIGHT },
   input: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -190,12 +210,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textPrimary,
   },
   scanButton: {
-    backgroundColor: colors.primary,
+    width: INPUT_HEIGHT,
+    height: INPUT_HEIGHT,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     borderRadius: radius.sm,
-    paddingHorizontal: 18,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  scanButtonText: { fontWeight: '700' },
   footer: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
