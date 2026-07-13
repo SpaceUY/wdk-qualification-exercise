@@ -7,4 +7,8 @@ export const gradients = {
   hero: ['rgba(245, 211, 129, 0.10)', 'rgba(40, 50, 62, 0)'],
   // Full-screen backdrop for onboarding.
   midnight: ['#131A23', '#0C1117'],
+  // Dashboard's floating filter row: opaque background.background behind the chips,
+  // fading to transparent so list rows scrolling underneath disappear gradually
+  // instead of being clipped by a hard edge.
+  listFade: ['#0C1117', '#0C1117', 'rgba(12, 17, 23, 0)'],
 } as const;

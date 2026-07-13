@@ -181,7 +181,7 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, padding: spacing.xl, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   title: { marginBottom: spacing.xl },
   merchantBadge: {
     backgroundColor: colors.successBg,

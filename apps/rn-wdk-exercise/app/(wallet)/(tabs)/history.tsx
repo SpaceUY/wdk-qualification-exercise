@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Receipt } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { TokenTransfer } from '@/utils/appNodeApi';
 import { trimDisplayDecimals } from '@/utils/balance';
@@ -10,7 +10,7 @@ import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHis
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
 import { RowSkeleton } from '@/components/RowSkeleton';
 import { NetworkDot } from '@/components/NetworkDot';
@@ -51,7 +51,7 @@ export default function HistoryScreen() {
         keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Ionicons name="receipt-outline" size={40} color={colors.textSubtle} />
+            <Receipt size={40} color={colors.textSubtle} />
             <AppText color="textMuted" style={styles.statusText}>No transactions yet</AppText>
             <TouchableOpacity
               style={styles.emptyCta}
@@ -100,8 +100,12 @@ export default function HistoryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title={symbol ? `History · ${symbol}` : 'History'} />
+    // No bottom edge: the list scrolls behind the floating glass tab bar, with
+    // TAB_BAR_CLEARANCE padding keeping the last row reachable.
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <View style={styles.header}>
+        <AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>
+      </View>
       {content}
 
       <TransferDetailModal
@@ -115,7 +119,19 @@ export default function HistoryScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { flexGrow: 1, backgroundColor: colors.background, padding: spacing.lg },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  container: {
+    flexGrow: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    paddingBottom: TAB_BAR_CLEARANCE,
+  },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   skeletonList: { paddingVertical: spacing.md },
   row: {

@@ -4,6 +4,12 @@
 // require.resolve will throw loudly rather than silently skip setup.
 require(require.resolve('jest-expo/src/preset/setup.js'));
 
+// Gesture handler's official jest setup (mocks its native module).
+require('react-native-gesture-handler/jestSetup');
+
+// (react-native-reanimated itself is covered by the manual mock in
+// __mocks__/react-native-reanimated.tsx, which Jest applies automatically.)
+
 const originalConsoleWarn = console.warn;
 console.warn = (...args) => {
   if (typeof args[0] === 'string' && args[0].includes('Encryption is not supported')) return;

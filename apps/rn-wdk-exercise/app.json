@@ -47,6 +47,15 @@
       "expo-local-authentication",
       "react-native-cloud-storage",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0C1117"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

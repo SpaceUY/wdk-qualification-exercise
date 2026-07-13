@@ -31,17 +31,7 @@ jest.mock('../../utils/api', () => ({
   getPrices: jest.fn().mockResolvedValue({ prices: {}, fetchedAt: '2026-07-10T00:00:00.000Z' }),
 }));
 
-const mockSignOutFromCognito = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../hooks/useCognito', () => ({
-  signOutFromCognito: () => mockSignOutFromCognito(),
-}));
-
-const mockLock = jest.fn();
-jest.mock('../../hooks/useWalletData', () => ({
-  useWalletData: () => ({ lock: mockLock }),
-}));
-
-import DashboardScreen from '../../app/(wallet)/index';
+import DashboardScreen from '../../app/(wallet)/(tabs)/index';
 import { ALL_ASSET_CONFIGS, ETH_CONFIG } from '../../config/assets';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getPrices } from '../../utils/api';
@@ -195,34 +185,85 @@ describe('DashboardScreen', () => {
     expect(putWalletAddress).not.toHaveBeenCalled();
   });
 
-  it('logs out and returns to the auth screen', async () => {
+  it('navigates to settings from the header button', async () => {
     await renderScreen();
 
-    await fireEvent.press(screen.getByText('Logout'));
-
-    expect(mockLock).toHaveBeenCalled();
-    expect(mockSignOutFromCognito).toHaveBeenCalled();
-    expect(useAuthStore.getState().userId).toBeNull();
-    expect(router.replace).toHaveBeenCalledWith('/(auth)');
+    // pressIn/pressOut drive the press-scale spring; press triggers navigation.
+    await fireEvent(screen.getByTestId('dashboard-settings'), 'pressIn');
+    await fireEvent(screen.getByTestId('dashboard-settings'), 'pressOut');
+    await fireEvent.press(screen.getByTestId('dashboard-settings'));
+    expect(router.push).toHaveBeenCalledWith('/(wallet)/settings');
   });
 
-  it('navigates to each wallet action screen', async () => {
+  it('navigates to send, receive and cashback from the balance card action row', async () => {
     await renderScreen();
 
-    await fireEvent.press(screen.getByText('Send'));
+    await fireEvent.press(screen.getByTestId('balance-send'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/send');
 
-    await fireEvent.press(screen.getByText('Receive'));
+    await fireEvent.press(screen.getByTestId('balance-receive'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/receive');
 
-    await fireEvent.press(screen.getByText('Seed'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/wallet-setup');
-
-    await fireEvent.press(screen.getByText('Cashback'));
+    await fireEvent.press(screen.getByTestId('balance-cashback'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/cashback');
+  });
 
-    await fireEvent.press(screen.getByText('History'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/history');
+  it('shows the app logo and name in the header instead of a generic title', async () => {
+    await renderScreen();
+
+    expect(screen.getByText('Northstar')).toBeTruthy();
+    expect(screen.queryByText('Wallet')).toBeNull();
+  });
+
+  it('defaults the network filter to All and lets the user switch to Mainnet/Testnet', async () => {
+    await renderScreen();
+
+    expect(screen.getByTestId('network-filter-all').props.accessibilityState.selected).toBe(true);
+
+    // pressIn/pressOut drive the chip's press-scale spring; press switches the filter.
+    await fireEvent(screen.getByTestId('network-filter-mainnet'), 'pressIn');
+    await fireEvent(screen.getByTestId('network-filter-mainnet'), 'pressOut');
+    await fireEvent.press(screen.getByTestId('network-filter-mainnet'));
+    expect(screen.getByTestId('network-filter-mainnet').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('network-filter-all').props.accessibilityState.selected).toBe(false);
+  });
+
+  it('scopes the token list to the selected network filter', async () => {
+    await renderScreen();
+
+    // All: both testnet rows (ETH on Sepolia) and mainnet rows (BTC) render.
+    expect(screen.getByText('ETH')).toBeTruthy();
+    expect(screen.getByText('BTC')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('network-filter-mainnet'));
+    expect(screen.queryByText('ETH')).toBeNull();
+    expect(screen.getByText('BTC')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('network-filter-testnet'));
+    expect(screen.getByText('ETH')).toBeTruthy();
+    expect(screen.queryByText('BTC')).toBeNull();
+  });
+
+  it('shows a loading indicator beside the My Tokens title while a refresh is in flight', async () => {
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    // Refetch promises that never resolve keep `refreshing` true for the assertion.
+    const hang = () => new Promise(() => {});
+    mockUseBalancesForWallet.mockReturnValue({ data: [], isLoading: false, refetch: jest.fn(hang) });
+    mockUseBalance.mockReturnValue({ data: undefined, isLoading: false, refetch: jest.fn(hang) });
+
+    const { unmount } = await renderScreen();
+
+    expect(screen.getByText('My Tokens')).toBeTruthy();
+    expect(screen.queryByTestId('dashboard-refresh-indicator')).toBeNull();
+
+    // Fire the post-bootstrap delayed refresh — the same code path pull-to-refresh runs.
+    const scheduled = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 2000);
+    await act(async () => { (scheduled![0] as () => void)(); await Promise.resolve(); });
+
+    expect(screen.getByTestId('dashboard-refresh-indicator')).toBeTruthy();
+
+    unmount();
+    setTimeoutSpy.mockRestore();
   });
 
   it('shows the fiat total in the hero and per-row fiat once balances and prices resolve', async () => {
@@ -290,6 +331,9 @@ describe('DashboardScreen', () => {
   it('navigates to that token\'s history when a balance row is tapped', async () => {
     await renderScreen();
 
+    // pressIn/pressOut drive the row's press-scale spring; press navigates.
+    await fireEvent(screen.getByText(ETH_CONFIG.symbol), 'pressIn');
+    await fireEvent(screen.getByText(ETH_CONFIG.symbol), 'pressOut');
     await fireEvent.press(screen.getByText(ETH_CONFIG.symbol));
 
     expect(router.push).toHaveBeenCalledWith({

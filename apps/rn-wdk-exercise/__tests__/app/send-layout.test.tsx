@@ -11,7 +11,13 @@ describe('SendLayout', () => {
     await render(<SendLayout />);
 
     expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
-      expect.objectContaining({ screenOptions: { headerShown: false } }),
+      expect.objectContaining({
+        screenOptions: expect.objectContaining({
+          headerShown: false,
+          // Guards against white flashes during push/pop transitions.
+          contentStyle: { backgroundColor: '#0C1117' },
+        }),
+      }),
     );
 
     const screenCalls = (Stack.Screen as unknown as jest.Mock).mock.calls.map(([props]) => props);
