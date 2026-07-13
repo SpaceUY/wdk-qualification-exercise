@@ -57,7 +57,7 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
   const activeIndex = TAB_ITEMS.findIndex((t) => t.name === focusedName);
 
   const [itemLayouts, setItemLayouts] = useState<
-    Partial<Record<TabName, { x: number; width: number }>>
+    Partial<Record<TabName, { x: number; y: number; width: number; height: number }>>
   >({});
   const highlightX = useSharedValue(0);
   const highlightWidth = useSharedValue(0);
@@ -85,13 +85,28 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
   if (activeIndex === -1) return null;
 
   const onItemLayout = (name: TabName) => (event: LayoutChangeEvent) => {
-    const { x, width } = event.nativeEvent.layout;
+    const { x, y, width, height } = event.nativeEvent.layout;
     setItemLayouts((prev) => {
       const current = prev[name];
-      if (current && current.x === x && current.width === width) return prev;
-      return { ...prev, [name]: { x, width } };
+      if (
+        current &&
+        current.x === x &&
+        current.y === y &&
+        current.width === width &&
+        current.height === height
+      ) {
+        return prev;
+      }
+      return { ...prev, [name]: { x, y, width, height } };
     });
   };
+
+  // The highlight overlays the active item's exact measured frame, so its inset
+  // from the pill edge is precisely the pill's padding on every side — never
+  // stretched taller than the item the way a top/bottom: 0 fill would be.
+  const verticalStyle = activeLayout
+    ? { top: activeLayout.y, height: activeLayout.height }
+    : undefined;
 
   const onTabPress = (name: TabName, key: string, isActive: boolean) => {
     const event = navigation.emit({ type: 'tabPress', target: key, canPreventDefault: true });
@@ -109,7 +124,7 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
           colorScheme="dark"
           style={[styles.pill, styles.glassSurface]}
         >
-          <Animated.View style={[styles.highlight, highlightStyle]} />
+          <Animated.View style={[styles.highlight, verticalStyle, highlightStyle]} />
           {TAB_ITEMS.map((item, index) => {
             const route = state.routes.find((r) => r.name === item.name);
             if (!route) return null;
@@ -216,12 +231,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 8,
   },
   highlight: {
-    // top/bottom 0, not spacing.xs: the pill's own padding already insets
-    // this from the outer edge, so adding another inset here would double
-    // it and leave the highlight short of the item it's supposed to match.
+    // top/height come from the active item's measured frame (see verticalStyle);
+    // only left/borderRadius/color are static here.
     position: 'absolute',
-    top: 0,
-    bottom: 0,
     left: 0,
     borderRadius: radius.full,
     backgroundColor: colors.primarySoft,
