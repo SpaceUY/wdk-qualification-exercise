@@ -99,6 +99,7 @@ describe('AssetDetailScreen', () => {
       syncStatus: 'done',
       syncError: null,
       myAddresses: ['bc1BitcoinAddress'],
+      retry: jest.fn(),
     });
   });
 
@@ -326,7 +327,8 @@ describe('AssetDetailScreen', () => {
     expect(screen.getByTestId('asset-history-skeleton')).toBeTruthy();
   });
 
-  it('shows the sync error when the history fails to load', async () => {
+  it('shows a generic error with a Retry button when the history fails to load', async () => {
+    const retry = jest.fn();
     mockUseFilteredTransactionHistory.mockReturnValue({
       transfers: undefined,
       isLoading: false,
@@ -334,11 +336,16 @@ describe('AssetDetailScreen', () => {
       syncStatus: 'done',
       syncError: null,
       myAddresses: [],
+      retry,
     });
 
     await render(<AssetDetailScreen />);
 
-    expect(screen.getByText('Could not load transaction history')).toBeTruthy();
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('asset-history-retry'));
+
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 
   it('shows an empty state when the asset has no transfers', async () => {

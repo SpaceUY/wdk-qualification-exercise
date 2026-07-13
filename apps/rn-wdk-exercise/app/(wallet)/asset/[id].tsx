@@ -35,6 +35,16 @@ export const CHART_AXIS_WIDTH = 70;
 const CHART_X_AXIS_RESERVED_HEIGHT = 40;
 const AXIS_TICK_COUNT = 4;
 const LOADING_SKELETON_ROWS = 4;
+// Rough width of one glyph at the axis labels' caption font size (13px) — used to shrink
+// the reserved gutter (and widen the plotted line) when the price range's labels are
+// shorter than CHART_AXIS_WIDTH was sized for, e.g. "$0.01" for a low-priced asset.
+const AXIS_CHAR_WIDTH = 7;
+const AXIS_MIN_WIDTH = 36;
+
+function computeAxisWidth(high: number, low: number): number {
+  const widestLabelLength = Math.max(formatFiat(high)?.length ?? 0, formatFiat(low)?.length ?? 0);
+  return Math.min(CHART_AXIS_WIDTH, Math.max(AXIS_MIN_WIDTH, widestLabelLength * AXIS_CHAR_WIDTH));
+}
 
 type DirectionFilter = 'all' | 'received' | 'sent';
 
@@ -65,9 +75,6 @@ export default function AssetDetailScreen() {
   // LineChart defaults its SVG width to the full screen width, ignoring the
   // screen's own horizontal padding — pass the actual container width explicitly.
   const chartWidth = windowWidth - spacing.lg * 2;
-  // The line only plots within this narrower width, leaving CHART_AXIS_WIDTH clear on
-  // the right for the price labels so the line never reaches them.
-  const plotWidth = chartWidth - CHART_AXIS_WIDTH;
   const { id } = useLocalSearchParams<{ id?: string }>();
   const asset = ALL_ASSET_CONFIGS.find((c) => c.id === id);
 
@@ -88,7 +95,7 @@ export default function AssetDetailScreen() {
     isHistorySupportedNetwork(asset.network) &&
     isHistorySupportedAsset(asset.network, asset.isNative);
 
-  const { transfers, isLoading, isError, syncStatus, syncError, myAddresses } =
+  const { transfers, isLoading, isError, syncStatus, retry, myAddresses } =
     useFilteredTransactionHistory({
       network: asset?.network,
       symbol: asset?.symbol,
@@ -160,6 +167,10 @@ export default function AssetDetailScreen() {
     const high = maxPrice as number;
     const low = minPrice as number;
     const axisTicks = computeAxisTicks(low, high);
+    // Shrinks the reserved gutter (and widens the plotted line into the freed space)
+    // when this range's price labels are shorter than CHART_AXIS_WIDTH was sized for.
+    const axisWidth = computeAxisWidth(high, low);
+    const plotWidth = chartWidth - axisWidth;
     chartContent = (
       <View style={styles.chartWrapper}>
         <LineChart.Provider data={chartPoints}>
@@ -182,7 +193,7 @@ export default function AssetDetailScreen() {
             </LineChart.CursorCrosshair>
           </LineChart>
         </LineChart.Provider>
-        <View style={styles.axisLabels} pointerEvents="none">
+        <View style={[styles.axisLabels, { width: axisWidth }]} pointerEvents="none">
           {axisTicks.map((tick) => (
             <AppText
               key={tick.value}
@@ -290,22 +301,23 @@ export default function AssetDetailScreen() {
     historyEmpty = (
       <View style={styles.historyState}>
         <AppText color="danger" style={styles.errorText}>
-          {syncError ?? 'Could not load transaction history'}
+          Something went wrong. Please try again.
         </AppText>
+        <TouchableOpacity testID="asset-history-retry" style={styles.retryButton} onPress={retry}>
+          <AppText color="primary" style={styles.retryText}>Retry</AppText>
+        </TouchableOpacity>
       </View>
     );
   } else if (!isHistorySupportedNetwork(asset.network)) {
     historyEmpty = (
       <ComingSoonBanner
         message={`Transaction history for ${getNetworkDisplayName(asset.network)} isn't tracked yet — coming soon.`}
-        style={styles.historyBanner}
       />
     );
   } else if (!isHistorySupportedAsset(asset.network, asset.isNative)) {
     historyEmpty = (
       <ComingSoonBanner
         message={`Transaction history for ${asset.symbol} isn't tracked yet — coming soon.`}
-        style={styles.historyBanner}
       />
     );
   } else {
@@ -394,9 +406,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // so reset FilterChips' built-in margins.
   directionChips: { marginHorizontal: 0, marginTop: 0, marginBottom: spacing.md },
   historyState: { alignItems: 'center', padding: spacing.xl },
-  // Cancels the FlatList content container's horizontal padding so the banner spans
-  // the full screen width edge-to-edge instead of sitting inset like other empty states.
-  historyBanner: { marginHorizontal: -spacing.lg },
   errorText: { textAlign: 'center' },
   retryButton: { marginTop: spacing.md },
   retryText: { fontWeight: '600' },
