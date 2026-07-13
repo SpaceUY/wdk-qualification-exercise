@@ -6,5 +6,6 @@ export { AmountText, type AmountTextProps } from './AmountText';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Card, type CardProps } from './Card';
 export { Divider, type DividerProps } from './Divider';
+export { FilterChips, type FilterChipOption, type FilterChipsProps } from './FilterChips';
 export { PaginationDots, type PaginationDotsProps } from './PaginationDots';
 export { Skeleton, type SkeletonProps } from './Skeleton';

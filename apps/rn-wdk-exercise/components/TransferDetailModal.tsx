@@ -1,4 +1,11 @@
-import { Linking, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
+import { BackHandler, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from 'sonner-native';
 import type { TokenTransfer } from '@/utils/appNodeApi';
@@ -24,64 +31,105 @@ export function TransferDetailModal({
   onClose: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const isOpen = transfer != null;
   const explorerUrl = transfer
     ? getExplorerTxUrl(transfer.blockchain, transfer.transactionHash)
     : null;
 
+  // The sheet API is imperative (present/dismiss) while the screens drive it with a
+  // `transfer` prop, so this effect translates prop changes into sheet commands.
+  useEffect(() => {
+    if (isOpen) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [isOpen]);
+
+  // BottomSheetModal doesn't handle the Android hardware back button (the RN Modal it
+  // replaced did via onRequestClose), so close on back press while the sheet is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [isOpen, onClose]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        // The theme overlay color already carries its alpha, so the backdrop fades
+        // to it fully instead of layering the library's 0.5 default on top.
+        opacity={1}
+        style={[props.style, styles.backdrop]}
+        pressBehavior="close"
+      />
+    ),
+    [styles],
+  );
+
   return (
-    <Modal visible={transfer != null} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        {/* Tapping the dimmed area behind the sheet dismisses it, like a native sheet. */}
-        <TouchableOpacity style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-        <View style={styles.detailCard}>
-          <View style={styles.grabHandle} />
-          {transfer ? (
-            <>
-              <AppText variant="subtitle">
-                {isReceived(transfer, myAddresses) ? 'Received' : 'Sent'}{' '}
-                {transfer.token?.toUpperCase()}
-              </AppText>
-              <AppText variant="caption" color="textMuted" style={styles.detailSubtitle}>
-                {transfer.blockchain} · {formatTransferDate(transfer.ts)}
-              </AppText>
+    <BottomSheetModal
+      ref={sheetRef}
+      onDismiss={onClose}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.sheetBackground}
+      handleIndicatorStyle={styles.handleIndicator}
+    >
+      <BottomSheetView style={styles.detailCard}>
+        {transfer ? (
+          <>
+            <AppText variant="subtitle">
+              {isReceived(transfer, myAddresses) ? 'Received' : 'Sent'}{' '}
+              {transfer.token?.toUpperCase()}
+            </AppText>
+            <AppText variant="caption" color="textMuted" style={styles.detailSubtitle}>
+              {transfer.blockchain} · {formatTransferDate(transfer.ts)}
+            </AppText>
 
-              <DetailRow
-                label="Amount"
-                value={`${trimDisplayDecimals(transfer.amount || '0', 6)} ${transfer.token?.toUpperCase() ?? ''}`}
-              />
-              <DetailRow
-                label="Transaction Hash"
-                value={transfer.transactionHash}
-                onCopy={() => copyToClipboard('Transaction hash', transfer.transactionHash)}
-              />
-              <DetailRow
-                label="From"
-                value={transfer.from}
-                onCopy={() => copyToClipboard('Address', transfer.from)}
-              />
-              <DetailRow
-                label="To"
-                value={transfer.to}
-                onCopy={() => copyToClipboard('Address', transfer.to)}
-              />
+            <DetailRow
+              label="Amount"
+              value={`${trimDisplayDecimals(transfer.amount || '0', 6)} ${transfer.token?.toUpperCase() ?? ''}`}
+            />
+            <DetailRow
+              label="Transaction Hash"
+              value={transfer.transactionHash}
+              onCopy={() => copyToClipboard('Transaction hash', transfer.transactionHash)}
+            />
+            <DetailRow
+              label="From"
+              value={transfer.from}
+              onCopy={() => copyToClipboard('Address', transfer.from)}
+            />
+            <DetailRow
+              label="To"
+              value={transfer.to}
+              onCopy={() => copyToClipboard('Address', transfer.to)}
+            />
 
-              {explorerUrl ? (
-                <TouchableOpacity
-                  style={styles.explorerButton}
-                  onPress={() => Linking.openURL(explorerUrl)}
-                >
-                  <AppText variant="subtitle" color="primary" style={styles.explorerButtonText}>View on Explorer</AppText>
-                </TouchableOpacity>
-              ) : null}
-
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <AppText color="textMuted">Close</AppText>
+            {explorerUrl ? (
+              <TouchableOpacity
+                style={styles.explorerButton}
+                onPress={() => Linking.openURL(explorerUrl)}
+              >
+                <AppText variant="subtitle" color="primary" style={styles.explorerButtonText}>View on Explorer</AppText>
               </TouchableOpacity>
-            </>
-          ) : null}
-        </View>
-      </View>
-    </Modal>
+            ) : null}
+
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <AppText color="textMuted">Close</AppText>
+            </TouchableOpacity>
+          </>
+        ) : null}
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 }
 
@@ -113,29 +161,22 @@ function DetailRow({
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  // Bottom sheet: the card is anchored to the bottom edge so the slide-in animation
-  // ends where it points, instead of a centered card that stops mid-screen.
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: colors.overlay,
-  },
-  backdrop: { flex: 1 },
-  detailCard: {
-    width: '100%',
+  backdrop: { backgroundColor: colors.overlay },
+  sheetBackground: {
     backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: spacing.xl,
-    paddingBottom: 36,
   },
-  grabHandle: {
-    alignSelf: 'center',
+  handleIndicator: {
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.borderStrong,
-    marginBottom: spacing.lg,
+  },
+  detailCard: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: 36,
   },
   detailSubtitle: { marginTop: 4, marginBottom: spacing.lg },
   detailRow: { marginBottom: 14 },

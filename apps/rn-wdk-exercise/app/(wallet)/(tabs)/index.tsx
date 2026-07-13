@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Settings } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
 import { useAssetBalances } from '@/hooks/useAssetBalances';
@@ -71,6 +71,10 @@ export default function DashboardScreen() {
     return () => clearTimeout(timeout);
   }, [status, handleRefresh]);
 
+  if (status === 'needs-cloud-restore') {
+    return <Redirect href="/(wallet)/wallet-setup/restore-cloud" />;
+  }
+
   if (status === 'loading' || status === 'idle') {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'bottom']}>
@@ -89,7 +93,12 @@ export default function DashboardScreen() {
     );
   }
 
-  const { rows, totalFiat } = buildAssetRows(ALL_ASSET_CONFIGS, balanceByAssetId, pricesData?.prices);
+  const { rows, totalFiat } = buildAssetRows(
+    ALL_ASSET_CONFIGS,
+    balanceByAssetId,
+    pricesData?.prices,
+    pricesData?.changePct24h,
+  );
   const filteredRows = rows.filter((row) => {
     if (networkFilter === 'all') return true;
     return networkFilter === 'mainnet' ? row.isMainnet : !row.isMainnet;
@@ -163,8 +172,8 @@ export default function DashboardScreen() {
                   hidden={isBalanceHidden}
                   onPress={() =>
                     router.push({
-                      pathname: '/(wallet)/history',
-                      params: { network: item.network, symbol: item.symbol },
+                      pathname: '/(wallet)/asset/[id]',
+                      params: { id: item.id },
                     })
                   }
                 />

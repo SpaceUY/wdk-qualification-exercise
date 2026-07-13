@@ -16,6 +16,8 @@ export const colors = {
   // Status colors, desaturated to sit next to the gold without competing.
   danger: '#F07A6E',
   dangerStrong: '#D9534F',
+  // Lighter red for small text on dark surfaces (mirrors successText's role).
+  dangerText: '#F2A99C',
   success: '#5FBF8F',
   successBg: '#16291F',
   successText: '#8FD9B2',

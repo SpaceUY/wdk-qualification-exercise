@@ -10,6 +10,7 @@ export const router = {
   replace: jest.fn(),
   back: jest.fn(),
   navigate: jest.fn(),
+  dismissTo: jest.fn(),
   setParams: jest.fn(),
 };
 

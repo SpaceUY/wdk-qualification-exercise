@@ -7,7 +7,7 @@ describe('SendLayout', () => {
     jest.clearAllMocks();
   });
 
-  it('hides headers and presents scan as a full screen modal', async () => {
+  it('hides headers, presents scan full-screen and the address book as a modal', async () => {
     await render(<SendLayout />);
 
     expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
@@ -22,6 +22,10 @@ describe('SendLayout', () => {
 
     const screenCalls = (Stack.Screen as unknown as jest.Mock).mock.calls.map(([props]) => props);
 
-    expect(screenCalls).toEqual([{ name: 'scan', options: { presentation: 'fullScreenModal' } }]);
+    expect(screenCalls).toEqual([
+      { name: 'scan', options: { presentation: 'fullScreenModal' } },
+      { name: 'address-book', options: { presentation: 'modal' } },
+      { name: 'add-contact', options: { presentation: 'modal' } },
+    ]);
   });
 });

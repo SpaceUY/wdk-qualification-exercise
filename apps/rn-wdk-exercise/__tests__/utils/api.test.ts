@@ -18,12 +18,14 @@ jest.mock('expo-auth-session', () => ({
 // Import the actual modules AFTER mocking auth store
 import {
   postWalletBackup,
+  getWalletBackupExists,
   putWalletAddress,
   getCoupons,
   getClaimedCoupons,
   getAppNodeToken,
   getMerchants,
   getPrices,
+  getPriceHistory,
   apiClient,
 } from '@/utils/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -48,6 +50,18 @@ describe('apiClient', () => {
 
     expect(postSpy).toHaveBeenCalledWith('/wallets/backup', { ciphertext: 'encrypted-ciphertext-abc' });
     postSpy.mockRestore();
+  });
+
+  it('getWalletBackupExists calls apiClient.get and returns the exists flag', async () => {
+    const getSpy = jest
+      .spyOn(apiClient, 'get' as any)
+      .mockResolvedValueOnce({ data: { exists: true } });
+
+    const result = await getWalletBackupExists();
+
+    expect(getSpy).toHaveBeenCalledWith('/wallets/backup/exists');
+    expect(result).toBe(true);
+    getSpy.mockRestore();
   });
 
   it('getCoupons calls apiClient.get and returns the response data', async () => {
@@ -127,6 +141,22 @@ describe('apiClient', () => {
 
     expect(getSpy).toHaveBeenCalledWith('/prices');
     expect(result).toEqual(prices);
+    getSpy.mockRestore();
+  });
+
+  it('getPriceHistory calls apiClient.get with the symbol path and range param', async () => {
+    const history = {
+      symbol: 'BTC',
+      range: '1w',
+      points: [{ timestamp: 1_000, price: 98_000 }],
+      fetchedAt: '2026-07-10T00:00:00.000Z',
+    };
+    const getSpy = jest.spyOn(apiClient, 'get' as any).mockResolvedValueOnce({ data: history });
+
+    const result = await getPriceHistory('BTC', '1w');
+
+    expect(getSpy).toHaveBeenCalledWith('/prices/history/BTC', { params: { range: '1w' } });
+    expect(result).toEqual(history);
     getSpy.mockRestore();
   });
 });

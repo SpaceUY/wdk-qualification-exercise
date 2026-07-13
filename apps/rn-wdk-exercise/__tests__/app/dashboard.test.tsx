@@ -76,6 +76,16 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Initializing wallet…')).toBeTruthy();
   });
 
+  it('redirects to the cloud restore screen when the backend already has a backup', async () => {
+    mockUseWalletBootstrap.mockReturnValue({ status: 'needs-cloud-restore', error: null, retry: jest.fn() });
+
+    await renderScreen();
+
+    expect(screen.getByTestId('mock-redirect').props.children).toBe(
+      '/(wallet)/wallet-setup/restore-cloud',
+    );
+  });
+
   it('shows an error and retries bootstrap on request', async () => {
     const mockRetry = jest.fn();
     mockUseWalletBootstrap.mockReturnValue({ status: 'error', error: 'Bootstrap failed', retry: mockRetry });
@@ -328,7 +338,7 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('••••')).toBeNull();
   });
 
-  it('navigates to that token\'s history when a balance row is tapped', async () => {
+  it('navigates to that token\'s asset detail when a balance row is tapped', async () => {
     await renderScreen();
 
     // pressIn/pressOut drive the row's press-scale spring; press navigates.
@@ -337,8 +347,8 @@ describe('DashboardScreen', () => {
     await fireEvent.press(screen.getByText(ETH_CONFIG.symbol));
 
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/(wallet)/history',
-      params: { network: ETH_CONFIG.network, symbol: ETH_CONFIG.symbol },
+      pathname: '/(wallet)/asset/[id]',
+      params: { id: ETH_CONFIG.id },
     });
   });
 });

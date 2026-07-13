@@ -17,4 +17,8 @@ export class WalletsService {
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
   }
+
+  async hasBackupForUser(userId: string): Promise<boolean> {
+    return this.backupModel.exists({ userId }).then(Boolean);
+  }
 }

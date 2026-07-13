@@ -165,4 +165,16 @@ describe('SendScreen', () => {
       params: { returnTo: 'send' },
     });
   });
+
+  it('opens the contact picker scoped to the selected token network', async () => {
+    await render(<SendScreen />);
+
+    await selectToken(BTC_CONFIG.id);
+    await fireEvent.press(screen.getByTestId('send-open-address-book'));
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/(wallet)/send/address-book',
+      params: { network: BTC_CONFIG.network },
+    });
+  });
 });

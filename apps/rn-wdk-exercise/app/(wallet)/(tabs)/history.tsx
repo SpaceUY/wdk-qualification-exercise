@@ -1,22 +1,32 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Receipt } from 'lucide-react-native';
+import { CircleHelp, Receipt } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { toast } from 'sonner-native';
 import type { TokenTransfer } from '@/utils/appNodeApi';
 import { trimDisplayDecimals } from '@/utils/balance';
 import { formatTransferDate, isReceived, truncateHash } from '@/utils/transfers';
 import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHistory';
+import { getNetworkDisplayName, isHistorySupportedNetwork } from '@/config/networkMeta';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText } from '@/components/ui';
-import { Header } from '@/components/Header';
+import { AppText, FilterChips, type FilterChipOption } from '@/components/ui';
+import { Header, HeaderIconButton } from '@/components/Header';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
 import { RowSkeleton } from '@/components/RowSkeleton';
 import { NetworkDot } from '@/components/NetworkDot';
 
 const LOADING_SKELETON_ROWS = 6;
+
+type DirectionFilter = 'all' | 'received' | 'sent';
+
+const DIRECTION_FILTERS: FilterChipOption<DirectionFilter>[] = [
+  { key: 'all', label: 'All' },
+  { key: 'received', label: 'Received' },
+  { key: 'sent', label: 'Sent' },
+];
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -26,6 +36,14 @@ export default function HistoryScreen() {
   const { transfers, isLoading, isError, syncStatus, syncError, myAddresses } =
     useFilteredTransactionHistory({ network, symbol });
   const [selected, setSelected] = useState<TokenTransfer | null>(null);
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
+
+  const visibleTransfers = useMemo(() => {
+    if (directionFilter === 'all') return transfers;
+    return transfers?.filter(
+      (t) => isReceived(t, myAddresses) === (directionFilter === 'received'),
+    );
+  }, [transfers, directionFilter, myAddresses]);
 
   let content;
   if (syncStatus === 'syncing' || (syncStatus === 'done' && isLoading)) {
@@ -48,7 +66,7 @@ export default function HistoryScreen() {
     content = (
       <FlatList
         contentContainerStyle={styles.container}
-        data={transfers ?? []}
+        data={visibleTransfers ?? []}
         keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
         ListEmptyComponent={
           <View style={styles.center}>
@@ -100,11 +118,35 @@ export default function HistoryScreen() {
     );
   }
 
+  const comingSoonMessage = network
+    ? !isHistorySupportedNetwork(network)
+      ? `Transaction history for ${getNetworkDisplayName(network)} isn't tracked yet — coming soon.`
+      : null
+    : 'Transaction history currently covers USDT on Ethereum and Bitcoin only — other assets and networks are coming soon.';
+
   return (
     // No bottom edge: the list scrolls behind the floating glass tab bar, with
     // TAB_BAR_CLEARANCE padding keeping the last row reachable.
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <Header left={<AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>} />
+      <Header
+        left={<AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>}
+        right={
+          comingSoonMessage ? (
+            <HeaderIconButton
+              testID="history-help"
+              icon={CircleHelp}
+              accessibilityLabel="Coverage info"
+              onPress={() => toast.info('Coming soon', { description: comingSoonMessage })}
+            />
+          ) : null
+        }
+      />
+      <FilterChips
+        options={DIRECTION_FILTERS}
+        value={directionFilter}
+        onChange={setDirectionFilter}
+        testIDPrefix="history-filter"
+      />
       {content}
 
       <TransferDetailModal

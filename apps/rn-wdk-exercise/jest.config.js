@@ -4,8 +4,15 @@ const path = require('path');
 const config = {
   preset: 'react-native',
 
+  // react-native-worklets ships native-only entry points; this resolver picks the
+  // non-native build so requiring react-native-reanimated doesn't hit the native module.
+  resolver: 'react-native-worklets/jest/resolver.js',
+
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Official test-runner mock: sheets render their children unconditionally, so
+    // conditional sheet content stays drivable from tests without native animation.
+    '^@gorhom/bottom-sheet$': '<rootDir>/node_modules/@gorhom/bottom-sheet/mock.js',
     // The RN jest resolver honors the package's "react-native"/"module" export condition,
     // which points at an .mjs build — Jest's default transform only matches .js/.ts/.tsx,
     // so that file reaches the VM untransformed and throws on `export`. Force the CJS build.

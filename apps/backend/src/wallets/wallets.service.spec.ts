@@ -5,10 +5,11 @@ import { EncryptedBackup } from './entities/encrypted-backup.entity';
 
 type MockModel = {
   findOneAndUpdate: jest.Mock;
+  exists: jest.Mock;
 };
 
 function createMockModel(): MockModel {
-  return { findOneAndUpdate: jest.fn() };
+  return { findOneAndUpdate: jest.fn(), exists: jest.fn() };
 }
 
 describe('WalletsService', () => {
@@ -55,6 +56,22 @@ describe('WalletsService', () => {
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
       expect(result).toBe(refreshed);
+    });
+  });
+
+  describe('hasBackupForUser', () => {
+    it('returns true when a backup exists for the user', async () => {
+      backupModel.exists.mockResolvedValue({ _id: 'bk-1' });
+
+      await expect(service.hasBackupForUser('user-1')).resolves.toBe(true);
+
+      expect(backupModel.exists).toHaveBeenCalledWith({ userId: 'user-1' });
+    });
+
+    it('returns false when no backup exists for the user', async () => {
+      backupModel.exists.mockResolvedValue(null);
+
+      await expect(service.hasBackupForUser('user-1')).resolves.toBe(false);
     });
   });
 });

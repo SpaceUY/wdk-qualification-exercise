@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -33,6 +33,17 @@ export class WalletsController {
     });
     const backup = await this.walletsService.upsertBackup(user.id, dto.ciphertext);
     return { id: backup.id };
+  }
+
+  @Get('backup/exists')
+  @ApiOperation({ summary: 'Check whether the authenticated user already has a cloud wallet backup' })
+  @ApiResponse({ status: 200, description: 'Existence flag', type: Object })
+  async backupExists(@CurrentUser() authUser: AuthenticatedUser): Promise<{ exists: boolean }> {
+    // findByCognitoSub (not findOrCreate): a read-only GET must not create a user row.
+    const user = await this.usersService.findByCognitoSub(authUser.sub);
+    if (!user) return { exists: false };
+    const exists = await this.walletsService.hasBackupForUser(user.id);
+    return { exists };
   }
 
   @Put('address')
