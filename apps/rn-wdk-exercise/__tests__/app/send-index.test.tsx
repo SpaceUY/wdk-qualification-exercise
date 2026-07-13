@@ -25,6 +25,13 @@ async function fillForm(recipient: string, amount: string, symbol: string = ETH_
   await fireEvent.changeText(screen.getByPlaceholderText(`0.00 ${symbol}`), amount);
 }
 
+// Tokens are chosen through the bottom-sheet picker: open it from the trigger row,
+// then tap the asset's row (which selects and auto-closes the sheet).
+async function selectToken(assetId: string) {
+  await fireEvent.press(screen.getByTestId('token-picker-trigger'));
+  await fireEvent.press(screen.getByTestId(`token-picker-row-${assetId}`));
+}
+
 describe('SendScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -117,7 +124,7 @@ describe('SendScreen', () => {
   it('navigates to confirm with the selected asset after switching tokens', async () => {
     await render(<SendScreen />);
 
-    await fireEvent.press(screen.getByText('BTC'));
+    await selectToken(BTC_CONFIG.id);
     await fillForm('bc1RecipientAddress', '0.01', BTC_CONFIG.symbol);
     await fireEvent.press(screen.getByText('Review Transaction'));
 
@@ -143,7 +150,7 @@ describe('SendScreen', () => {
   it('shows a real-funds warning after switching to a mainnet asset', async () => {
     await render(<SendScreen />);
 
-    await fireEvent.press(screen.getByText('BTC'));
+    await selectToken(BTC_CONFIG.id);
 
     expect(screen.getByTestId('mainnet-funds-banner')).toBeTruthy();
   });
@@ -151,7 +158,7 @@ describe('SendScreen', () => {
   it('navigates to the QR scanner when the scan button is pressed', async () => {
     await render(<SendScreen />);
 
-    await fireEvent.press(screen.getByText('QR'));
+    await fireEvent.press(screen.getByLabelText('Scan QR code'));
 
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/(wallet)/send/scan',

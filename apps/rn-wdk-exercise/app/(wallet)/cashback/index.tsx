@@ -28,7 +28,7 @@ import { USDT_ETH_CONFIG, UTL_CONFIG } from '@/config/assets';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { RowSkeleton } from '@/components/RowSkeleton';
 
 type Tab = 'available' | 'claimed';
@@ -277,8 +277,8 @@ export default function CashbackScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScreenHeader title="Cashback Coupons" />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Cashback Coupons" />} />
 
       {myAddress ? (
         <View style={styles.myAddressBanner}>

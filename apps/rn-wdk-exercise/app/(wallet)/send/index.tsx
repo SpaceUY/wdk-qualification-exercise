@@ -1,22 +1,31 @@
 import { useEffect, useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   View,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
+import { ChevronDown, QrCode } from 'lucide-react-native';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
-import { NetworkDot } from '@/components/NetworkDot';
+import { TokenLogo } from '@/components/TokenLogo';
+import { TokenPickerSheet } from '@/components/TokenPickerSheet';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText, Button, Card, Divider } from '@/components/ui';
+import { AppText, Button, Card } from '@/components/ui';
+
+const INPUT_HEIGHT = 50;
+// Matches the press-scale spring used by HeaderIconButton and AssetRow, so every
+// tappable surface in the app compresses with the same feel.
+const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function SendScreen() {
   const router = useRouter();
@@ -26,6 +35,16 @@ export default function SendScreen() {
   const [selectedAsset, setSelectedAsset] = useState<AssetConfig>(ALL_ASSET_CONFIGS[0]);
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
+  const [pickerVisible, setPickerVisible] = useState(false);
+
+  const tokenTriggerScale = useSharedValue(1);
+  const tokenTriggerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: tokenTriggerScale.value }],
+  }));
+  const scanButtonScale = useSharedValue(1);
+  const scanButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scanButtonScale.value }],
+  }));
 
   useEffect(() => {
     if (params.scannedAddress) {
@@ -87,34 +106,29 @@ export default function SendScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Send" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Send" />} />
       <ScrollView contentContainerStyle={styles.container}>
         <Card elevated style={styles.formCard}>
           <AppText variant="caption" color="textMuted" style={styles.label}>Token</AppText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tokenScroll}>
-            {ALL_ASSET_CONFIGS.map((asset) => (
-              <TouchableOpacity
-                key={asset.id}
-                style={[styles.tokenChip, selectedAsset.id === asset.id && styles.tokenChipActive]}
-                onPress={() => setSelectedAsset(asset)}
-              >
-                <View style={styles.tokenChipHeader}>
-                  <NetworkDot network={asset.network} size={7} />
-                  <AppText variant="body" style={[styles.tokenChipText, selectedAsset.id === asset.id && styles.tokenChipTextActive]}>
-                    {asset.symbol}
-                  </AppText>
-                </View>
-                <AppText variant="caption" style={[styles.tokenNetwork, selectedAsset.id === asset.id && styles.tokenNetworkActive]}>
-                  {asset.network}
-                </AppText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <AnimatedPressable
+            testID="token-picker-trigger"
+            style={[styles.tokenTrigger, tokenTriggerAnimatedStyle]}
+            onPress={() => setPickerVisible(true)}
+            onPressIn={() => { tokenTriggerScale.value = withSpring(0.97, PRESS_SPRING); }}
+            onPressOut={() => { tokenTriggerScale.value = withSpring(1, PRESS_SPRING); }}
+          >
+            <View style={styles.tokenTriggerIdentity}>
+              <TokenLogo symbol={selectedAsset.symbol} size={32} />
+              <View>
+                <AppText variant="body" style={styles.tokenTriggerSymbol}>{selectedAsset.symbol}</AppText>
+                <AppText variant="caption" color="textMuted">{selectedAsset.network}</AppText>
+              </View>
+            </View>
+            <ChevronDown size={20} color={colors.textMuted} />
+          </AnimatedPressable>
 
-          <Divider />
-
-          <AppText variant="caption" color="textMuted" style={styles.label}>Recipient</AppText>
+          <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Recipient</AppText>
           <View style={styles.recipientRow}>
             <TextInput
               style={[styles.input, styles.recipientInput]}
@@ -125,14 +139,18 @@ export default function SendScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
-              <AppText variant="body" color="textOnPrimary" style={styles.scanButtonText}>QR</AppText>
-            </TouchableOpacity>
+            <AnimatedPressable
+              style={[styles.scanButton, scanButtonAnimatedStyle]}
+              onPress={handleScan}
+              onPressIn={() => { scanButtonScale.value = withSpring(0.88, PRESS_SPRING); }}
+              onPressOut={() => { scanButtonScale.value = withSpring(1, PRESS_SPRING); }}
+              accessibilityLabel="Scan QR code"
+            >
+              <QrCode size={22} color={colors.textPrimary} />
+            </AnimatedPressable>
           </View>
 
-          <Divider />
-
-          <AppText variant="caption" color="textMuted" style={styles.label}>Amount</AppText>
+          <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Amount</AppText>
           <TextInput
             style={styles.input}
             value={amount}
@@ -142,39 +160,46 @@ export default function SendScreen() {
             keyboardType="decimal-pad"
           />
         </Card>
-
-        <NetworkFundsBanner network={selectedAsset.network} />
-
-        <Button title="Review Transaction" onPress={handleContinue} style={styles.continueButton} />
       </ScrollView>
+
+      <View style={styles.footer}>
+        <NetworkFundsBanner network={selectedAsset.network} />
+        <Button title="Review Transaction" onPress={handleContinue} />
+      </View>
+
+      <TokenPickerSheet
+        visible={pickerVisible}
+        assets={ALL_ASSET_CONFIGS}
+        selectedId={selectedAsset.id}
+        onSelect={setSelectedAsset}
+        onClose={() => setPickerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
+  screen: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.xl },
   formCard: { marginBottom: spacing.lg },
   label: { fontWeight: '600', marginBottom: spacing.sm },
-  tokenScroll: { marginBottom: spacing.xs },
-  tokenChip: {
+  sectionLabel: { marginTop: spacing.md },
+  tokenTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
     paddingHorizontal: 14,
-    paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
-    marginRight: spacing.sm,
-    alignItems: 'center',
+    marginBottom: spacing.xs,
   },
-  tokenChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tokenChipHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tokenChipText: { fontSize: 14, fontWeight: '600' },
-  tokenChipTextActive: { color: colors.textOnPrimary },
-  tokenNetwork: { fontSize: 11, lineHeight: 14, color: colors.textSubtle, marginTop: 2 },
-  tokenNetworkActive: { color: colors.textOnPrimary, opacity: 0.85 },
+  tokenTriggerIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  tokenTriggerSymbol: { fontWeight: '600' },
   recipientRow: { flexDirection: 'row', gap: spacing.sm },
-  recipientInput: { flex: 1 },
+  recipientInput: { flex: 1, height: INPUT_HEIGHT },
   input: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -185,11 +210,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textPrimary,
   },
   scanButton: {
-    backgroundColor: colors.primary,
+    width: INPUT_HEIGHT,
+    height: INPUT_HEIGHT,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     borderRadius: radius.sm,
-    paddingHorizontal: 18,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  scanButtonText: { fontWeight: '700' },
-  continueButton: { marginTop: spacing.sm },
+  footer: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background,
+  },
 });

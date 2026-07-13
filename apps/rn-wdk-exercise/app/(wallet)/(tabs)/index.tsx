@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Settings } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { LiquidGlassView } from '@callstack/liquid-glass';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import { useWalletBootstrap } from '@/hooks/useWalletBootstrap';
 import { useAssetBalances } from '@/hooks/useAssetBalances';
@@ -18,11 +16,12 @@ import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import { useWalletRegistration } from '@/hooks/useWalletRegistration';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { gradients } from '@/theme/gradients';
-import { radius, spacing } from '@/theme/tokens';
+import { spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
 import { AssetRow, BalanceHeroView, buildAssetRows, NetworkFilterChips, type NetworkFilter } from '@/components/balance';
 import { RowSkeleton } from '@/components/RowSkeleton';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
+import { Header, HeaderIconButton } from '@/components/Header';
 
 // Height of the floating filter row + its fade tail — the overlay below is this
 // tall so the gradient has room to fade out before the chips.
@@ -32,9 +31,6 @@ const FILTER_OVERLAY_HEIGHT = 72;
 // gap to the filter row reads tighter while the fade still softens the overlap.
 const LIST_CONTENT_TOP_PADDING = 64;
 
-const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 export default function DashboardScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -43,11 +39,6 @@ export default function DashboardScreen() {
   const isBalanceHidden = useSettingsStore((s) => s.isBalanceHidden);
   const toggleBalanceHidden = useSettingsStore((s) => s.toggleBalanceHidden);
   const { status, error, retry } = useWalletBootstrap(userId);
-
-  const settingsScale = useSharedValue(1);
-  const settingsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: settingsScale.value }],
-  }));
 
   const { balanceByAssetId, hasAnyBalance, isLoading, refetchAll } = useAssetBalances();
   const { data: pricesData, isLoading: pricesLoading } = usePrices();
@@ -108,32 +99,22 @@ export default function DashboardScreen() {
     // No bottom edge: list content scrolls behind the floating glass tab bar,
     // with TAB_BAR_CLEARANCE padding keeping the last row reachable.
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.brand}>
-          <Image source={require('@/assets/icon.png')} style={styles.brandLogo} />
-          <AppText variant="title">Northstar</AppText>
-        </View>
-        <AnimatedPressable
-          testID="dashboard-settings"
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-          hitSlop={8}
-          onPress={() => router.push('/(wallet)/settings')}
-          onPressIn={() => { settingsScale.value = withSpring(0.88, PRESS_SPRING); }}
-          onPressOut={() => { settingsScale.value = withSpring(1, PRESS_SPRING); }}
-          style={[styles.settingsButton, settingsAnimatedStyle]}
-        >
-          <LiquidGlassView effect="none" colorScheme="dark" style={styles.settingsButtonGlass}>
-            {/* The border/background live on this plain View, not on LiquidGlassView
-                itself — iOS's native glass view reflows its internal content view
-                around its own border, which throws off child positioning if the
-                border is set directly on it (see GlassTabBar's pill/pillSurface split). */}
-            <View style={[styles.settingsButtonSurface, styles.glassSurface]}>
-              <Settings size={20} color={colors.textPrimary} />
-            </View>
-          </LiquidGlassView>
-        </AnimatedPressable>
-      </View>
+      <Header
+        left={
+          <View style={styles.brand}>
+            <Image source={require('@/assets/icon.png')} style={styles.brandLogo} />
+            <AppText variant="title">Northstar</AppText>
+          </View>
+        }
+        right={
+          <HeaderIconButton
+            testID="dashboard-settings"
+            icon={Settings}
+            accessibilityLabel="Settings"
+            onPress={() => router.push('/(wallet)/settings')}
+          />
+        }
+      />
 
       <BalanceHeroView
         totalFiat={totalFiat}
@@ -218,13 +199,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.xl,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brandLogo: { width: 28, height: 28, borderRadius: 8 },
   sectionTitleRow: {
@@ -250,37 +224,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     left: 0,
     right: 0,
     height: FILTER_OVERLAY_HEIGHT,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  settingsButtonGlass: {
-    flex: 1,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  settingsButtonSurface: {
-    flex: 1,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Mirrors GlassTabBar's glassSurface: native liquid glass (effect="regular") is
-  // disabled for now so iOS matches the Android look — translucent navy + hairline
-  // border reads as glass on the dark theme on every platform.
-  glassSurface: {
-    backgroundColor: 'rgba(21, 28, 36, 0.92)',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
   },
   retryButton: { alignSelf: 'stretch' },
   statusText: { marginTop: spacing.md },

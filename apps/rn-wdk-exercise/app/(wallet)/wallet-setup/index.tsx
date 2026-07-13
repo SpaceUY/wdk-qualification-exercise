@@ -1,7 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
@@ -11,8 +11,8 @@ export default function WalletSetupScreen() {
   const styles = useThemedStyles(createStyles);
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Wallet Options" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Wallet Options" />} />
       <View style={styles.container}>
         <AppText color="textMuted" style={styles.subtitle}>Manage your seed phrase</AppText>
 

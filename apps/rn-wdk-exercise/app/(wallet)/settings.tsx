@@ -6,7 +6,7 @@ import { KeyRound, LogOut } from 'lucide-react-native';
 import { useWalletData } from '@/hooks/useWalletData';
 import { signOutFromCognito } from '@/hooks/useCognito';
 import { useAuthStore } from '@/stores/authStore';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
@@ -29,8 +29,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Settings" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Settings" />} />
       <View style={styles.container}>
         <TouchableOpacity
           testID="settings-seed"

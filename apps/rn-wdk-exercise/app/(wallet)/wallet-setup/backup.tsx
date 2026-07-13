@@ -17,7 +17,7 @@ import { useWalletData } from '@/hooks/useWalletData';
 import { useBiometrics } from '@/hooks/useBiometrics';
 import { useSeedBackup } from '@/hooks/useSeedBackup';
 import { PassphraseInput } from '@/components/PassphraseInput';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
@@ -107,8 +107,8 @@ export default function BackupScreen() {
   const words = mnemonic?.split(' ') ?? [];
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Seed Phrase" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Seed Phrase" />} />
       <View style={styles.container}>
         <AppText variant="caption" color="warningText" style={styles.warning}>
           Never share your seed phrase. Anyone with it has full access to your wallet.
