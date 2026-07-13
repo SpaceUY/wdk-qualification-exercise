@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { validateMnemonic } from '@tetherto/wdk-react-native-core';
 import { useAuthStore } from '@/stores/authStore';
 import { useWalletData } from '@/hooks/useWalletData';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
@@ -59,8 +59,8 @@ export default function RestoreWalletScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Restore Wallet" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Restore Wallet" />} />
       <ScrollView contentContainerStyle={styles.container}>
         <AppText color="textMuted" style={styles.subtitle}>
           Enter your 12 or 24-word seed phrase separated by spaces.
