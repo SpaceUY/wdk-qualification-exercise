@@ -9,6 +9,28 @@ import {
 
 type SyncStatus = 'idle' | 'syncing' | 'done' | 'error';
 
+// The self-hosted stack's ork resolves the data-shard's RPC key over the public hyperswarm
+// DHT, and that lookup intermittently misses — the app-node then answers 404
+// (ERR_DATA_SHARD_NOT_FOUND) for a few seconds until the shard re-announces. Retrying the
+// whole sync run (connect is idempotent, and re-reading the wallet keeps create/update
+// consistent after a partial failure) with a short backoff absorbs those bursts.
+const RETRY_DELAYS_MS = [800, 2000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runWithRetries(run: () => Promise<void>): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      if (attempt >= RETRY_DELAYS_MS.length) throw err;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
 // Registers the wallet's ethereum/bitcoin addresses with the self-hosted WDK stack's app-node,
 // so its token-transfers endpoint has something to look up. Addresses load asynchronously and
 // independently (see useWallet's autoLoadAccountIndices) — this re-syncs whenever a *new*
@@ -38,7 +60,7 @@ export function useAppNodeWalletSync(addresses: AppNodeWalletAddresses): {
     setStatus('syncing');
     setError(null);
 
-    (async () => {
+    runWithRetries(async () => {
       await connectAppNode();
       const existing = await getAppNodeUserWallet();
 
@@ -51,7 +73,7 @@ export function useAppNodeWalletSync(addresses: AppNodeWalletAddresses): {
         }
       }
       knownKeys.forEach((key) => syncedKeys.current.add(key));
-    })()
+    })
       .then(() => setStatus('done'))
       .catch((err) => {
         setError(err instanceof Error ? err.message : String(err));

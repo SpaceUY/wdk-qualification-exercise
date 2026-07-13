@@ -95,6 +95,40 @@ describe('buildAssetRows', () => {
     expect(totalFiat).toBe('$10.00');
   });
 
+  describe('24h change', () => {
+    const ethBalance = balances([{ assetId: ETH.id, success: true, balance: '5000000000000000' }]);
+
+    it('formats a positive change with an explicit plus sign', () => {
+      const { rows } = buildAssetRows([ETH], ethBalance, { ETH: 2000 }, { ETH: 2.345 });
+
+      expect(rows[0]!.changePct24h).toEqual({ label: '+2.35%', isPositive: true });
+    });
+
+    it('formats a negative change with a minus sign', () => {
+      const { rows } = buildAssetRows([ETH], ethBalance, { ETH: 2000 }, { ETH: -1.12 });
+
+      expect(rows[0]!.changePct24h).toEqual({ label: '-1.12%', isPositive: false });
+    });
+
+    it('rounds a tiny negative change to +0.00% instead of -0.00%', () => {
+      const { rows } = buildAssetRows([ETH], ethBalance, { ETH: 2000 }, { ETH: -0.001 });
+
+      expect(rows[0]!.changePct24h).toEqual({ label: '+0.00%', isPositive: true });
+    });
+
+    it('keeps the change null when the backend reports no market data', () => {
+      const { rows } = buildAssetRows([ETH], ethBalance, { ETH: 2000 }, { ETH: null });
+
+      expect(rows[0]!.changePct24h).toBeNull();
+    });
+
+    it('keeps the change null when the record is absent (older backend or query loading)', () => {
+      const { rows } = buildAssetRows([ETH], ethBalance, { ETH: 2000 });
+
+      expect(rows[0]!.changePct24h).toBeNull();
+    });
+  });
+
   it('reports a real $0.00 total when balances are zero and prices are known', () => {
     const { totalFiat } = buildAssetRows(
       [ETH],

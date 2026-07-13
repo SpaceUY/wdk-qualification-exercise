@@ -9,9 +9,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckCheck, Tag } from 'lucide-react-native';
+import { CheckCheck, CircleHelp, Tag } from 'lucide-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWallet } from '@tetherto/wdk-react-native-core';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from 'sonner-native';
 import type { AxiosError } from 'axios';
@@ -28,7 +27,7 @@ import { USDT_ETH_CONFIG, UTL_CONFIG } from '@/config/assets';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
-import { Header, HeaderBackTitle } from '@/components/Header';
+import { Header, HeaderBackTitle, HeaderIconButton } from '@/components/Header';
 import { RowSkeleton } from '@/components/RowSkeleton';
 
 type Tab = 'available' | 'claimed';
@@ -92,8 +91,6 @@ export default function CashbackScreen() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('available');
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const { addresses } = useWallet({ autoLoadAccountIndices: [0] });
-  const myAddress = addresses['ethereum']?.[0] ?? null;
 
   const {
     data: available,
@@ -278,26 +275,22 @@ export default function CashbackScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Header left={<HeaderBackTitle title="Cashback Coupons" />} />
-
-      {myAddress ? (
-        <View style={styles.myAddressBanner}>
-          <AppText variant="caption" color="textMuted" style={styles.myAddressLabel}>
-            Cashback goes to
-          </AppText>
-          <View style={styles.addressRow}>
-            <AppText variant="caption" style={styles.myAddressText} numberOfLines={1}>
-              {myAddress}
-            </AppText>
-            <TouchableOpacity
-              onPress={() => copyToClipboard('Your address', myAddress)}
-              hitSlop={8}
-            >
-              <AppText variant="caption" color="primary" style={styles.copyLink}>Copy</AppText>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : null}
+      <Header
+        left={<HeaderBackTitle title="Cashback Coupons" />}
+        right={
+          <HeaderIconButton
+            testID="cashback-help"
+            icon={CircleHelp}
+            accessibilityLabel="Coverage info"
+            onPress={() =>
+              toast.info('Coming soon', {
+                description:
+                  'Cashback currently works only for USDT on Ethereum (Sepolia) — other networks are coming soon.',
+              })
+            }
+          />
+        }
+      />
 
       <View style={styles.tabBar}>
         <TouchableOpacity
@@ -373,15 +366,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   rowSubtitle: { marginTop: spacing.xs },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
   copyLink: { fontWeight: '600' },
-  myAddressBanner: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    borderRadius: 10,
-    backgroundColor: colors.primarySoft,
-  },
-  myAddressLabel: { marginBottom: spacing.xs },
-  myAddressText: { fontWeight: '600', flex: 1 },
   claimButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.sm,

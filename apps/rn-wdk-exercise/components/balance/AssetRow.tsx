@@ -56,6 +56,17 @@ export function AssetRow({ asset, hidden, onPress }: AssetRowProps) {
         {asset.fiatAmount != null && (
           <AmountText variant="caption" color="textMuted" value={asset.fiatAmount} hidden={hidden} />
         )}
+        {/* Fully omitted (not masked) in privacy mode: showing the day's direction
+            would leak whether the hidden balance gained or lost value. */}
+        {!hidden && asset.changePct24h != null && (
+          <AppText
+            variant="caption"
+            color={asset.changePct24h.isPositive ? 'successText' : 'dangerText'}
+            style={styles.changePct}
+          >
+            {asset.changePct24h.label}
+          </AppText>
+        )}
       </View>
     </AnimatedPressable>
   );
@@ -82,5 +93,6 @@ const createStyles = (colors: ThemeColors) =>
     chipMainnet: { backgroundColor: colors.successBg },
     chipTestnet: { backgroundColor: colors.warningBg },
     chipText: { fontSize: 10, lineHeight: 14, fontWeight: '700' },
+    changePct: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
     amounts: { alignItems: 'flex-end', gap: 2 },
   });

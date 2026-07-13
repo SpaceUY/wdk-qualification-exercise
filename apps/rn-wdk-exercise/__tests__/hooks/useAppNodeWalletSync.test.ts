@@ -95,21 +95,36 @@ describe('useAppNodeWalletSync', () => {
     await waitFor(() => expect(mockUpdateAppNodeWalletAddresses).toHaveBeenCalledTimes(1));
   });
 
-  it('transitions to error when connectAppNode throws', async () => {
+  it('retries the whole sync after a transient failure and still reaches done', async () => {
+    // The self-hosted app-node intermittently 404s (transient hyperswarm DHT lookup
+    // misses on the ork side) — one failed attempt must not strand the screen in error.
+    mockConnectAppNode
+      .mockRejectedValueOnce(new Error('Request failed with status code 404'))
+      .mockResolvedValue(undefined);
+    mockGetAppNodeUserWallet.mockResolvedValue({ id: 'w1', addresses: { ethereum: '0xabc' } });
+
+    const { result } = await renderHook(() => useAppNodeWalletSync({ ethereum: '0xabc' }));
+
+    await waitFor(() => expect(result.current.status).toBe('done'), { timeout: 4000 });
+    expect(mockConnectAppNode).toHaveBeenCalledTimes(2);
+  }, 10000);
+
+  it('transitions to error only after exhausting all retry attempts', async () => {
     mockConnectAppNode.mockRejectedValue(new Error('shard resolution failed'));
 
     const { result } = await renderHook(() => useAppNodeWalletSync({ ethereum: '0xabc' }));
 
-    await waitFor(() => expect(result.current.status).toBe('error'));
+    await waitFor(() => expect(result.current.status).toBe('error'), { timeout: 8000 });
     expect(result.current.error).toBe('shard resolution failed');
-  });
+    expect(mockConnectAppNode).toHaveBeenCalledTimes(3);
+  }, 10000);
 
   it('serializes non-Error thrown values as string', async () => {
     mockConnectAppNode.mockRejectedValue('plain string error');
 
     const { result } = await renderHook(() => useAppNodeWalletSync({ ethereum: '0xabc' }));
 
-    await waitFor(() => expect(result.current.status).toBe('error'));
+    await waitFor(() => expect(result.current.status).toBe('error'), { timeout: 8000 });
     expect(result.current.error).toBe('plain string error');
-  });
+  }, 10000);
 });

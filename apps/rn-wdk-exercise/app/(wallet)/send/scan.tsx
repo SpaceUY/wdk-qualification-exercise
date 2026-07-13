@@ -34,7 +34,10 @@ export default function QRScanScreen() {
 
     const { address, amount } = parseMerchantQR(data);
 
-    router.navigate({
+    // NOT router.navigate: since SDK 52 navigate pushes a NEW send/index instance
+    // on top of this camera modal instead of returning to the existing one, leaving
+    // a corrupted back stack. dismissTo pops back to send/index with the params.
+    router.dismissTo({
       pathname: '/(wallet)/send',
       params: {
         scannedAddress: address,

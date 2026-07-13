@@ -8,6 +8,7 @@ import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import { humanAmountToRaw } from '@/utils/balance';
 import { useBiometrics } from '@/hooks/useBiometrics';
 import { getMerchants } from '@/utils/api';
+import { DEFAULT_MERCHANT_NAME } from '@/utils/addressBook';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
@@ -16,7 +17,6 @@ import { AppText, Button, Card, Divider } from '@/components/ui';
 // The only entry in ALL_ASSET_CONFIGS with network: 'ethereum' and symbol: 'USDT' — the
 // asset the indexer/transfer.processor.ts actually watches for cashback-eligible transfers.
 const CASHBACK_ELIGIBLE_ASSET_ID = 'ethereum-usdt';
-const DEFAULT_MERCHANT_NAME = 'Affiliated merchant';
 
 // Rules match against the raw ethers.js / provider error message. Ordered by how
 // commonly they occur when sending a transaction; first match wins.

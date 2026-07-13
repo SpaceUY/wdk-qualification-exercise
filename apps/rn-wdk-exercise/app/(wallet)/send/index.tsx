@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
-import { ChevronDown, QrCode } from 'lucide-react-native';
+import { BookUser, ChevronDown, QrCode } from 'lucide-react-native';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 import { Header, HeaderBackTitle } from '@/components/Header';
@@ -44,6 +44,10 @@ export default function SendScreen() {
   const scanButtonScale = useSharedValue(1);
   const scanButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scanButtonScale.value }],
+  }));
+  const addressBookButtonScale = useSharedValue(1);
+  const addressBookButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: addressBookButtonScale.value }],
   }));
 
   useEffect(() => {
@@ -105,6 +109,13 @@ export default function SendScreen() {
     });
   }
 
+  function handleOpenAddressBook() {
+    router.push({
+      pathname: '/(wallet)/send/address-book',
+      params: { network: selectedAsset.network },
+    });
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <Header left={<HeaderBackTitle title="Send" />} />
@@ -147,6 +158,16 @@ export default function SendScreen() {
               accessibilityLabel="Scan QR code"
             >
               <QrCode size={22} color={colors.textPrimary} />
+            </AnimatedPressable>
+            <AnimatedPressable
+              testID="send-open-address-book"
+              style={[styles.scanButton, addressBookButtonAnimatedStyle]}
+              onPress={handleOpenAddressBook}
+              onPressIn={() => { addressBookButtonScale.value = withSpring(0.88, PRESS_SPRING); }}
+              onPressOut={() => { addressBookButtonScale.value = withSpring(1, PRESS_SPRING); }}
+              accessibilityLabel="Open address book"
+            >
+              <BookUser size={22} color={colors.textPrimary} />
             </AnimatedPressable>
           </View>
 

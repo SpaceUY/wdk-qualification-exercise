@@ -5,8 +5,14 @@ import { useAuthStore } from '../../stores/authStore';
 import RestoreCloudScreen from '../../app/(wallet)/wallet-setup/restore-cloud';
 
 const mockRestoreWallet = jest.fn();
+const mockCreateWallet = jest.fn();
+const mockHasLocalWallet = jest.fn();
 jest.mock('../../hooks/useWalletData', () => ({
-  useWalletData: () => ({ restoreWallet: mockRestoreWallet }),
+  useWalletData: () => ({
+    restoreWallet: mockRestoreWallet,
+    createWallet: mockCreateWallet,
+    hasLocalWallet: mockHasLocalWallet,
+  }),
 }));
 
 const mockSignIn = jest.fn();
@@ -41,6 +47,9 @@ describe('RestoreCloudScreen', () => {
     mockRestoreFromCloudBackup.mockResolvedValue('cloud-ciphertext');
     mockDecryptMnemonic.mockResolvedValue('abandon abandon abandon');
     mockRestoreWallet.mockResolvedValue(undefined);
+    mockCreateWallet.mockResolvedValue(undefined);
+    // Default: manual entry from the wallet-setup menu, local wallet already present.
+    mockHasLocalWallet.mockResolvedValue(true);
   });
 
   it('does nothing when there is no signed-in user', async () => {
@@ -212,6 +221,76 @@ describe('RestoreCloudScreen', () => {
       ),
     );
     expect(mockRestoreWallet).not.toHaveBeenCalled();
+  });
+
+  it('offers a last-resort "Start a New Wallet" button when there is no local wallet and no cloud backup', async () => {
+    Platform.OS = 'android';
+    mockHasLocalWallet.mockResolvedValue(false);
+    mockRestoreFromCloudBackup.mockResolvedValue(null);
+
+    await render(<RestoreCloudScreen />);
+    expect(screen.queryByText('Start a New Wallet')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+
+    await waitFor(() => expect(screen.getByText('Start a New Wallet')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Start a New Wallet'));
+
+    await waitFor(() => expect(mockCreateWallet).toHaveBeenCalledWith('user@test.com'));
+    expect(router.replace).toHaveBeenCalledWith('/(wallet)');
+  });
+
+  it('does not offer "Start a New Wallet" on manual entry when a local wallet exists', async () => {
+    Platform.OS = 'android';
+    mockHasLocalWallet.mockResolvedValue(true);
+    mockRestoreFromCloudBackup.mockResolvedValue(null);
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'No Backup Found',
+        'No cloud backup was found for this account.',
+      ),
+    );
+    expect(screen.queryByText('Start a New Wallet')).toBeNull();
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+  });
+
+  it('hides "Start a New Wallet" again once a later attempt finds a backup', async () => {
+    Platform.OS = 'android';
+    mockHasLocalWallet.mockResolvedValue(false);
+    mockRestoreFromCloudBackup.mockResolvedValueOnce(null);
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+    await waitFor(() => expect(screen.getByText('Start a New Wallet')).toBeTruthy());
+
+    mockRestoreFromCloudBackup.mockResolvedValue('cloud-ciphertext');
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+
+    await waitFor(() => expect(screen.getByTestId('passphrase-input')).toBeTruthy());
+    expect(screen.queryByText('Start a New Wallet')).toBeNull();
+  });
+
+  it('shows an alert and stays on the screen when the fresh wallet creation fails', async () => {
+    Platform.OS = 'android';
+    mockHasLocalWallet.mockResolvedValue(false);
+    mockRestoreFromCloudBackup.mockResolvedValue(null);
+    mockCreateWallet.mockRejectedValue(new Error('Keychain unavailable'));
+
+    await render(<RestoreCloudScreen />);
+    await fireEvent.press(screen.getByText('Sign in with Google'));
+    await waitFor(() => expect(screen.getByText('Start a New Wallet')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Start a New Wallet'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith('Could Not Create Wallet', 'Keychain unavailable'),
+    );
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   it('dismisses the passphrase prompt and discards the ciphertext on Cancel', async () => {

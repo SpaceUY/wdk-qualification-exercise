@@ -3,8 +3,9 @@ import { useWdkApp } from '@tetherto/wdk-react-native-core';
 import { useWalletData } from '@/hooks/useWalletData';
 import { useWalletOnboardingStore } from '@/stores/walletOnboardingStore';
 import { useAppLockStore } from '@/stores/appLockStore';
+import { getWalletBackupExists } from '@/utils/api';
 
-type BootstrapStatus = 'idle' | 'loading' | 'ready' | 'error';
+type BootstrapStatus = 'idle' | 'loading' | 'ready' | 'needs-cloud-restore' | 'error';
 
 export function useWalletBootstrap(userId: string | null): {
   status: BootstrapStatus;
@@ -44,11 +45,17 @@ export function useWalletBootstrap(userId: string | null): {
           setActiveWalletId(walletId);
           await unlock(walletId);
         } else {
-          // No local wallet: always create a fresh one. Restoring from an existing cloud
-          // backup now requires a user-supplied passphrase (see utils/seedEncryption.ts),
-          // which isn't available inside this background bootstrap effect — restoring
-          // from a cloud backup is something the user does explicitly, via the
-          // "Restore from Cloud Backup" screen.
+          // No local wallet. If the backend already holds an encrypted backup for this
+          // user, silently creating a fresh seed here would orphan their registered
+          // address forever (the server refuses address updates once set) — so hand off
+          // to the explicit "Restore from Cloud Backup" flow instead, which asks for the
+          // backup passphrase this background effect can't supply. Only when the backend
+          // confirms there is no backup do we auto-create a fresh wallet.
+          const backupExists = await getWalletBackupExists();
+          if (backupExists) {
+            setStatus('needs-cloud-restore');
+            return;
+          }
           await createWallet(walletId);
           setWalletOnboardingCompleted(false);
         }

@@ -26,6 +26,11 @@ jest.mock('../../hooks/useWalletData', () => ({
   }),
 }));
 
+const mockGetWalletBackupExists = jest.fn<Promise<boolean>, []>();
+jest.mock('../../utils/api', () => ({
+  getWalletBackupExists: () => mockGetWalletBackupExists(),
+}));
+
 const mockSetWalletOnboardingCompleted = jest.fn<void, [boolean]>();
 const mockUseWalletOnboardingStore = jest.fn();
 
@@ -53,6 +58,8 @@ describe('useWalletBootstrap', () => {
     jest.clearAllMocks();
     setupWdkReady(true);
     setupStoreMock();
+    // Default: backend has no backup for this user, so the slow path auto-creates.
+    mockGetWalletBackupExists.mockResolvedValue(false);
     // Default: the app's own biometric gate already checked out and isn't locked, so
     // existing tests exercise bootstrap without needing to care about the lock screen.
     useAppLockStore.setState({ checked: true, locked: false });
@@ -129,8 +136,9 @@ describe('useWalletBootstrap', () => {
     expect(mockSetWalletOnboardingCompleted).not.toHaveBeenCalled();
   });
 
-  it('slow path: always creates a fresh wallet when none exists locally, with no cloud interaction', async () => {
+  it('slow path: creates a fresh wallet when none exists locally and the backend has no backup', async () => {
     mockHasLocalWallet.mockResolvedValue(false);
+    mockGetWalletBackupExists.mockResolvedValue(false);
     mockCreateWallet.mockResolvedValue(undefined);
 
     const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
@@ -142,6 +150,31 @@ describe('useWalletBootstrap', () => {
     expect(mockUnlock).not.toHaveBeenCalled();
     expect(mockSetActiveWalletId).not.toHaveBeenCalled();
     expect(result.current.error).toBeNull();
+  });
+
+  it('slow path: hands off to cloud restore instead of creating when the backend has a backup', async () => {
+    mockHasLocalWallet.mockResolvedValue(false);
+    mockGetWalletBackupExists.mockResolvedValue(true);
+
+    const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
+
+    await waitFor(() => expect(result.current.status).toBe('needs-cloud-restore'));
+
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+    expect(mockSetWalletOnboardingCompleted).not.toHaveBeenCalled();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('transitions to error when the backup existence check fails, without creating a wallet', async () => {
+    mockHasLocalWallet.mockResolvedValue(false);
+    mockGetWalletBackupExists.mockRejectedValue(new Error('Network request failed'));
+
+    const { result } = await renderHook(() => useWalletBootstrap('user@test.com'));
+
+    await waitFor(() => expect(result.current.status).toBe('error'));
+
+    expect(result.current.error).toBe('Network request failed');
+    expect(mockCreateWallet).not.toHaveBeenCalled();
   });
 
   it('transitions to error when hasLocalWallet throws', async () => {

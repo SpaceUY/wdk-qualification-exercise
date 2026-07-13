@@ -107,7 +107,8 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getByText('Received')).toBeTruthy();
+    // Two matches: the row's direction label plus the 'Received' filter chip.
+    expect(screen.getAllByText('Received')).toHaveLength(2);
     expect(screen.getByText('ethereum · USDT')).toBeTruthy();
     expect(screen.getByText('0xabcdef...567890')).toBeTruthy();
     expect(screen.getByText('+1.5')).toBeTruthy();
@@ -122,7 +123,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getByText('Sent')).toBeTruthy();
+    expect(screen.getAllByText('Sent')).toHaveLength(2);
     expect(screen.getByText('-2.5')).toBeTruthy();
   });
 
@@ -147,7 +148,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getByText('Received')).toBeTruthy();
+    expect(screen.getAllByText('Received')).toHaveLength(2);
   });
 
   it('infers "sent" by address mismatch when the transfer type is neither sent nor received', async () => {
@@ -159,7 +160,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getByText('Sent')).toBeTruthy();
+    expect(screen.getAllByText('Sent')).toHaveLength(2);
   });
 
   it('opens a detail view with the full hash and addresses when a row is tapped', async () => {
@@ -242,6 +243,116 @@ describe('HistoryScreen', () => {
     await fireEvent.press(screen.getByText('Close'));
 
     expect(screen.queryByText('0xabcdef1234567890')).toBeNull();
+  });
+
+  it('shows the coverage notice as a toast when the header help button is pressed', async () => {
+    await render(<HistoryScreen />);
+
+    await fireEvent.press(screen.getByTestId('history-help'));
+
+    expect(toast.info).toHaveBeenCalledWith('Coming soon', {
+      description:
+        'Transaction history currently covers USDT on Ethereum and Bitcoin only — other assets and networks are coming soon.',
+    });
+  });
+
+  it('shows the per-network coverage toast when drilled into an untracked network', async () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ network: 'polygon', symbol: 'USDT' });
+
+    await render(<HistoryScreen />);
+    await fireEvent.press(screen.getByTestId('history-help'));
+
+    expect(toast.info).toHaveBeenCalledWith('Coming soon', {
+      description: "Transaction history for Polygon isn't tracked yet — coming soon.",
+    });
+  });
+
+  it('hides the help button when drilled into a tracked network', async () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ network: 'bitcoin', symbol: 'BTC' });
+
+    await render(<HistoryScreen />);
+
+    expect(screen.queryByTestId('history-help')).toBeNull();
+  });
+
+  it('marks the All direction chip as selected by default', async () => {
+    await render(<HistoryScreen />);
+
+    expect(screen.getByTestId('history-filter-all').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('history-filter-received').props.accessibilityState.selected).toBe(false);
+    expect(screen.getByTestId('history-filter-sent').props.accessibilityState.selected).toBe(false);
+  });
+
+  it('shows only received transfers when the Received chip is pressed', async () => {
+    mockUseTransactionHistory.mockReturnValue({
+      data: [
+        buildTransfer({ type: 'received', transactionHash: '0xRcvTx000000' }),
+        buildTransfer({ type: 'sent', transactionHash: '0xSntTx000000' }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    await render(<HistoryScreen />);
+    await fireEvent.press(screen.getByTestId('history-filter-received'));
+
+    expect(screen.getByText('0xRcvTx0...000000')).toBeTruthy();
+    expect(screen.queryByText('0xSntTx0...000000')).toBeNull();
+  });
+
+  it('shows only sent transfers when the Sent chip is pressed', async () => {
+    mockUseTransactionHistory.mockReturnValue({
+      data: [
+        buildTransfer({ type: 'received', transactionHash: '0xRcvTx000000' }),
+        buildTransfer({ type: 'sent', transactionHash: '0xSntTx000000' }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    await render(<HistoryScreen />);
+    await fireEvent.press(screen.getByTestId('history-filter-sent'));
+
+    expect(screen.getByText('0xSntTx0...000000')).toBeTruthy();
+    expect(screen.queryByText('0xRcvTx0...000000')).toBeNull();
+  });
+
+  it('shows every transfer again when All is pressed after a direction filter', async () => {
+    mockUseTransactionHistory.mockReturnValue({
+      data: [
+        buildTransfer({ type: 'received', transactionHash: '0xRcvTx000000' }),
+        buildTransfer({ type: 'sent', transactionHash: '0xSntTx000000' }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    await render(<HistoryScreen />);
+    await fireEvent.press(screen.getByTestId('history-filter-sent'));
+    await fireEvent.press(screen.getByTestId('history-filter-all'));
+
+    expect(screen.getByText('0xRcvTx0...000000')).toBeTruthy();
+    expect(screen.getByText('0xSntTx0...000000')).toBeTruthy();
+  });
+
+  it('combines the direction filter with the network/symbol drill-down filter', async () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ network: 'bitcoin', symbol: 'BTC' });
+    mockUseTransactionHistory.mockReturnValue({
+      data: [
+        buildTransfer({ blockchain: 'bitcoin', token: 'btc', type: 'received', transactionHash: '0xBtcRcv00000' }),
+        buildTransfer({ blockchain: 'bitcoin', token: 'btc', type: 'sent', transactionHash: '0xBtcSnt00000' }),
+        buildTransfer({ blockchain: 'ethereum', token: 'usdt', type: 'sent', transactionHash: '0xEthSnt00000' }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    await render(<HistoryScreen />);
+    await fireEvent.press(screen.getByTestId('history-filter-sent'));
+
+    expect(screen.getByText('0xBtcSnt...t00000')).toBeTruthy();
+    expect(screen.queryByText('0xBtcRcv...v00000')).toBeNull();
+    expect(screen.queryByText('0xEthSnt...t00000')).toBeNull();
   });
 
   it('filters transfers by network and symbol when navigated to from a token row', async () => {

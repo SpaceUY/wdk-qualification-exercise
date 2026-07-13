@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,11 +17,34 @@ export default function RestoreCloudScreen() {
   const router = useRouter();
   const styles = useThemedStyles(createStyles);
   const userId = useAuthStore((s) => s.userId);
-  const { restoreWallet } = useWalletData();
+  const { restoreWallet, createWallet, hasLocalWallet } = useWalletData();
   const { signIn } = useGoogleAuth();
   const [loading, setLoading] = useState(false);
   const [showPassphrasePrompt, setShowPassphrasePrompt] = useState(false);
   const [pendingCiphertext, setPendingCiphertext] = useState<string | null>(null);
+  // The rescue path only applies when the bootstrap redirected here because the backend
+  // has a backup but no wallet exists on this device. Entering manually (from the
+  // wallet-setup menu, local wallet already present) must keep the current behavior.
+  const [walletMissingLocally, setWalletMissingLocally] = useState(false);
+  const [cloudBackupNotFound, setCloudBackupNotFound] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) return;
+    hasLocalWallet(userId)
+      .then((hasWallet) => {
+        if (!cancelled) setWalletMissingLocally(!hasWallet);
+      })
+      .catch(() => {
+        // Can't tell — keep the rescue button hidden rather than offer a destructive
+        // escape hatch on uncertain state.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   async function handleRestore() {
     if (!userId) return;
@@ -36,9 +59,11 @@ export default function RestoreCloudScreen() {
 
       const ciphertext = await restoreFromCloudBackup(userId, accessToken);
       if (!ciphertext) {
+        setCloudBackupNotFound(true);
         Alert.alert('No Backup Found', 'No cloud backup was found for this account.');
         return;
       }
+      setCloudBackupNotFound(false);
 
       setPendingCiphertext(ciphertext);
       setShowPassphrasePrompt(true);
@@ -72,6 +97,28 @@ export default function RestoreCloudScreen() {
     }
   }
 
+  async function handleStartFresh() {
+    if (!userId) return;
+    setCreating(true);
+    try {
+      await createWallet(userId);
+      router.replace('/(wallet)');
+    } catch (err) {
+      Alert.alert(
+        'Could Not Create Wallet',
+        err instanceof Error ? err.message : 'Could not create a new wallet.',
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  // Last-resort escape hatch, only after the automatic restore attempt already failed:
+  // the backend says a backup exists, but the device's native cloud storage
+  // (iCloud/Google Drive) has none to offer. Never shown on manual entry with a local
+  // wallet present.
+  const showStartFresh = walletMissingLocally && cloudBackupNotFound && !showPassphrasePrompt;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <Header left={<HeaderBackTitle title="Restore from Cloud Backup" />} />
@@ -99,6 +146,22 @@ export default function RestoreCloudScreen() {
             validateStrength={false}
           />
         ) : null}
+
+        {showStartFresh ? (
+          <View style={styles.startFreshSection}>
+            <AppText color="textMuted" style={styles.startFreshWarning}>
+              Couldn't find your backup in this device's cloud storage? As a last resort you
+              can start over with a new, empty wallet. This is permanent: if you find your
+              backup later, you won't be able to recover it from here.
+            </AppText>
+            <Button
+              title="Start a New Wallet"
+              variant="secondary"
+              onPress={handleStartFresh}
+              loading={creating}
+            />
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -108,4 +171,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, padding: spacing.xl, backgroundColor: colors.background },
   subtitle: { marginTop: spacing.lg, marginBottom: spacing.xxl },
+  startFreshSection: { marginTop: spacing.xxl },
+  startFreshWarning: { marginBottom: spacing.lg },
 });

@@ -31,7 +31,7 @@ describe('QRScanScreen', () => {
     expect(mockRequestPermission).toHaveBeenCalled();
   });
 
-  it('navigates to send with the parsed address and amount from a JSON QR payload', async () => {
+  it('dismisses back to send with the parsed address and amount from a JSON QR payload', async () => {
     setPermission({ granted: true });
 
     await render(<QRScanScreen />);
@@ -41,19 +41,22 @@ describe('QRScanScreen', () => {
       { data: '{"to":"0xRecipientAddress","amount":"1.5"}' },
     );
 
-    expect(router.navigate).toHaveBeenCalledWith({
+    // dismissTo pops back to the existing send/index; navigate would push a
+    // duplicate send screen on top of the camera modal (SDK 52+ semantics).
+    expect(router.dismissTo).toHaveBeenCalledWith({
       pathname: '/(wallet)/send',
       params: { scannedAddress: '0xRecipientAddress', scannedAmount: '1.5' },
     });
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('navigates with just an address when the QR payload has no amount', async () => {
+  it('dismisses with just an address when the QR payload has no amount', async () => {
     setPermission({ granted: true });
 
     await render(<QRScanScreen />);
     await fireEvent(screen.getByTestId('mock-camera-view'), 'barcodeScanned', { data: '0xPlainAddress' });
 
-    expect(router.navigate).toHaveBeenCalledWith({
+    expect(router.dismissTo).toHaveBeenCalledWith({
       pathname: '/(wallet)/send',
       params: { scannedAddress: '0xPlainAddress' },
     });
@@ -67,7 +70,7 @@ describe('QRScanScreen', () => {
     await fireEvent(cameraView, 'barcodeScanned', { data: '0xFirstAddress' });
     await fireEvent(cameraView, 'barcodeScanned', { data: '0xSecondAddress' });
 
-    expect(router.navigate).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).toHaveBeenCalledTimes(1);
   });
 
   it('cancels back out of the scanner', async () => {

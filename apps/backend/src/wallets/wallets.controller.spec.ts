@@ -24,11 +24,15 @@ describe('WalletsController', () => {
       providers: [
         {
           provide: WalletsService,
-          useValue: { upsertBackup: jest.fn() },
+          useValue: { upsertBackup: jest.fn(), hasBackupForUser: jest.fn() },
         },
         {
           provide: UsersService,
-          useValue: { findOrCreate: jest.fn(), updateWalletAddress: jest.fn() },
+          useValue: {
+            findOrCreate: jest.fn(),
+            findByCognitoSub: jest.fn(),
+            updateWalletAddress: jest.fn(),
+          },
         },
         {
           provide: CouponsService,
@@ -57,6 +61,37 @@ describe('WalletsController', () => {
       });
       expect(walletsService.upsertBackup).toHaveBeenCalledWith('user-id', 'abc123');
       expect(result).toEqual({ id: 'bk-1' });
+    });
+  });
+
+  describe('backupExists', () => {
+    it('returns exists: false without querying backups when the user does not exist yet', async () => {
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(null);
+
+      const result = await controller.backupExists(authUser);
+
+      expect(usersService.findByCognitoSub).toHaveBeenCalledWith('cognito-sub');
+      expect(walletsService.hasBackupForUser).not.toHaveBeenCalled();
+      expect(result).toEqual({ exists: false });
+    });
+
+    it('returns exists: true when the user has a backup', async () => {
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as User);
+      (walletsService.hasBackupForUser as jest.Mock).mockResolvedValue(true);
+
+      const result = await controller.backupExists(authUser);
+
+      expect(walletsService.hasBackupForUser).toHaveBeenCalledWith('user-id');
+      expect(result).toEqual({ exists: true });
+    });
+
+    it('returns exists: false when the user has no backup', async () => {
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as User);
+      (walletsService.hasBackupForUser as jest.Mock).mockResolvedValue(false);
+
+      const result = await controller.backupExists(authUser);
+
+      expect(result).toEqual({ exists: false });
     });
   });
 

@@ -8,7 +8,6 @@ import type { CouponListItem, ClaimedCouponListItem } from '../../utils/api';
 const mockGetCoupons = jest.fn();
 const mockGetClaimedCoupons = jest.fn();
 const mockApiPost = jest.fn();
-const mockUseWallet = jest.fn();
 
 jest.mock('../../utils/api', () => ({
   getCoupons: () => mockGetCoupons(),
@@ -17,7 +16,6 @@ jest.mock('../../utils/api', () => ({
 }));
 
 jest.mock('@tetherto/wdk-react-native-core', () => ({
-  useWallet: (...args: unknown[]) => mockUseWallet(...args),
   // The screen imports config/assets (for token decimals), which constructs
   // BaseAssets at module load time.
   BaseAsset: class {
@@ -74,7 +72,6 @@ describe('CashbackScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetCoupons.mockResolvedValue([]);
     mockGetClaimedCoupons.mockResolvedValue([]);
-    mockUseWallet.mockReturnValue({ addresses: { ethereum: { 0: '0xMyWalletAddress' } } });
   });
 
   it('shows an empty state when there are no available coupons', async () => {
@@ -178,17 +175,14 @@ describe('CashbackScreen', () => {
     expect(screen.getByText('0x1234...cdef')).toBeTruthy();
   });
 
-  it('shows the cashback destination address with a copy button', async () => {
+  it('shows the network coverage toast when the help button is pressed', async () => {
     await renderScreen();
 
-    expect(screen.getByText('Cashback goes to')).toBeTruthy();
-    expect(screen.getByText('0xMyWalletAddress')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('cashback-help'));
 
-    await fireEvent.press(screen.getByText('Copy'));
-
-    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xMyWalletAddress');
-    expect(toast.success).toHaveBeenCalledWith('Copied', {
-      description: 'Your address copied to clipboard.',
+    expect(toast.info).toHaveBeenCalledWith('Coming soon', {
+      description:
+        'Cashback currently works only for USDT on Ethereum (Sepolia) — other networks are coming soon.',
     });
   });
 
@@ -198,7 +192,7 @@ describe('CashbackScreen', () => {
     await renderScreen();
     await waitFor(() => expect(screen.getByText('Merchant: 0xMerc...1234')).toBeTruthy());
 
-    await fireEvent.press(screen.getAllByText('Copy')[1]);
+    await fireEvent.press(screen.getByText('Copy'));
 
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xMerchantAddress1234');
     expect(toast.success).toHaveBeenCalledWith('Copied', {
@@ -220,10 +214,10 @@ describe('CashbackScreen', () => {
     );
 
     const copyLinks = screen.getAllByText('Copy');
-    await fireEvent.press(copyLinks[1]);
+    await fireEvent.press(copyLinks[0]);
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xMerchantAddress1234');
 
-    await fireEvent.press(copyLinks[2]);
+    await fireEvent.press(copyLinks[1]);
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0x1234567890abcdef');
 
     openURLSpy.mockRestore();

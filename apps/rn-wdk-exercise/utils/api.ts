@@ -74,6 +74,11 @@ export async function postWalletBackup(ciphertext: string): Promise<void> {
   await apiClient.post('/wallets/backup', { ciphertext });
 }
 
+export async function getWalletBackupExists(): Promise<boolean> {
+  const { data } = await apiClient.get<{ exists: boolean }>('/wallets/backup/exists');
+  return data.exists;
+}
+
 export async function putWalletAddress(walletAddress: string): Promise<void> {
   await apiClient.put('/wallets/address', { walletAddress });
 }
@@ -122,11 +127,39 @@ export type PricesResponse = {
   // Symbol → USD spot price. null means the asset has no market price (e.g. UTL)
   // and must not be rendered as $0.
   prices: Record<string, number | null>;
+  // Symbol → 24h change percentage (2.34 = +2.34%). Same null contract as prices:
+  // unavailable must not render as 0%.
+  changePct24h: Record<string, number | null>;
   fetchedAt: string;
 };
 
 export async function getPrices(): Promise<PricesResponse> {
   const { data } = await apiClient.get<PricesResponse>('/prices');
+  return data;
+}
+
+export const PRICE_HISTORY_RANGES = ['1d', '1w', '1m', '1y'] as const;
+export type PriceHistoryRange = (typeof PRICE_HISTORY_RANGES)[number];
+
+export type PriceHistoryPoint = { timestamp: number; price: number };
+
+export type PriceHistoryResponse = {
+  symbol: string;
+  range: PriceHistoryRange;
+  // Chronological, ≤300 points. Empty means the asset has no market (e.g. UTL) —
+  // render "no market data", never a flat $0 line.
+  points: PriceHistoryPoint[];
+  fetchedAt: string;
+};
+
+export async function getPriceHistory(
+  symbol: string,
+  range: PriceHistoryRange,
+): Promise<PriceHistoryResponse> {
+  const { data } = await apiClient.get<PriceHistoryResponse>(
+    `/prices/history/${encodeURIComponent(symbol)}`,
+    { params: { range } },
+  );
   return data;
 }
 
