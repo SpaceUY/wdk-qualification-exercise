@@ -18,6 +18,7 @@ import { spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
 import { AssetRow, BalanceHeroView, buildAssetRows } from '@/components/balance';
 import { RowSkeleton } from '@/components/RowSkeleton';
+import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -80,23 +81,41 @@ export default function DashboardScreen() {
   const { rows, totalFiat } = buildAssetRows(ALL_ASSET_CONFIGS, balanceByAssetId, pricesData?.prices);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    // No bottom edge: list content scrolls behind the floating glass tab bar,
+    // with TAB_BAR_CLEARANCE padding keeping the last row reachable.
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <AppText variant="title">Wallet</AppText>
-        <TouchableOpacity
-          testID="dashboard-logout"
-          onPress={async () => {
-            // Unloads the current wallet's seed from the WDK worklet and clears
-            // activeWalletId - without this, a different user logging in afterwards can
-            // read balances fetched against this wallet's still-loaded seed.
-            lock();
-            await signOutFromCognito();
-            clearUserId();
-            router.replace('/(auth)');
-          }}
-        >
-          <AppText variant="caption" color="danger">Logout</AppText>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            testID="dashboard-seed"
+            hitSlop={8}
+            onPress={() => router.push('/(wallet)/wallet-setup')}
+          >
+            <Ionicons name="key-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="dashboard-cashback"
+            hitSlop={8}
+            onPress={() => router.push('/(wallet)/cashback')}
+          >
+            <Ionicons name="pricetag-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="dashboard-logout"
+            onPress={async () => {
+              // Unloads the current wallet's seed from the WDK worklet and clears
+              // activeWalletId - without this, a different user logging in afterwards can
+              // read balances fetched against this wallet's still-loaded seed.
+              lock();
+              await signOutFromCognito();
+              clearUserId();
+              router.replace('/(auth)');
+            }}
+          >
+            <AppText variant="caption" color="danger">Logout</AppText>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <BalanceHeroView
@@ -113,6 +132,7 @@ export default function DashboardScreen() {
           keyExtractor={(item) => item.id}
           renderItem={() => <RowSkeleton testID="balance-row-skeleton" />}
           style={styles.list}
+          contentContainerStyle={styles.listContent}
         />
       ) : (
         <FlatList
@@ -133,46 +153,10 @@ export default function DashboardScreen() {
             />
           )}
           style={styles.list}
+          contentContainerStyle={styles.listContent}
         />
       )}
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonPrimary]}
-          onPress={() => router.push('/(wallet)/send')}
-        >
-          <Ionicons name="arrow-up" size={16} color={colors.textOnPrimary} />
-          <AppText variant="caption" color="textOnPrimary" style={styles.actionButtonLabel}>Send</AppText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonPrimary]}
-          onPress={() => router.push('/(wallet)/receive')}
-        >
-          <Ionicons name="arrow-down" size={16} color={colors.textOnPrimary} />
-          <AppText variant="caption" color="textOnPrimary" style={styles.actionButtonLabel}>Receive</AppText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => router.push('/(wallet)/wallet-setup')}
-        >
-          <Ionicons name="key-outline" size={16} color={colors.primary} />
-          <AppText variant="caption" color="primary" style={styles.actionButtonLabel}>Seed</AppText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => router.push('/(wallet)/cashback')}
-        >
-          <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
-          <AppText variant="caption" color="primary" style={styles.actionButtonLabel}>Cashback</AppText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => router.push('/(wallet)/history')}
-        >
-          <Ionicons name="time-outline" size={16} color={colors.primary} />
-          <AppText variant="caption" color="primary" style={styles.actionButtonLabel}>History</AppText>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -188,25 +172,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   list: { flex: 1, marginTop: spacing.sm },
-  actions: {
-    flexDirection: 'row',
-    padding: spacing.md,
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 8,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  actionButtonPrimary: { backgroundColor: colors.primary },
-  actionButtonSecondary: { backgroundColor: colors.primarySoft },
-  actionButtonLabel: { fontSize: 10, lineHeight: 14, fontWeight: '600' },
+  listContent: { paddingBottom: TAB_BAR_CLEARANCE },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   retryButton: { alignSelf: 'stretch' },
   statusText: { marginTop: spacing.md },
   errorText: { marginBottom: spacing.lg, textAlign: 'center' },

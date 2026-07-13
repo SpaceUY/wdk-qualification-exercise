@@ -206,23 +206,22 @@ describe('DashboardScreen', () => {
     expect(router.replace).toHaveBeenCalledWith('/(auth)');
   });
 
-  it('navigates to each wallet action screen', async () => {
+  it('navigates to seed and cashback from the header icons', async () => {
     await renderScreen();
 
-    await fireEvent.press(screen.getByText('Send'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/send');
-
-    await fireEvent.press(screen.getByText('Receive'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/receive');
-
-    await fireEvent.press(screen.getByText('Seed'));
+    await fireEvent.press(screen.getByTestId('dashboard-seed'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/wallet-setup');
 
-    await fireEvent.press(screen.getByText('Cashback'));
+    await fireEvent.press(screen.getByTestId('dashboard-cashback'));
     expect(router.push).toHaveBeenCalledWith('/(wallet)/cashback');
+  });
 
-    await fireEvent.press(screen.getByText('History'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/history');
+  it('no longer renders the bottom action row (replaced by the glass tab bar)', async () => {
+    await renderScreen();
+
+    expect(screen.queryByText('Send')).toBeNull();
+    expect(screen.queryByText('Receive')).toBeNull();
+    expect(screen.queryByText('Seed')).toBeNull();
   });
 
   it('shows the fiat total in the hero and per-row fiat once balances and prices resolve', async () => {
