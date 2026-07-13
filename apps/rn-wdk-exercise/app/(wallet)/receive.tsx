@@ -5,7 +5,7 @@ import { useWallet } from '@tetherto/wdk-react-native-core';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from 'sonner-native';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { NetworkDot } from '@/components/NetworkDot';
 import { KNOWN_NETWORKS, getNetworkDisplayName, type KnownNetwork } from '@/config/networkMeta';
@@ -27,8 +27,8 @@ export default function ReceiveScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Receive" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Receive" />} />
       <ScrollView contentContainerStyle={styles.container}>
         <NetworkFundsBanner network={selectedNetwork} />
 
