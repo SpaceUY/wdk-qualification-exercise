@@ -13,6 +13,38 @@ export function withSpring<T>(toValue: T): T {
   return toValue;
 }
 
+// Springs/timings resolve instantly to their target. If a completion callback is
+// given (e.g. BottomSheet unmounts once its close animation finishes), fire it with
+// finished=true so those effects run synchronously in tests.
+export function withTiming<T>(
+  toValue: T,
+  _config?: unknown,
+  callback?: (finished: boolean) => void,
+): T {
+  callback?.(true);
+  return toValue;
+}
+
+// The app only reads interpolated values for styling, never asserts them, so a
+// passthrough to the first output value is enough to keep animated styles defined.
+export function interpolate(_value: number, _input: number[], output: number[]): number {
+  return output[0];
+}
+
+export const Extrapolation = { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' } as const;
+
+// Easing functions are passed straight into withTiming's (ignored) config, so they
+// only need to exist and be callable/composable without throwing.
+const identityEasing = (t: number) => t;
+export const Easing = {
+  linear: identityEasing,
+  ease: identityEasing,
+  exp: identityEasing,
+  in: (fn: (t: number) => number) => fn,
+  out: (fn: (t: number) => number) => fn,
+  inOut: (fn: (t: number) => number) => fn,
+};
+
 export function useAnimatedStyle<T extends object>(factory: () => T): T {
   return factory();
 }

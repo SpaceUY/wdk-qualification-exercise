@@ -307,7 +307,8 @@ describe('AssetDetailScreen', () => {
 
     expect(screen.getByText('0xabcdef1234567890')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Close'));
+    // The detail sheet has no Close button anymore; it dismisses via the backdrop.
+    await fireEvent.press(screen.getByLabelText('Close'));
 
     expect(screen.queryByText('0xabcdef1234567890')).toBeNull();
   });
