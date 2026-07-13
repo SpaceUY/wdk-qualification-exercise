@@ -4,11 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import {
-  isLiquidGlassSupported,
-  LiquidGlassContainerView,
-  LiquidGlassView,
-} from '@callstack/liquid-glass';
+import { LiquidGlassContainerView, LiquidGlassView } from '@callstack/liquid-glass';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
@@ -109,17 +105,11 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
     >
       <LiquidGlassContainerView spacing={spacing.xl} style={styles.row}>
         <LiquidGlassView
-          effect="regular"
+          effect="none"
           colorScheme="dark"
-          style={[styles.pill, !isLiquidGlassSupported && styles.glassFallback]}
+          style={[styles.pill, styles.glassSurface]}
         >
-          <Animated.View
-            style={[
-              styles.highlight,
-              !isLiquidGlassSupported && styles.highlightFallback,
-              highlightStyle,
-            ]}
-          />
+          <Animated.View style={[styles.highlight, highlightStyle]} />
           {TAB_ITEMS.map((item, index) => {
             const route = state.routes.find((r) => r.name === item.name);
             if (!route) return null;
@@ -152,10 +142,10 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
         </LiquidGlassView>
 
         <LiquidGlassView
-          effect="regular"
+          effect="none"
           colorScheme="dark"
           interactive
-          style={[styles.circle, !isLiquidGlassSupported && styles.glassFallback]}
+          style={[styles.circle, styles.glassSurface]}
         >
           <Pressable
             testID="glass-tab-send"
@@ -170,10 +160,10 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
         </LiquidGlassView>
 
         <LiquidGlassView
-          effect="regular"
+          effect="none"
           colorScheme="dark"
           interactive
-          style={[styles.circle, !isLiquidGlassSupported && styles.glassFallback]}
+          style={[styles.circle, styles.glassSurface]}
         >
           <Pressable
             testID="glass-tab-receive"
@@ -212,9 +202,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.xs,
     overflow: 'hidden',
   },
-  // Applied when the native glass effect is unavailable (Android, iOS < 26):
-  // translucent navy + hairline border reads as glass on the dark theme.
-  glassFallback: {
+  // Native liquid glass (effect="regular") is disabled for now so iOS matches
+  // the Android look: translucent navy + hairline border reads as glass on the
+  // dark theme on every platform.
+  glassSurface: {
     backgroundColor: 'rgba(21, 28, 36, 0.92)',
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -230,9 +221,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     bottom: spacing.xs,
     left: 0,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
-  },
-  highlightFallback: {
     backgroundColor: colors.primarySoft,
   },
   item: {
