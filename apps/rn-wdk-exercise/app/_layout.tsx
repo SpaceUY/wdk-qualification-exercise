@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { WdkAppProvider } from '@tetherto/wdk-react-native-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner-native';
@@ -34,16 +33,12 @@ export default function RootLayout() {
           {/* The app is dark-only, so the status bar text is always light;
               contentStyle keeps navigation transitions from flashing white. */}
           <StatusBar style="light" />
-          {/* Hosts @gorhom/bottom-sheet modals (e.g. TransferDetailModal); sheets
-              mount here, above the navigator and the floating glass tab bar. */}
-          <BottomSheetModalProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.background },
-              }}
-            />
-          </BottomSheetModalProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
           <AppLockOverlay />
           <Toaster />
         </WdkAppProvider>
