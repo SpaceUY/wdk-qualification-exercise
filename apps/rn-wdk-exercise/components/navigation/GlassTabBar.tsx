@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { LiquidGlassContainerView, LiquidGlassView } from '@callstack/liquid-glass';
+import { Clock, Home, type LucideIcon } from 'lucide-react-native';
+import { LiquidGlassView } from '@callstack/liquid-glass';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
@@ -13,19 +12,16 @@ import { AppText } from '@/components/ui';
 // their content bottom by this much so the last row can scroll clear of it.
 export const TAB_BAR_CLEARANCE = 104;
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
 // Only these navigator routes render as pill tabs. Everything else registered on
 // the (wallet) Tabs navigator (send, receive, wallet-setup, cashback) is a pushed
 // flow with href:null — when one of those is focused, the bar hides entirely.
 const TAB_ITEMS: {
   name: 'index' | 'history';
   label: string;
-  icon: IconName;
-  iconInactive: IconName;
+  icon: LucideIcon;
 }[] = [
-  { name: 'index', label: 'Home', icon: 'home', iconInactive: 'home-outline' },
-  { name: 'history', label: 'History', icon: 'time', iconInactive: 'time-outline' },
+  { name: 'index', label: 'Home', icon: Home },
+  { name: 'history', label: 'History', icon: Clock },
 ];
 
 type TabName = (typeof TAB_ITEMS)[number]['name'];
@@ -48,7 +44,6 @@ export type GlassTabBarProps = {
 const SPRING = { damping: 18, stiffness: 220, mass: 0.6 };
 
 export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -57,56 +52,45 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
   const activeIndex = TAB_ITEMS.findIndex((t) => t.name === focusedName);
 
   const [itemLayouts, setItemLayouts] = useState<
-    Partial<Record<TabName, { x: number; y: number; width: number; height: number }>>
+    Partial<Record<TabName, { x: number; width: number }>>
   >({});
-  const highlightX = useSharedValue(0);
-  const highlightWidth = useSharedValue(0);
+  // The highlight slides horizontally within the pill's padded area. Its x and
+  // width come from the active item's measured frame; its vertical inset is the
+  // pill's padding (static top/bottom in styles.highlight), so the gap is the
+  // same on all four sides. The first item's measured x already equals the pill
+  // padding, so the left/right gaps at the extremes match that padding too.
+  const hlX = useSharedValue(0);
+  const hlWidth = useSharedValue(0);
 
   const activeLayout = activeIndex === -1 ? undefined : itemLayouts[TAB_ITEMS[activeIndex].name];
   useEffect(() => {
     if (!activeLayout) return;
-    if (highlightWidth.value === 0) {
-      // First measurement: place the highlight instantly instead of sliding in
-      // from the pill's left edge.
-      highlightX.value = activeLayout.x;
-      highlightWidth.value = activeLayout.width;
+    if (hlWidth.value === 0) {
+      // First measurement: snap into place instead of sliding in from x=0.
+      hlX.value = activeLayout.x;
+      hlWidth.value = activeLayout.width;
       return;
     }
-    highlightX.value = withSpring(activeLayout.x, SPRING);
-    highlightWidth.value = withSpring(activeLayout.width, SPRING);
-  }, [activeLayout, highlightX, highlightWidth]);
+    hlX.value = withSpring(activeLayout.x, SPRING);
+    hlWidth.value = withSpring(activeLayout.width, SPRING);
+  }, [activeLayout, hlX, hlWidth]);
 
   const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: highlightX.value }],
-    width: highlightWidth.value,
+    transform: [{ translateX: hlX.value }],
+    width: hlWidth.value,
   }));
 
   // A pushed flow (send, receive, …) is focused: it covers the whole screen.
   if (activeIndex === -1) return null;
 
   const onItemLayout = (name: TabName) => (event: LayoutChangeEvent) => {
-    const { x, y, width, height } = event.nativeEvent.layout;
+    const { x, width } = event.nativeEvent.layout;
     setItemLayouts((prev) => {
       const current = prev[name];
-      if (
-        current &&
-        current.x === x &&
-        current.y === y &&
-        current.width === width &&
-        current.height === height
-      ) {
-        return prev;
-      }
-      return { ...prev, [name]: { x, y, width, height } };
+      if (current && current.x === x && current.width === width) return prev;
+      return { ...prev, [name]: { x, width } };
     });
   };
-
-  // The highlight overlays the active item's exact measured frame, so its inset
-  // from the pill edge is precisely the pill's padding on every side — never
-  // stretched taller than the item the way a top/bottom: 0 fill would be.
-  const verticalStyle = activeLayout
-    ? { top: activeLayout.y, height: activeLayout.height }
-    : undefined;
 
   const onTabPress = (name: TabName, key: string, isActive: boolean) => {
     const event = navigation.emit({ type: 'tabPress', target: key, canPreventDefault: true });
@@ -118,85 +102,56 @@ export function GlassTabBar({ state, navigation }: GlassTabBarProps) {
       style={[styles.wrapper, { bottom: insets.bottom + spacing.sm }]}
       pointerEvents="box-none"
     >
-      <LiquidGlassContainerView spacing={spacing.xl} style={styles.row}>
-        <LiquidGlassView
-          effect="none"
-          colorScheme="dark"
-          style={[styles.pill, styles.glassSurface]}
-        >
-          <Animated.View style={[styles.highlight, verticalStyle, highlightStyle]} />
-          {TAB_ITEMS.map((item, index) => {
-            const route = state.routes.find((r) => r.name === item.name);
-            if (!route) return null;
-            const isActive = index === activeIndex;
-            return (
-              <Pressable
-                key={item.name}
-                testID={`glass-tab-${item.name}`}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-                onLayout={onItemLayout(item.name)}
-                onPress={() => onTabPress(item.name, route.key, isActive)}
-                style={styles.item}
-              >
-                <Ionicons
-                  name={isActive ? item.icon : item.iconInactive}
-                  size={20}
-                  color={isActive ? colors.primary : colors.textMuted}
-                />
-                <AppText
-                  variant="caption"
-                  color={isActive ? 'primary' : 'textMuted'}
-                  style={styles.itemLabel}
+      <LiquidGlassView effect="none" colorScheme="dark" style={styles.pill}>
+        {/* The visible surface (bg + border), padding, row layout and clipping
+            all live on this plain View. The highlight is measured against and
+            clipped by exactly this box, so it can never spill past the visible
+            pill — unlike when the surface lived on the native glass view, which
+            did not size itself to this child. */}
+        <View style={[styles.pillSurface, styles.glassSurface]}>
+          {/* The track is the padded inner area. Uniform padding on all four
+              sides comes from pillSurface's padding wrapping it. The highlight
+              fills the track vertically (top/bottom: 0) and slides horizontally
+              within it; equal-width slots (item flex: 1) make the two extremes
+              mirror images, so the outer gap is identical for Home and History. */}
+          <View style={styles.track}>
+            <Animated.View style={[styles.highlight, highlightStyle]} />
+            {TAB_ITEMS.map((item, index) => {
+              const route = state.routes.find((r) => r.name === item.name);
+              if (!route) return null;
+              const isActive = index === activeIndex;
+              const Icon = item.icon;
+              return (
+                <Pressable
+                  key={item.name}
+                  testID={`glass-tab-${item.name}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  onLayout={onItemLayout(item.name)}
+                  onPress={() => onTabPress(item.name, route.key, isActive)}
+                  style={styles.item}
                 >
-                  {item.label}
-                </AppText>
-              </Pressable>
-            );
-          })}
-        </LiquidGlassView>
-
-        <LiquidGlassView
-          effect="none"
-          colorScheme="dark"
-          interactive
-          style={[styles.circle, styles.glassSurface]}
-        >
-          <Pressable
-            testID="glass-tab-send"
-            accessibilityRole="button"
-            accessibilityLabel="Send"
-            hitSlop={8}
-            onPress={() => router.push('/(wallet)/send')}
-            style={styles.circlePressable}
-          >
-            <Ionicons name="arrow-up" size={22} color={colors.textPrimary} />
-          </Pressable>
-        </LiquidGlassView>
-
-        <LiquidGlassView
-          effect="none"
-          colorScheme="dark"
-          interactive
-          style={[styles.circle, styles.glassSurface]}
-        >
-          <Pressable
-            testID="glass-tab-receive"
-            accessibilityRole="button"
-            accessibilityLabel="Receive"
-            hitSlop={8}
-            onPress={() => router.push('/(wallet)/receive')}
-            style={styles.circlePressable}
-          >
-            <Ionicons name="arrow-down" size={22} color={colors.textPrimary} />
-          </Pressable>
-        </LiquidGlassView>
-      </LiquidGlassContainerView>
+                  <Icon
+                    size={20}
+                    strokeWidth={isActive ? 2.5 : 2}
+                    color={isActive ? colors.primary : colors.textMuted}
+                  />
+                  <AppText
+                    variant="caption"
+                    color={isActive ? 'primary' : 'textMuted'}
+                    style={styles.itemLabel}
+                  >
+                    {item.label}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </LiquidGlassView>
     </View>
   );
 }
-
-const CIRCLE_SIZE = 52;
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   wrapper: {
@@ -205,17 +160,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
   pill: {
+    borderRadius: radius.full,
+  },
+  pillSurface: {
+    // Uniform padding on all four sides — this is the gap between the pill edge
+    // and the sliding highlight/track.
+    padding: spacing.xs,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  track: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.full,
-    padding: spacing.xs,
-    overflow: 'hidden',
+    position: 'relative',
   },
   // Native liquid glass (effect="regular") is disabled for now so iOS matches
   // the Android look: translucent navy + hairline border reads as glass on the
@@ -231,34 +189,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 8,
   },
   highlight: {
-    // top/height come from the active item's measured frame (see verticalStyle);
-    // only left/borderRadius/color are static here.
+    // Fills the track vertically; x/width are animated to the active slot (see
+    // highlightStyle). The track sits inside pillSurface's uniform padding, so
+    // the highlight keeps that same gap on every side at both extremes.
     position: 'absolute',
+    top: 0,
+    bottom: 0,
     left: 0,
     borderRadius: radius.full,
     backgroundColor: colors.primarySoft,
   },
   item: {
+    // Equal-width slots (minWidth) so the two tabs are symmetric and the
+    // highlight is a consistent shape that slides between them with the same
+    // outer gap at each extreme.
+    minWidth: 96,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.md,
     gap: 2,
   },
   itemLabel: {
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '600',
-  },
-  circle: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
-    overflow: 'hidden',
-  },
-  circlePressable: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

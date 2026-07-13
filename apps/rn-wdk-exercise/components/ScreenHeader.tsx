@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +20,7 @@ export function ScreenHeader({ title }: { title: string }) {
         hitSlop={12}
         style={styles.backButton}
       >
-        <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        <ChevronLeft size={24} color={colors.textPrimary} />
       </TouchableOpacity>
       <AppText variant="subtitle" style={styles.title} numberOfLines={1}>
         {title}

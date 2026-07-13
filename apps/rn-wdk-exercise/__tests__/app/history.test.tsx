@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { toast } from 'sonner-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../../stores/authStore';
-import HistoryScreen from '../../app/(wallet)/history';
+import HistoryScreen from '../../app/(wallet)/(tabs)/history';
 import type { TokenTransfer } from '../../utils/appNodeApi';
 
 const mockUseWallet = jest.fn();

@@ -1,21 +1,23 @@
-import { Tabs } from 'expo-router';
-import { GlassTabBar, type GlassTabBarProps } from '@/components/navigation/GlassTabBar';
+import { Stack } from 'expo-router';
+import { useThemeColors } from '@/theme/colors';
 
-// index (Home) and history are the visible tabs. The remaining wallet routes are
-// full-screen flows pushed from the dashboard — href:null keeps them out of the
-// tab bar, and GlassTabBar hides itself entirely while one of them is focused.
+// (tabs) holds Home/History behind the GlassTabBar. Every other wallet route
+// is a Stack screen here instead of a hidden Tabs.Screen, so navigating to it
+// (router.push) plays a real native push transition — a bottom-tabs navigator
+// only ever swaps instantly between tabs, hidden or not.
 export default function WalletLayout() {
+  const colors = useThemeColors();
+
   return (
-    <Tabs
-      tabBar={(props) => <GlassTabBar {...(props as unknown as GlassTabBarProps)} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="history" />
-      <Tabs.Screen name="send" options={{ href: null }} />
-      <Tabs.Screen name="receive" options={{ href: null }} />
-      <Tabs.Screen name="wallet-setup" options={{ href: null }} />
-      <Tabs.Screen name="cashback" options={{ href: null }} />
-    </Tabs>
+    // contentStyle: without it, this Stack's own screen container defaults to
+    // white, which flashes visibly during the push/pop slide animation.
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="send" />
+      <Stack.Screen name="receive" />
+      <Stack.Screen name="wallet-setup" />
+      <Stack.Screen name="cashback" />
+      <Stack.Screen name="settings" />
+    </Stack>
   );
 }

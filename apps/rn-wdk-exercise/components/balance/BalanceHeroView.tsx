@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, Tag } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { gradients } from '@/theme/gradients';
@@ -12,11 +12,24 @@ export type BalanceHeroViewProps = {
   isLoading: boolean;
   hidden: boolean;
   onToggleHidden: () => void;
+  onSendPress: () => void;
+  onReceivePress: () => void;
+  onCashbackPress: () => void;
 };
 
 // The dashboard's headline: total balance in fiat, big and white, on the elevated
-// logo-navy surface with the app's one permitted gold veil behind it.
-export function BalanceHeroView({ totalFiat, isLoading, hidden, onToggleHidden }: BalanceHeroViewProps) {
+// logo-navy surface with the app's one permitted gold veil behind it. The
+// send/receive/cashback shortcuts live here too, below the amount, so the
+// card doubles as the wallet's primary action surface.
+export function BalanceHeroView({
+  totalFiat,
+  isLoading,
+  hidden,
+  onToggleHidden,
+  onSendPress,
+  onReceivePress,
+  onCashbackPress,
+}: BalanceHeroViewProps) {
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
 
@@ -34,7 +47,11 @@ export function BalanceHeroView({ totalFiat, isLoading, hidden, onToggleHidden }
           hitSlop={8}
           onPress={onToggleHidden}
         >
-          <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
+          {hidden ? (
+            <EyeOff size={20} color={colors.textMuted} />
+          ) : (
+            <Eye size={20} color={colors.textMuted} />
+          )}
         </Pressable>
       </View>
       {isLoading && totalFiat == null ? (
@@ -42,6 +59,23 @@ export function BalanceHeroView({ totalFiat, isLoading, hidden, onToggleHidden }
       ) : (
         <AmountText variant="display" value={totalFiat ?? '—'} hidden={hidden} />
       )}
+
+      <View style={styles.actionsRow}>
+        <Pressable testID="balance-send" style={styles.actionButton} onPress={onSendPress}>
+          <ArrowUpRight size={18} color={colors.textPrimary} />
+          <AppText variant="caption" style={styles.actionLabel}>Send</AppText>
+        </Pressable>
+        <View style={styles.actionDivider} />
+        <Pressable testID="balance-receive" style={styles.actionButton} onPress={onReceivePress}>
+          <ArrowDownLeft size={18} color={colors.textPrimary} />
+          <AppText variant="caption" style={styles.actionLabel}>Receive</AppText>
+        </Pressable>
+        <View style={styles.actionDivider} />
+        <Pressable testID="balance-cashback" style={styles.actionButton} onPress={onCashbackPress}>
+          <Tag size={18} color={colors.textPrimary} />
+          <AppText variant="caption" style={styles.actionLabel}>Cashback</AppText>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -63,5 +97,27 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: spacing.sm,
+      paddingTop: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    actionButton: {
+      flex: 1,
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    actionDivider: {
+      width: 1,
+      alignSelf: 'stretch',
+      backgroundColor: colors.border,
+    },
+    actionLabel: {
+      color: colors.textPrimary,
+      fontWeight: '600',
     },
   });

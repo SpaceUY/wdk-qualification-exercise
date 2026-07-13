@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native';
-import { Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import WalletLayout from '../../app/(wallet)/_layout';
 
 describe('WalletLayout', () => {
@@ -7,25 +7,31 @@ describe('WalletLayout', () => {
     jest.clearAllMocks();
   });
 
-  it('renders Tabs with headers hidden and a custom glass tab bar', async () => {
+  it('renders a Stack with headers hidden and a dark content background', async () => {
     await render(<WalletLayout />);
 
-    const props = (Tabs as unknown as jest.Mock).mock.calls[0][0];
-    expect(props.screenOptions).toEqual({ headerShown: false });
-    expect(typeof props.tabBar).toBe('function');
+    expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        screenOptions: expect.objectContaining({
+          headerShown: false,
+          // Guards against white flashes during push/pop transitions.
+          contentStyle: { backgroundColor: '#0C1117' },
+        }),
+      }),
+    );
   });
 
-  it('registers pushed flows with href null so only Home and History are tabs', async () => {
+  it('registers the tab group and every pushed flow as Stack screens so navigation animates as a push', async () => {
     await render(<WalletLayout />);
 
-    const screenCalls = (Tabs.Screen as unknown as jest.Mock).mock.calls.map((c) => c[0]);
+    const screenCalls = (Stack.Screen as unknown as jest.Mock).mock.calls.map((c) => c[0]);
     expect(screenCalls).toEqual([
-      { name: 'index' },
-      { name: 'history' },
-      { name: 'send', options: { href: null } },
-      { name: 'receive', options: { href: null } },
-      { name: 'wallet-setup', options: { href: null } },
-      { name: 'cashback', options: { href: null } },
+      { name: '(tabs)' },
+      { name: 'send' },
+      { name: 'receive' },
+      { name: 'wallet-setup' },
+      { name: 'cashback' },
+      { name: 'settings' },
     ]);
   });
 });

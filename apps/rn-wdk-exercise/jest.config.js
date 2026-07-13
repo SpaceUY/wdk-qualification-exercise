@@ -6,8 +6,10 @@ const config = {
 
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^react-native-vector-icons$': '@expo/vector-icons',
-    '^react-native-vector-icons/(.*)': '@expo/vector-icons/$1',
+    // The RN jest resolver honors the package's "react-native"/"module" export condition,
+    // which points at an .mjs build — Jest's default transform only matches .js/.ts/.tsx,
+    // so that file reaches the VM untransformed and throws on `export`. Force the CJS build.
+    '^lucide-react-native$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
     '\\.(ttf|otf|woff|woff2)$': '<rootDir>/__mocks__/fileMock.js',
   },
@@ -15,7 +17,7 @@ const config = {
   // These packages ship ESM source — Jest must transform them via Babel.
   // We extend with additional packages used by this project.
   transformIgnorePatterns: [
-    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|react-native-mmkv|zustand|@tetherto|@noble))',
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|react-native-mmkv|zustand|@tetherto|@noble|lucide-react-native))',
     '/node_modules/react-native-reanimated/plugin/',
   ],
 

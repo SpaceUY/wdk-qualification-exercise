@@ -24,7 +24,13 @@ describe('AuthLayout', () => {
     expect(screen.queryByTestId('mock-redirect')).toBeNull();
     expect(Stack).toHaveBeenCalled();
     expect((Stack as unknown as jest.Mock).mock.calls[0][0]).toEqual(
-      expect.objectContaining({ screenOptions: { headerShown: false } }),
+      expect.objectContaining({
+        screenOptions: expect.objectContaining({
+          headerShown: false,
+          // Guards against white flashes during push/pop transitions.
+          contentStyle: { backgroundColor: '#0C1117' },
+        }),
+      }),
     );
   });
 });

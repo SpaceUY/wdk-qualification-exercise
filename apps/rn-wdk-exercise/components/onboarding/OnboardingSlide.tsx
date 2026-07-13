@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
@@ -9,11 +8,12 @@ import type { OnboardingSlideData } from './slides';
 export function OnboardingSlide({ slide }: { slide: OnboardingSlideData }) {
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const Icon = slide.icon;
 
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Ionicons name={slide.icon} size={44} color={colors.primary} />
+        <Icon size={44} color={colors.primary} />
       </View>
       <AppText variant="title" style={styles.title}>
         {slide.title}

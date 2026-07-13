@@ -39,15 +39,13 @@ describe('GlassTabBar', () => {
     jest.clearAllMocks();
   });
 
-  it('renders Home and History tabs plus Send and Receive buttons', async () => {
+  it('renders Home and History tabs', async () => {
     const { props } = makeProps();
     const view = await render(<GlassTabBar {...props} />);
     await layoutTabs(view);
 
     expect(view.getByText('Home')).toBeTruthy();
     expect(view.getByText('History')).toBeTruthy();
-    expect(view.getByTestId('glass-tab-send')).toBeTruthy();
-    expect(view.getByTestId('glass-tab-receive')).toBeTruthy();
   });
 
   it('emits tabPress and navigates when pressing an inactive tab', async () => {
@@ -84,18 +82,6 @@ describe('GlassTabBar', () => {
     await fireEvent.press(view.getByTestId('glass-tab-history'));
 
     expect(navigation.navigate).not.toHaveBeenCalled();
-  });
-
-  it('pushes the send and receive flows from the floating buttons', async () => {
-    const { props } = makeProps();
-    const view = await render(<GlassTabBar {...props} />);
-    await layoutTabs(view);
-
-    await fireEvent.press(view.getByTestId('glass-tab-send'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/send');
-
-    await fireEvent.press(view.getByTestId('glass-tab-receive'));
-    expect(router.push).toHaveBeenCalledWith('/(wallet)/receive');
   });
 
   it('keeps the highlight in place when re-measuring identical layouts', async () => {

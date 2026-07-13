@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { CheckCheck, Tag } from 'lucide-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import * as Clipboard from 'expo-clipboard';
@@ -162,7 +162,7 @@ export default function CashbackScreen() {
     if (!available || available.length === 0) {
       return (
         <View style={styles.center}>
-          <Ionicons name="pricetag-outline" size={40} color={colors.textSubtle} />
+          <Tag size={40} color={colors.textSubtle} />
           <AppText color="textMuted" style={styles.emptyText}>No cashback coupons yet</AppText>
           <AppText variant="caption" color="textSubtle" style={styles.emptyHint}>
             Pay a merchant with USDT to earn UTL cashback.
@@ -225,7 +225,7 @@ export default function CashbackScreen() {
     if (!claimed || claimed.length === 0) {
       return (
         <View style={styles.center}>
-          <Ionicons name="checkmark-done-outline" size={40} color={colors.textSubtle} />
+          <CheckCheck size={40} color={colors.textSubtle} />
           <AppText color="textMuted" style={styles.emptyText}>No claimed coupons yet</AppText>
           <AppText variant="caption" color="textSubtle" style={styles.emptyHint}>
             Coupons you redeem will show up here.
