@@ -33,7 +33,7 @@ export default function HistoryScreen() {
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const { network, symbol } = useLocalSearchParams<{ network?: string; symbol?: string }>();
-  const { transfers, isLoading, isError, syncStatus, syncError, myAddresses } =
+  const { transfers, isLoading, isError, syncStatus, retry, myAddresses } =
     useFilteredTransactionHistory({ network, symbol });
   const [selected, setSelected] = useState<TokenTransfer | null>(null);
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
@@ -58,8 +58,11 @@ export default function HistoryScreen() {
     content = (
       <View style={styles.center}>
         <AppText color="danger" style={styles.errorText}>
-          {syncError ?? 'Could not load transaction history'}
+          Something went wrong. Please try again.
         </AppText>
+        <TouchableOpacity testID="history-retry" style={styles.emptyCta} onPress={retry}>
+          <AppText color="primary" style={styles.emptyCtaText}>Retry</AppText>
+        </TouchableOpacity>
       </View>
     );
   } else {

@@ -14,7 +14,7 @@ type SyncStatus = 'idle' | 'syncing' | 'done' | 'error';
 // (ERR_DATA_SHARD_NOT_FOUND) for a few seconds until the shard re-announces. Retrying the
 // whole sync run (connect is idempotent, and re-reading the wallet keeps create/update
 // consistent after a partial failure) with a short backoff absorbs those bursts.
-const RETRY_DELAYS_MS = [800, 2000];
+export const RETRY_DELAYS_MS = [800, 2000];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,9 +38,11 @@ async function runWithRetries(run: () => Promise<void>): Promise<void> {
 export function useAppNodeWalletSync(addresses: AppNodeWalletAddresses): {
   status: SyncStatus;
   error: string | null;
+  retry: () => void;
 } {
   const [status, setStatus] = useState<SyncStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const inProgress = useRef(false);
   const syncedKeys = useRef(new Set<string>());
 
@@ -82,7 +84,15 @@ export function useAppNodeWalletSync(addresses: AppNodeWalletAddresses): {
       .finally(() => {
         inProgress.current = false;
       });
-  }, [ethereum, bitcoin]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- retryTrigger only forces a re-run
+  }, [ethereum, bitcoin, retryTrigger]);
 
-  return { status, error };
+  // Failed keys are never added to syncedKeys, so bumping retryTrigger re-runs the
+  // effect above against the same addresses instead of being skipped as already-synced.
+  const retry = () => {
+    if (inProgress.current) return;
+    setRetryTrigger((n) => n + 1);
+  };
+
+  return { status, error, retry };
 }

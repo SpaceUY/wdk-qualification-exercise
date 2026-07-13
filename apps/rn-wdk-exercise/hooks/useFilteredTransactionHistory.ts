@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useWallet } from '@tetherto/wdk-react-native-core';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppNodeWalletSync } from '@/hooks/useAppNodeWalletSync';
@@ -29,14 +29,25 @@ export function useFilteredTransactionHistory({
   const ethereum = addresses['ethereum']?.[0];
   const bitcoin = addresses['bitcoin']?.[0];
 
-  const { status: syncStatus, error: syncError } = useAppNodeWalletSync(
+  const { status: syncStatus, error: syncError, retry: retrySync } = useAppNodeWalletSync(
     enabled ? { ethereum, bitcoin } : {},
   );
   const {
     data: allTransfers,
     isLoading,
     isError,
+    refetch: refetchTransfers,
   } = useTransactionHistory(userId, enabled && syncStatus === 'done');
+
+  // Wallet sync failing and the transfers fetch failing are two different failure points
+  // upstream of "the screen shows an error" — retry whichever one actually broke.
+  const retry = useCallback(() => {
+    if (syncStatus === 'error') {
+      retrySync();
+    } else {
+      refetchTransfers();
+    }
+  }, [syncStatus, retrySync, refetchTransfers]);
 
   const transfers = useMemo(() => {
     if (!network) return allTransfers;
@@ -51,5 +62,5 @@ export function useFilteredTransactionHistory({
     [ethereum, bitcoin],
   );
 
-  return { transfers, isLoading, isError, syncStatus, syncError, myAddresses };
+  return { transfers, isLoading, isError, syncStatus, syncError, myAddresses, retry };
 }

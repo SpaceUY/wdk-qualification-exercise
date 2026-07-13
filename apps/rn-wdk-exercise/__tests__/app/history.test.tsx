@@ -46,8 +46,8 @@ describe('HistoryScreen', () => {
         bitcoin: { 0: 'bc1BitcoinAddress' },
       },
     });
-    mockUseAppNodeWalletSync.mockReturnValue({ status: 'done', error: null });
-    mockUseTransactionHistory.mockReturnValue({ data: [], isLoading: false, isError: false });
+    mockUseAppNodeWalletSync.mockReturnValue({ status: 'done', error: null, retry: jest.fn() });
+    mockUseTransactionHistory.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: jest.fn() });
     (useLocalSearchParams as jest.Mock).mockReturnValue({});
   });
 
@@ -76,20 +76,38 @@ describe('HistoryScreen', () => {
     expect(router.push).toHaveBeenCalledWith('/(wallet)/receive');
   });
 
-  it('shows the sync error message when app-node sync fails', async () => {
-    mockUseAppNodeWalletSync.mockReturnValue({ status: 'error', error: 'Could not register wallet' });
+  it('shows a generic error and retries the wallet sync when app-node sync fails', async () => {
+    const mockRetrySync = jest.fn();
+    mockUseAppNodeWalletSync.mockReturnValue({
+      status: 'error',
+      error: 'Could not register wallet',
+      retry: mockRetrySync,
+    });
 
     await render(<HistoryScreen />);
 
-    expect(screen.getByText('Could not register wallet')).toBeTruthy();
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeTruthy();
+    expect(screen.queryByText('Could not register wallet')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('history-retry'));
+    expect(mockRetrySync).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to a generic error message when history fetch fails without a sync error', async () => {
-    mockUseTransactionHistory.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+  it('shows a generic error and retries the transfers fetch when history fails without a sync error', async () => {
+    const mockRefetch = jest.fn();
+    mockUseTransactionHistory.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: mockRefetch,
+    });
 
     await render(<HistoryScreen />);
 
-    expect(screen.getByText('Could not load transaction history')).toBeTruthy();
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('history-retry'));
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
   });
 
   it('shows an empty state when there are no transfers', async () => {
