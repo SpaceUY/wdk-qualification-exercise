@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowDownLeft, ArrowUpRight, CircleHelp, Receipt } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
@@ -11,6 +12,7 @@ import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHis
 import { getNetworkDisplayName, isHistorySupportedNetwork } from '@/config/networkMeta';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
+import { gradients } from '@/theme/gradients';
 import { AppText, FilterChips, type FilterChipOption } from '@/components/ui';
 import { Header, HeaderIconButton } from '@/components/Header';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
@@ -19,6 +21,12 @@ import { RowSkeleton } from '@/components/RowSkeleton';
 import { TokenLogo } from '@/components/TokenLogo';
 
 const LOADING_SKELETON_ROWS = 6;
+// Height of the floating filter row + its fade tail — the gradient overlay is this
+// tall so it can fade out below the chips. Mirrors the dashboard's filter treatment.
+const FILTER_OVERLAY_HEIGHT = 72;
+// List/skeleton content starts inside the gradient's fade tail so the first row sits
+// close under the filter row while the fade still softens the overlap.
+const LIST_CONTENT_TOP_PADDING = 64;
 
 type DirectionFilter = 'all' | 'received' | 'sent';
 
@@ -68,7 +76,9 @@ export default function HistoryScreen() {
   } else {
     content = (
       <FlatList
+        style={styles.list}
         contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
         data={visibleTransfers ?? []}
         keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
         ListEmptyComponent={
@@ -152,13 +162,28 @@ export default function HistoryScreen() {
           ) : null
         }
       />
-      <FilterChips
-        options={DIRECTION_FILTERS}
-        value={directionFilter}
-        onChange={setDirectionFilter}
-        testIDPrefix="history-filter"
-      />
-      {content}
+      <View style={styles.listArea}>
+        {content}
+
+        {/* Floating filter row with a gradient fading to transparent behind it, so
+            rows scrolling underneath dissolve into the background instead of hitting
+            a hard edge — same treatment as the dashboard's network filter. */}
+        <View style={styles.filterOverlay} pointerEvents="box-none">
+          <LinearGradient
+            colors={gradients.listFade}
+            locations={[0, 0.6, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <FilterChips
+            options={DIRECTION_FILTERS}
+            value={directionFilter}
+            onChange={setDirectionFilter}
+            testIDPrefix="history-filter"
+            style={styles.filterChips}
+          />
+        </View>
+      </View>
 
       <TransferDetailModal
         transfer={selected}
@@ -171,14 +196,27 @@ export default function HistoryScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  listArea: { flex: 1 },
+  list: { flex: 1 },
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    // Clears the floating filter row; see LIST_CONTENT_TOP_PADDING.
+    paddingTop: LIST_CONTENT_TOP_PADDING,
     paddingBottom: TAB_BAR_CLEARANCE,
   },
+  filterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: FILTER_OVERLAY_HEIGHT,
+  },
+  // Tightens the gap below the header (FilterChips' own default is spacing.lg).
+  filterChips: { marginTop: spacing.sm },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  skeletonList: { paddingVertical: spacing.md },
+  skeletonList: { paddingTop: LIST_CONTENT_TOP_PADDING, paddingBottom: spacing.md },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
