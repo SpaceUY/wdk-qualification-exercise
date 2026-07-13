@@ -10,6 +10,7 @@ import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHis
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui';
+import { Header } from '@/components/Header';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
 import { RowSkeleton } from '@/components/RowSkeleton';
@@ -103,9 +104,7 @@ export default function HistoryScreen() {
     // No bottom edge: the list scrolls behind the floating glass tab bar, with
     // TAB_BAR_CLEARANCE padding keeping the last row reachable.
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.header}>
-        <AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>
-      </View>
+      <Header left={<AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>} />
       {content}
 
       <TransferDetailModal
@@ -119,13 +118,6 @@ export default function HistoryScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,
