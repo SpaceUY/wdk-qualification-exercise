@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -20,6 +19,8 @@ import { useSeedBackup } from '@/hooks/useSeedBackup';
 import { PassphraseInput } from '@/components/PassphraseInput';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button } from '@/components/ui';
 
 export default function BackupScreen() {
   // Blocks screenshots/screen recording (and Android's app-switcher preview) while
@@ -109,21 +110,21 @@ export default function BackupScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScreenHeader title="Seed Phrase" />
       <View style={styles.container}>
-        <Text style={styles.warning}>
+        <AppText variant="caption" color="warningText" style={styles.warning}>
           Never share your seed phrase. Anyone with it has full access to your wallet.
-        </Text>
+        </AppText>
 
         {!revealed ? (
           <TouchableOpacity style={styles.revealButton} onPress={reveal} disabled={loading}>
             {loading ? (
               <ActivityIndicator color={colors.textOnPrimary} />
             ) : (
-              <Text style={styles.revealButtonText}>Reveal Seed Phrase</Text>
+              <AppText variant="subtitle" color="textOnPrimary">Reveal Seed Phrase</AppText>
             )}
           </TouchableOpacity>
         ) : (
           <>
-            <Text style={styles.tapHint}>Tap a word to reveal it.</Text>
+            <AppText variant="caption" color="textSubtle" style={styles.tapHint}>Tap a word to reveal it.</AppText>
             <View style={styles.grid}>
               {words.map((word, i) => {
                 const isWordRevealed = revealedWords.has(i);
@@ -134,34 +135,20 @@ export default function BackupScreen() {
                     onPress={() => toggleWord(i)}
                     testID={`seed-word-${i}`}
                   >
-                    <Text style={styles.wordIndex}>{i + 1}</Text>
-                    <Text style={styles.word}>{isWordRevealed ? word : '••••••'}</Text>
+                    <AppText variant="caption" color="textSubtle" style={styles.wordIndex}>{i + 1}</AppText>
+                    <AppText>{isWordRevealed ? word : '••••••'}</AppText>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <TouchableOpacity style={styles.copyButton} onPress={copy}>
-              <Text style={styles.copyButtonText}>Copy to Clipboard</Text>
-            </TouchableOpacity>
+            <Button title="Copy to Clipboard" variant="secondary" onPress={copy} style={styles.copyButton} />
 
-            {Platform.OS === 'ios' ? (
-              <TouchableOpacity
-                style={styles.icloudButton}
-                onPress={uploadToCloud}
-                disabled={uploading}
-              >
-                <Text style={styles.icloudButtonText}>Upload to iCloud</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.driveButton}
-                onPress={uploadToCloud}
-                disabled={uploading}
-              >
-                <Text style={styles.driveButtonText}>Upload to Google Drive</Text>
-              </TouchableOpacity>
-            )}
+            <Button
+              title={Platform.OS === 'ios' ? 'Upload to iCloud' : 'Upload to Google Drive'}
+              onPress={uploadToCloud}
+              disabled={uploading}
+            />
           </>
         )}
 
@@ -183,8 +170,8 @@ export default function BackupScreen() {
 
         {uploading ? (
           <View style={styles.uploadingOverlay}>
-            <ActivityIndicator size="large" color={colors.textOnPrimary} />
-            <Text style={styles.uploadingText}>Backing up seed phrase...</Text>
+            <ActivityIndicator size="large" color={colors.textPrimary} />
+            <AppText variant="subtitle" style={styles.uploadingText}>Backing up seed phrase...</AppText>
           </View>
         ) : null}
       </View>
@@ -194,28 +181,25 @@ export default function BackupScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: 24, backgroundColor: colors.background },
+  container: { flex: 1, padding: spacing.xl, backgroundColor: colors.background },
   warning: {
-    color: colors.warningText,
     backgroundColor: colors.warningBg,
     padding: 14,
-    borderRadius: 8,
-    fontSize: 13,
-    marginTop: 16,
-    marginBottom: 24,
+    borderRadius: radius.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
   },
   revealButton: {
     backgroundColor: colors.dangerStrong,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: radius.sm,
+    padding: spacing.lg,
     alignItems: 'center',
   },
-  revealButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
-  tapHint: { fontSize: 12, color: colors.textSubtle, marginBottom: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  tapHint: { marginBottom: spacing.sm },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xl },
   wordCard: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     paddingVertical: 10,
     paddingHorizontal: 14,
     width: '30%',
@@ -225,31 +209,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  wordIndex: { fontSize: 11, color: colors.textSubtle, minWidth: 16 },
-  word: { fontSize: 14, fontWeight: '500', color: colors.textPrimary },
-  copyButton: {
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  copyButtonText: { color: colors.textMuted, fontSize: 15 },
-  icloudButton: {
-    backgroundColor: '#0070c9',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  icloudButtonText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
-  driveButton: {
-    backgroundColor: '#1a73e8',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-  },
-  driveButtonText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600' },
+  wordIndex: { minWidth: 16 },
+  copyButton: { marginBottom: spacing.md },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -258,9 +219,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   uploadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  uploadingText: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '600', marginTop: 12 },
+  uploadingText: { marginTop: spacing.md },
 });

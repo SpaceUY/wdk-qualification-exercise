@@ -2,6 +2,8 @@ import {
   formatBalanceFromRaw,
   trimDisplayDecimals,
   humanAmountToRaw,
+  computeFiatValue,
+  formatFiat,
 } from '../../utils/balance';
 
 describe('formatBalanceFromRaw', () => {
@@ -176,5 +178,48 @@ describe('humanAmountToRaw', () => {
 
   it('handles integer without decimal point: "10" with 6 → "10000000"', () => {
     expect(humanAmountToRaw('10', 6)).toBe('10000000');
+  });
+});
+
+describe('computeFiatValue', () => {
+  it('multiplies the human amount by the price', () => {
+    expect(computeFiatValue('0.005', 2000)).toBe(10);
+  });
+
+  it('returns null when the amount is unknown', () => {
+    expect(computeFiatValue(null, 2000)).toBeNull();
+    expect(computeFiatValue(undefined, 2000)).toBeNull();
+  });
+
+  it('returns null when the price is unknown — a missing price must never become $0', () => {
+    expect(computeFiatValue('0.005', null)).toBeNull();
+    expect(computeFiatValue('0.005', undefined)).toBeNull();
+  });
+
+  it('returns null for a non-numeric amount instead of NaN', () => {
+    expect(computeFiatValue('—', 2000)).toBeNull();
+  });
+
+  it('handles a zero balance as a real $0', () => {
+    expect(computeFiatValue('0', 2000)).toBe(0);
+  });
+});
+
+describe('formatFiat', () => {
+  it('formats with a dollar sign, thousands separators and 2 decimals', () => {
+    expect(formatFiat(1234.567)).toBe('$1,234.57');
+  });
+
+  it('formats zero as $0.00', () => {
+    expect(formatFiat(0)).toBe('$0.00');
+  });
+
+  it('returns null for null/undefined so callers can render nothing', () => {
+    expect(formatFiat(null)).toBeNull();
+    expect(formatFiat(undefined)).toBeNull();
+  });
+
+  it('returns null for NaN instead of rendering $NaN', () => {
+    expect(formatFiat(Number.NaN)).toBeNull();
   });
 });

@@ -118,6 +118,18 @@ export async function getAppNodeToken(): Promise<string> {
   return data.token;
 }
 
+export type PricesResponse = {
+  // Symbol → USD spot price. null means the asset has no market price (e.g. UTL)
+  // and must not be rendered as $0.
+  prices: Record<string, number | null>;
+  fetchedAt: string;
+};
+
+export async function getPrices(): Promise<PricesResponse> {
+  const { data } = await apiClient.get<PricesResponse>('/prices');
+  return data;
+}
+
 export type MerchantsResponse = {
   addresses: string[];
   names: Record<string, string>;

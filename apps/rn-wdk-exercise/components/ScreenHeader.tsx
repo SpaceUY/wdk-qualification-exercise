@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { spacing } from '@/theme/tokens';
+import { AppText } from '@/components/ui';
 
 export function ScreenHeader({ title }: { title: string }) {
   const router = useRouter();
@@ -20,9 +22,9 @@ export function ScreenHeader({ title }: { title: string }) {
       >
         <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
       </TouchableOpacity>
-      <Text style={styles.title} numberOfLines={1}>
+      <AppText variant="subtitle" style={styles.title} numberOfLines={1}>
         {title}
-      </Text>
+      </AppText>
       <View style={styles.spacer} />
     </View>
   );
@@ -32,13 +34,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingBottom: 12,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backButton: { padding: 6 },
-  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  title: { flex: 1, textAlign: 'center' },
   spacer: { width: 36 },
 });

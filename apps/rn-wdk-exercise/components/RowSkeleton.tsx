@@ -42,7 +42,9 @@ const createStyles = (colors: ThemeColors) =>
       padding: 16,
       borderRadius: 10,
     },
-    block: { backgroundColor: colors.border, borderRadius: 4 },
+    // surfaceMuted, not border: borders are now translucent hairlines and read
+    // as nearly invisible when used as a fill.
+    block: { backgroundColor: colors.surfaceMuted, borderRadius: 4 },
     title: { width: 60, height: 16, marginBottom: 6 },
     subtitle: { width: 80, height: 12 },
     trailing: { width: 70, height: 16 },

@@ -1,6 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { isMainnetNetwork } from '@/config/networkMeta';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText } from '@/components/ui';
 
 export function NetworkFundsBanner({ network }: { network: string }) {
   const styles = useThemedStyles(createStyles);
@@ -8,7 +10,9 @@ export function NetworkFundsBanner({ network }: { network: string }) {
 
   return (
     <View style={styles.banner} testID="mainnet-funds-banner">
-      <Text style={styles.text}>⚠️ This network uses real funds — transactions are irreversible.</Text>
+      <AppText variant="caption" color="warningText" style={styles.text}>
+        ⚠️ This network uses real funds — transactions are irreversible.
+      </AppText>
     </View>
   );
 }
@@ -18,9 +22,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.warningBg,
     borderColor: colors.warningBorder,
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
-  text: { color: colors.warningText, fontSize: 13, fontWeight: '600' },
+  text: { fontWeight: '600' },
 });

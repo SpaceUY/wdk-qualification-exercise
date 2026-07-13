@@ -1,4 +1,4 @@
-import { Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from 'sonner-native';
 import type { TokenTransfer } from '@/utils/appNodeApi';
@@ -6,6 +6,8 @@ import { trimDisplayDecimals } from '@/utils/balance';
 import { getExplorerTxUrl } from '@/utils/explorer';
 import { formatTransferDate, isReceived } from '@/utils/transfers';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText } from '@/components/ui';
 
 async function copyToClipboard(label: string, value: string) {
   await Clipboard.setStringAsync(value);
@@ -35,13 +37,13 @@ export function TransferDetailModal({
           <View style={styles.grabHandle} />
           {transfer ? (
             <>
-              <Text style={styles.detailTitle}>
+              <AppText variant="subtitle">
                 {isReceived(transfer, myAddresses) ? 'Received' : 'Sent'}{' '}
                 {transfer.token?.toUpperCase()}
-              </Text>
-              <Text style={styles.detailSubtitle}>
+              </AppText>
+              <AppText variant="caption" color="textMuted" style={styles.detailSubtitle}>
                 {transfer.blockchain} · {formatTransferDate(transfer.ts)}
-              </Text>
+              </AppText>
 
               <DetailRow
                 label="Amount"
@@ -68,12 +70,12 @@ export function TransferDetailModal({
                   style={styles.explorerButton}
                   onPress={() => Linking.openURL(explorerUrl)}
                 >
-                  <Text style={styles.explorerButtonText}>View on Explorer</Text>
+                  <AppText variant="subtitle" color="primary" style={styles.explorerButtonText}>View on Explorer</AppText>
                 </TouchableOpacity>
               ) : null}
 
               <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Text style={styles.closeButtonText}>Close</Text>
+                <AppText color="textMuted">Close</AppText>
               </TouchableOpacity>
             </>
           ) : null}
@@ -95,14 +97,14 @@ function DetailRow({
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
+      <AppText variant="caption" color="textSubtle" style={styles.detailLabel}>{label}</AppText>
       <View style={styles.detailValueRow}>
-        <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
+        <AppText style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
           {value}
-        </Text>
+        </AppText>
         {onCopy ? (
           <TouchableOpacity onPress={onCopy} hitSlop={8}>
-            <Text style={styles.detailCopy}>Copy</Text>
+            <AppText variant="caption" color="primary" style={styles.detailCopy}>Copy</AppText>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -121,10 +123,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   backdrop: { flex: 1 },
   detailCard: {
     width: '100%',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 24,
+    padding: spacing.xl,
     paddingBottom: 36,
   },
   grabHandle: {
@@ -133,24 +135,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.borderStrong,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
-  detailTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
-  detailSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 4, marginBottom: 16 },
+  detailSubtitle: { marginTop: 4, marginBottom: spacing.lg },
   detailRow: { marginBottom: 14 },
-  detailLabel: { fontSize: 12, color: colors.textSubtle, marginBottom: 4 },
-  detailValueRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  detailValue: { fontSize: 14, color: colors.textPrimary, flex: 1 },
-  detailCopy: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  detailLabel: { marginBottom: 4 },
+  detailValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  detailValue: { flex: 1 },
+  detailCopy: { fontWeight: '600' },
   explorerButton: {
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: 14,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
-  explorerButtonText: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+  explorerButtonText: { fontSize: 15 },
   closeButton: { padding: 14, alignItems: 'center', marginTop: 4 },
-  closeButtonText: { color: colors.textMuted, fontSize: 15 },
 });

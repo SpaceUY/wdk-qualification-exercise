@@ -1,4 +1,3 @@
-import '../global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -31,9 +30,9 @@ export default function RootLayout() {
           currentUserId={userId}
           enableAutoInitialization={false}
         >
-          {/* style="auto" flips the status-bar text between black/white with the OS theme;
-              contentStyle keeps navigation transitions from flashing white in dark mode. */}
-          <StatusBar style="auto" />
+          {/* The app is dark-only, so the status bar text is always light;
+              contentStyle keeps navigation transitions from flashing white. */}
+          <StatusBar style="light" />
           <Stack
             screenOptions={{
               headerShown: false,

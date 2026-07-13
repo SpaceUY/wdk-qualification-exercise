@@ -23,6 +23,7 @@ import {
   getClaimedCoupons,
   getAppNodeToken,
   getMerchants,
+  getPrices,
   apiClient,
 } from '@/utils/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -115,6 +116,17 @@ describe('apiClient', () => {
 
     expect(getSpy).toHaveBeenCalledWith('/merchants');
     expect(result).toEqual(merchants);
+    getSpy.mockRestore();
+  });
+
+  it('getPrices calls apiClient.get and returns the response data', async () => {
+    const prices = { prices: { ETH: 3500, UTL: null }, fetchedAt: '2026-07-10T00:00:00.000Z' };
+    const getSpy = jest.spyOn(apiClient, 'get' as any).mockResolvedValueOnce({ data: prices });
+
+    const result = await getPrices();
+
+    expect(getSpy).toHaveBeenCalledWith('/prices');
+    expect(result).toEqual(prices);
     getSpy.mockRestore();
   });
 });

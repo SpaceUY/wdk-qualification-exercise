@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { parseMerchantQR } from '@/utils/merchantQR';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button } from '@/components/ui';
 
 export default function QRScanScreen() {
   const router = useRouter();
@@ -20,10 +22,8 @@ export default function QRScanScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.permText}>Camera permission is required to scan QR codes.</Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
-        </TouchableOpacity>
+        <AppText style={styles.permText}>Camera permission is required to scan QR codes.</AppText>
+        <Button title="Grant Permission" onPress={requestPermission} />
       </View>
     );
   }
@@ -52,13 +52,13 @@ export default function QRScanScreen() {
       />
       <View style={styles.overlay}>
         <View style={styles.frame} />
-        <Text style={styles.hint}>Align QR code within the frame</Text>
+        <AppText variant="caption" style={styles.hint}>Align QR code within the frame</AppText>
       </View>
       <TouchableOpacity
         style={[styles.cancelButton, { bottom: 48 + insets.bottom }]}
         onPress={() => router.back()}
       >
-        <Text style={styles.cancelText}>Cancel</Text>
+        <AppText variant="subtitle" style={styles.cancelText}>Cancel</AppText>
       </TouchableOpacity>
     </View>
   );
@@ -66,10 +66,8 @@ export default function QRScanScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background },
-  permText: { textAlign: 'center', marginBottom: 16, fontSize: 15, color: colors.textPrimary },
-  button: { backgroundColor: colors.primary, borderRadius: 8, padding: 14, alignItems: 'center', paddingHorizontal: 24 },
-  buttonText: { color: colors.textOnPrimary, fontWeight: '600' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, backgroundColor: colors.background },
+  permText: { textAlign: 'center', marginBottom: spacing.lg },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   // Camera chrome is intentionally theme-independent: it sits on the live camera
   // feed, not on an app surface, so it must stay white-on-dark in both themes.
@@ -78,18 +76,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 250,
     borderWidth: 2,
     borderColor: '#fff',
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: 'transparent',
   },
-  hint: { color: '#fff', marginTop: 20, fontSize: 14 },
+  hint: { color: '#fff', fontSize: 14, marginTop: 20 },
   cancelButton: {
     position: 'absolute',
     bottom: 48,
     alignSelf: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 8,
-    paddingHorizontal: 32,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.xxl,
     paddingVertical: 14,
   },
-  cancelText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  cancelText: { color: '#fff', fontSize: 16 },
 });

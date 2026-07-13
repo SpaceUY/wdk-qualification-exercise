@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -14,7 +13,10 @@ import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
+import { NetworkDot } from '@/components/NetworkDot';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
+import { radius, spacing } from '@/theme/tokens';
+import { AppText, Button, Card, Divider } from '@/components/ui';
 
 export default function SendScreen() {
   const router = useRouter();
@@ -88,55 +90,62 @@ export default function SendScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScreenHeader title="Send" />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.label}>Token</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tokenScroll}>
-          {ALL_ASSET_CONFIGS.map((asset) => (
-            <TouchableOpacity
-              key={asset.id}
-              style={[styles.tokenChip, selectedAsset.id === asset.id && styles.tokenChipActive]}
-              onPress={() => setSelectedAsset(asset)}
-            >
-              <Text style={[styles.tokenChipText, selectedAsset.id === asset.id && styles.tokenChipTextActive]}>
-                {asset.symbol}
-              </Text>
-              <Text style={[styles.tokenNetwork, selectedAsset.id === asset.id && styles.tokenNetworkActive]}>
-                {asset.network}
-              </Text>
+        <Card elevated style={styles.formCard}>
+          <AppText variant="caption" color="textMuted" style={styles.label}>Token</AppText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tokenScroll}>
+            {ALL_ASSET_CONFIGS.map((asset) => (
+              <TouchableOpacity
+                key={asset.id}
+                style={[styles.tokenChip, selectedAsset.id === asset.id && styles.tokenChipActive]}
+                onPress={() => setSelectedAsset(asset)}
+              >
+                <View style={styles.tokenChipHeader}>
+                  <NetworkDot network={asset.network} size={7} />
+                  <AppText variant="body" style={[styles.tokenChipText, selectedAsset.id === asset.id && styles.tokenChipTextActive]}>
+                    {asset.symbol}
+                  </AppText>
+                </View>
+                <AppText variant="caption" style={[styles.tokenNetwork, selectedAsset.id === asset.id && styles.tokenNetworkActive]}>
+                  {asset.network}
+                </AppText>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Divider />
+
+          <AppText variant="caption" color="textMuted" style={styles.label}>Recipient</AppText>
+          <View style={styles.recipientRow}>
+            <TextInput
+              style={[styles.input, styles.recipientInput]}
+              value={recipient}
+              onChangeText={setRecipient}
+              placeholder="Address or scan QR"
+              placeholderTextColor={colors.textSubtle}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
+              <AppText variant="body" color="textOnPrimary" style={styles.scanButtonText}>QR</AppText>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          </View>
+
+          <Divider />
+
+          <AppText variant="caption" color="textMuted" style={styles.label}>Amount</AppText>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder={`0.00 ${selectedAsset.symbol}`}
+            placeholderTextColor={colors.textSubtle}
+            keyboardType="decimal-pad"
+          />
+        </Card>
 
         <NetworkFundsBanner network={selectedAsset.network} />
 
-        <Text style={styles.label}>Recipient</Text>
-        <View style={styles.recipientRow}>
-          <TextInput
-            style={[styles.input, styles.recipientInput]}
-            value={recipient}
-            onChangeText={setRecipient}
-            placeholder="Address or scan QR"
-            placeholderTextColor={colors.textSubtle}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
-            <Text style={styles.scanButtonText}>QR</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.label}>Amount</Text>
-        <TextInput
-          style={styles.input}
-          value={amount}
-          onChangeText={setAmount}
-          placeholder={`0.00 ${selectedAsset.symbol}`}
-          placeholderTextColor={colors.textSubtle}
-          keyboardType="decimal-pad"
-        />
-
-        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Review Transaction</Text>
-        </TouchableOpacity>
+        <Button title="Review Transaction" onPress={handleContinue} style={styles.continueButton} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -144,9 +153,10 @@ export default function SendScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
-  container: { padding: 24 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textMuted, marginBottom: 8, marginTop: 16 },
-  tokenScroll: { marginBottom: 4 },
+  container: { padding: spacing.xl },
+  formCard: { marginBottom: spacing.lg },
+  label: { fontWeight: '600', marginBottom: spacing.sm },
+  tokenScroll: { marginBottom: spacing.xs },
   tokenChip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -154,20 +164,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
-    marginRight: 8,
+    marginRight: spacing.sm,
     alignItems: 'center',
   },
   tokenChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tokenChipText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  tokenChipHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tokenChipText: { fontSize: 14, fontWeight: '600' },
   tokenChipTextActive: { color: colors.textOnPrimary },
-  tokenNetwork: { fontSize: 11, color: colors.textSubtle, marginTop: 2 },
+  tokenNetwork: { fontSize: 11, lineHeight: 14, color: colors.textSubtle, marginTop: 2 },
   tokenNetworkActive: { color: colors.textOnPrimary, opacity: 0.85 },
-  recipientRow: { flexDirection: 'row', gap: 8 },
+  recipientRow: { flexDirection: 'row', gap: spacing.sm },
   recipientInput: { flex: 1 },
   input: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     padding: 14,
     fontSize: 15,
     backgroundColor: colors.surface,
@@ -175,17 +186,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scanButton: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     paddingHorizontal: 18,
     justifyContent: 'center',
   },
-  scanButtonText: { color: colors.textOnPrimary, fontWeight: '700' },
-  continueButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  continueButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  scanButtonText: { fontWeight: '700' },
+  continueButton: { marginTop: spacing.sm },
 });
