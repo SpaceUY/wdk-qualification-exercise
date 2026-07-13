@@ -8,7 +8,7 @@ import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { restoreFromCloudBackup } from '@/utils/cloudBackup';
 import { decryptMnemonic } from '@/utils/seedEncryption';
 import { PassphraseInput } from '@/components/PassphraseInput';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
@@ -73,8 +73,8 @@ export default function RestoreCloudScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Restore from Cloud Backup" />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Header left={<HeaderBackTitle title="Restore from Cloud Backup" />} />
       <View style={styles.container}>
         <AppText color="textMuted" style={styles.subtitle}>
           {Platform.OS === 'android'
