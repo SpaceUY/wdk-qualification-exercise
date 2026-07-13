@@ -125,10 +125,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    // Two matches: the row's direction label plus the 'Received' filter chip.
-    expect(screen.getAllByText('Received')).toHaveLength(2);
-    expect(screen.getByText('ethereum · USDT')).toBeTruthy();
-    expect(screen.getByText('0xabcdef...567890')).toBeTruthy();
+    expect(screen.getByText('Receive USDT on ethereum')).toBeTruthy();
     expect(screen.getByText('+1.5')).toBeTruthy();
   });
 
@@ -141,7 +138,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getAllByText('Sent')).toHaveLength(2);
+    expect(screen.getByText('Send BTC on bitcoin')).toBeTruthy();
     expect(screen.getByText('-2.5')).toBeTruthy();
   });
 
@@ -166,7 +163,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getAllByText('Received')).toHaveLength(2);
+    expect(screen.getByText('Receive USDT on ethereum')).toBeTruthy();
   });
 
   it('infers "sent" by address mismatch when the transfer type is neither sent nor received', async () => {
@@ -178,7 +175,7 @@ describe('HistoryScreen', () => {
 
     await render(<HistoryScreen />);
 
-    expect(screen.getAllByText('Sent')).toHaveLength(2);
+    expect(screen.getByText('Send USDT on ethereum')).toBeTruthy();
   });
 
   it('opens a detail view with the full hash and addresses when a row is tapped', async () => {
@@ -189,7 +186,7 @@ describe('HistoryScreen', () => {
     });
 
     await render(<HistoryScreen />);
-    await fireEvent.press(screen.getByText('0xabcdef...567890'));
+    await fireEvent.press(screen.getByText('Receive USDT on ethereum'));
 
     expect(screen.getByText('0xabcdef1234567890')).toBeTruthy();
     expect(screen.getByText('0xSenderAddress')).toBeTruthy();
@@ -204,13 +201,11 @@ describe('HistoryScreen', () => {
     });
 
     await render(<HistoryScreen />);
-    await fireEvent.press(screen.getByText('0xabcdef...567890'));
-    await fireEvent.press(screen.getAllByText('Copy')[0]);
+    await fireEvent.press(screen.getByText('Receive USDT on ethereum'));
+    // Copy is now an icon button labelled per field (it flashes a check on success).
+    await fireEvent.press(screen.getByLabelText('Copy Transaction Hash'));
 
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith('0xabcdef1234567890');
-    expect(toast.success).toHaveBeenCalledWith('Copied', {
-      description: 'Transaction hash copied to clipboard.',
-    });
   });
 
   it('opens the correct testnet Etherscan URL for a Sepolia ethereum transfer', async () => {
@@ -222,7 +217,7 @@ describe('HistoryScreen', () => {
     });
 
     await render(<HistoryScreen />);
-    await fireEvent.press(screen.getByText('0xabcdef...567890'));
+    await fireEvent.press(screen.getByText('Receive USDT on ethereum'));
     await fireEvent.press(screen.getByText('View on Explorer'));
 
     expect(openURLSpy).toHaveBeenCalledWith(
@@ -240,14 +235,14 @@ describe('HistoryScreen', () => {
     });
 
     await render(<HistoryScreen />);
-    await fireEvent.press(screen.getByText('0xabcdef...567890'));
+    await fireEvent.press(screen.getByText('Receive USDT on polygon'));
     await fireEvent.press(screen.getByText('View on Explorer'));
 
     expect(openURLSpy).toHaveBeenCalledWith('https://polygonscan.com/tx/0xabcdef1234567890');
     openURLSpy.mockRestore();
   });
 
-  it('closes the detail view when Close is pressed', async () => {
+  it('closes the detail view when the backdrop is pressed', async () => {
     mockUseTransactionHistory.mockReturnValue({
       data: [buildTransfer()],
       isLoading: false,
@@ -255,10 +250,11 @@ describe('HistoryScreen', () => {
     });
 
     await render(<HistoryScreen />);
-    await fireEvent.press(screen.getByText('0xabcdef...567890'));
+    await fireEvent.press(screen.getByText('Receive USDT on ethereum'));
     expect(screen.getByText('0xabcdef1234567890')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Close'));
+    // The detail sheet has no Close button anymore; it dismisses via the backdrop.
+    await fireEvent.press(screen.getByLabelText('Close'));
 
     expect(screen.queryByText('0xabcdef1234567890')).toBeNull();
   });
@@ -314,8 +310,8 @@ describe('HistoryScreen', () => {
     await render(<HistoryScreen />);
     await fireEvent.press(screen.getByTestId('history-filter-received'));
 
-    expect(screen.getByText('0xRcvTx0...000000')).toBeTruthy();
-    expect(screen.queryByText('0xSntTx0...000000')).toBeNull();
+    expect(screen.getByText('Receive USDT on ethereum')).toBeTruthy();
+    expect(screen.queryByText('Send USDT on ethereum')).toBeNull();
   });
 
   it('shows only sent transfers when the Sent chip is pressed', async () => {
@@ -331,8 +327,8 @@ describe('HistoryScreen', () => {
     await render(<HistoryScreen />);
     await fireEvent.press(screen.getByTestId('history-filter-sent'));
 
-    expect(screen.getByText('0xSntTx0...000000')).toBeTruthy();
-    expect(screen.queryByText('0xRcvTx0...000000')).toBeNull();
+    expect(screen.getByText('Send USDT on ethereum')).toBeTruthy();
+    expect(screen.queryByText('Receive USDT on ethereum')).toBeNull();
   });
 
   it('shows every transfer again when All is pressed after a direction filter', async () => {
@@ -349,8 +345,8 @@ describe('HistoryScreen', () => {
     await fireEvent.press(screen.getByTestId('history-filter-sent'));
     await fireEvent.press(screen.getByTestId('history-filter-all'));
 
-    expect(screen.getByText('0xRcvTx0...000000')).toBeTruthy();
-    expect(screen.getByText('0xSntTx0...000000')).toBeTruthy();
+    expect(screen.getByText('Receive USDT on ethereum')).toBeTruthy();
+    expect(screen.getByText('Send USDT on ethereum')).toBeTruthy();
   });
 
   it('combines the direction filter with the network/symbol drill-down filter', async () => {
@@ -368,9 +364,9 @@ describe('HistoryScreen', () => {
     await render(<HistoryScreen />);
     await fireEvent.press(screen.getByTestId('history-filter-sent'));
 
-    expect(screen.getByText('0xBtcSnt...t00000')).toBeTruthy();
-    expect(screen.queryByText('0xBtcRcv...v00000')).toBeNull();
-    expect(screen.queryByText('0xEthSnt...t00000')).toBeNull();
+    expect(screen.getByText('Send BTC on bitcoin')).toBeTruthy();
+    expect(screen.queryByText('Receive BTC on bitcoin')).toBeNull();
+    expect(screen.queryByText('Send USDT on ethereum')).toBeNull();
   });
 
   it('filters transfers by network and symbol when navigated to from a token row', async () => {
@@ -387,7 +383,7 @@ describe('HistoryScreen', () => {
     await render(<HistoryScreen />);
 
     expect(screen.getByText('History · BTC')).toBeTruthy();
-    expect(screen.getByText('0xBtcTx0...000000')).toBeTruthy();
-    expect(screen.queryByText('0xEthTx0...000000')).toBeNull();
+    expect(screen.getByText('Receive BTC on bitcoin')).toBeTruthy();
+    expect(screen.queryByText('Receive USDT on ethereum')).toBeNull();
   });
 });
