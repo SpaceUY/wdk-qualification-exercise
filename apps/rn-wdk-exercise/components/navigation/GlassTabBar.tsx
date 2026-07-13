@@ -216,9 +216,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 8,
   },
   highlight: {
+    // top/bottom 0, not spacing.xs: the pill's own padding already insets
+    // this from the outer edge, so adding another inset here would double
+    // it and leave the highlight short of the item it's supposed to match.
     position: 'absolute',
-    top: spacing.xs,
-    bottom: spacing.xs,
+    top: 0,
+    bottom: 0,
     left: 0,
     borderRadius: radius.full,
     backgroundColor: colors.primarySoft,
