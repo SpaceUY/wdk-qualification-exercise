@@ -11,7 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Header, HeaderBackTitle } from '@/components/Header';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { NetworkDot } from '@/components/NetworkDot';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
@@ -88,7 +88,7 @@ export default function SendScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <ScreenHeader title="Send" />
+      <Header left={<HeaderBackTitle title="Send" />} />
       <ScrollView contentContainerStyle={styles.container}>
         <Card elevated style={styles.formCard}>
           <AppText variant="caption" color="textMuted" style={styles.label}>Token</AppText>
