@@ -32,3 +32,15 @@ function StackScreenBase() {
 export const Stack = Object.assign(jest.fn(StackBase), {
   Screen: jest.fn(StackScreenBase),
 });
+
+function TabsBase({ children }: { children?: ReactNode }) {
+  return <>{children}</>;
+}
+
+function TabsScreenBase() {
+  return null;
+}
+
+export const Tabs = Object.assign(jest.fn(TabsBase), {
+  Screen: jest.fn(TabsScreenBase),
+});
