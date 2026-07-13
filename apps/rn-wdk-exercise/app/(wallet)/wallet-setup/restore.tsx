@@ -67,7 +67,7 @@ export default function RestoreWalletScreen() {
         </AppText>
 
         <AppText variant="caption" color="warningText" style={styles.warning}>
-          ⚠️ This will replace your current wallet. Your existing funds will only be accessible via the old seed phrase.
+          This will replace your current wallet. Your existing funds will only be accessible via the old seed phrase.
         </AppText>
 
         <TextInput
