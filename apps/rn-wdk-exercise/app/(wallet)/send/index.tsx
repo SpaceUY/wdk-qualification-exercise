@@ -87,7 +87,7 @@ export default function SendScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <Header left={<HeaderBackTitle title="Send" />} />
       <ScrollView contentContainerStyle={styles.container}>
         <Card elevated style={styles.formCard}>
