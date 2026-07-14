@@ -8,11 +8,12 @@ export function useTransactionHistory(
 ): UseQueryResult<TokenTransfer[]> {
   return useQuery<TokenTransfer[]>({
     queryKey: ['wdk-app-node', 'token-transfers', userId],
-    queryFn: () => getUserTokenTransfers(userId as string),
+    queryFn: () => getUserTokenTransfers(),
     enabled: Boolean(userId) && enabled,
     staleTime: 0,
-    // Same ork/DHT lookup-miss 404 burst useAppNodeWalletSync retries around — this
-    // fetch hits the same app-node endpoint and was previously left uncovered.
+    // Backstop for the rare case the backend's own retry + 24h Redis cache (see
+    // apps/backend's token-transfers.service.ts) both miss — that proxy is now what
+    // absorbs the ork/DHT lookup-miss bursts, not this client-side retry.
     retry: RETRY_DELAYS_MS.length,
     retryDelay: (attemptIndex) => RETRY_DELAYS_MS[attemptIndex] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1],
   });

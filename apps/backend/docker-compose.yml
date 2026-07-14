@@ -20,6 +20,9 @@ services:
       # infra/wdk-stack's redis lives on a different compose project's network — reach its
       # host-published port (6380) via the Docker host gateway, not "localhost".
       WDK_EVENT_BUS_REDIS_HOST: host.docker.internal
+      # Same cross-compose-project networking need, for the token-transfers proxy's
+      # server-side call to app-node (infra/wdk-stack, host port 3000).
+      WDK_APP_NODE_BASE_URL: http://host.docker.internal:3000
     extra_hosts:
       # host.docker.internal resolves natively on Docker Desktop (macOS/Windows); this makes it
       # resolve on Linux hosts too.
