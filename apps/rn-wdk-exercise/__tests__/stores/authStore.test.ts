@@ -1,5 +1,10 @@
-import { __resetSecureStore } from 'expo-secure-store';
 import { useAuthStore } from '../../stores/authStore';
+
+// __resetSecureStore is a test-only helper on the Jest mock (__mocks__/expo-secure-store.ts);
+// pull it via requireMock so tsc doesn't resolve it against the real package's types.
+const { __resetSecureStore } = jest.requireMock('expo-secure-store') as {
+  __resetSecureStore: () => void;
+};
 
 describe('authStore', () => {
   beforeEach(() => {
