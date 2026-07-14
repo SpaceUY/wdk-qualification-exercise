@@ -69,11 +69,8 @@ export default function ConfirmSendScreen() {
   const { authenticate } = useBiometrics();
   const params = useLocalSearchParams<{
     assetId: string;
-    network: string;
     recipient: string;
     amount: string;
-    decimals: string;
-    symbol: string;
   }>();
 
   const [sending, setSending] = useState(false);
@@ -94,7 +91,7 @@ export default function ConfirmSendScreen() {
     setSending(true);
     try {
       const amountRaw = humanAmountToRaw(params.amount, assetConfig.decimals);
-      const network = params.network ?? 'ethereum';
+      const network = assetConfig.network;
 
       if (assetConfig.isNative) {
         // Native assets (ETH, BTC, sBTC): raw send
@@ -150,9 +147,9 @@ export default function ConfirmSendScreen() {
       <NetworkFundsBanner network={assetConfig.network} />
 
       <Card elevated style={styles.detailCard}>
-        <Row label="Token" value={`${params.symbol} (${assetConfig.network})`} />
+        <Row label="Token" value={`${assetConfig.symbol} (${assetConfig.network})`} />
         <Divider />
-        <Row label="Amount" value={`${params.amount} ${params.symbol}`} />
+        <Row label="Amount" value={`${params.amount} ${assetConfig.symbol}`} />
         <Divider />
         <Row label="To" value={params.recipient ?? ''} mono />
       </Card>

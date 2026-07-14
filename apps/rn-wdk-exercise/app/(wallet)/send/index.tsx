@@ -93,11 +93,8 @@ export default function SendScreen() {
       pathname: '/(wallet)/send/confirm',
       params: {
         assetId: selectedAsset.id,
-        network: selectedAsset.network,
         recipient: recipient.trim(),
         amount: amount.trim(),
-        decimals: String(selectedAsset.decimals),
-        symbol: selectedAsset.symbol,
       },
     });
   }

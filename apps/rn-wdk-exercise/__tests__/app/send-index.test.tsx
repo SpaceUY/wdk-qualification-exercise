@@ -112,11 +112,8 @@ describe('SendScreen', () => {
       pathname: '/(wallet)/send/confirm',
       params: {
         assetId: ETH_CONFIG.id,
-        network: ETH_CONFIG.network,
         recipient: '0xRecipientAddress',
         amount: '0.5',
-        decimals: String(ETH_CONFIG.decimals),
-        symbol: ETH_CONFIG.symbol,
       },
     });
   });
@@ -132,11 +129,8 @@ describe('SendScreen', () => {
       pathname: '/(wallet)/send/confirm',
       params: {
         assetId: BTC_CONFIG.id,
-        network: BTC_CONFIG.network,
         recipient: 'bc1RecipientAddress',
         amount: '0.01',
-        decimals: String(BTC_CONFIG.decimals),
-        symbol: BTC_CONFIG.symbol,
       },
     });
   });
