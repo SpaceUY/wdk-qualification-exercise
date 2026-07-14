@@ -6,6 +6,7 @@ import { decode } from 'jsonwebtoken';
 import { JwtAuthGuard } from '../src/auth/jwt-auth.guard';
 import { AuthModule } from '../src/auth/auth.module';
 import { WdkAppNodeModule } from '../src/wdk-app-node/wdk-app-node.module';
+import { CACHE_REDIS_CLIENT } from '../src/redis/redis-cache.tokens';
 import { cognitoConfig } from '../src/config/cognito.config';
 import { wdkAppNodeConfig } from '../src/config/wdk-app-node.config';
 import { TEST_USER, createMockJwtAuthGuard } from './support/auth';
@@ -25,6 +26,14 @@ describe('WdkAppNode (e2e)', () => {
     })
       .overrideGuard(JwtAuthGuard)
       .useValue(createMockJwtAuthGuard(TEST_USER))
+      // WdkAppNodeModule pulls in RedisCacheModule; stub the client so the e2e
+      // run needs no Redis instance (quit is called by app.close()).
+      .overrideProvider(CACHE_REDIS_CLIENT)
+      .useValue({
+        get: jest.fn().mockResolvedValue(null),
+        set: jest.fn().mockResolvedValue('OK'),
+        quit: jest.fn().mockResolvedValue('OK'),
+      })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -32,7 +41,8 @@ describe('WdkAppNode (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    // Optional chaining: if beforeAll failed, don't mask its error with a TypeError here.
+    await app?.close();
   });
 
   it('GET /wdk-app-node/token mints a token scoped to the authenticated user', async () => {
