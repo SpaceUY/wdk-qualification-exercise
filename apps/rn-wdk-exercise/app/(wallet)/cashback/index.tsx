@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Linking,
   StyleSheet,
   TouchableOpacity,
@@ -10,14 +9,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckCheck, CircleHelp, Tag } from 'lucide-react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from 'sonner-native';
 import type { AxiosError } from 'axios';
 import {
   apiClient,
-  getCoupons,
-  getClaimedCoupons,
   type CouponListItem,
   type ClaimedCouponListItem,
 } from '@/utils/api';
@@ -26,12 +23,13 @@ import { getExplorerTxUrl } from '@/utils/explorer';
 import { USDT_ETH_CONFIG, UTL_CONFIG } from '@/config/assets';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText, Button } from '@/components/ui';
+import { AppText } from '@/components/ui';
 import { Header, HeaderBackTitle, HeaderIconButton } from '@/components/Header';
-import { RowSkeleton } from '@/components/RowSkeleton';
 import { useMerchants } from '@/hooks/useMerchants';
+import { useCoupons, type CouponTab } from '@/hooks/useCoupons';
+import { CouponList } from '@/components/CouponList';
+import { SegmentedTabs } from '@/components/common/SegmentedTabs';
 
-type Tab = 'available' | 'claimed';
 type ClaimResponse = { redemptionTxHash: string };
 type ClaimError = AxiosError<{ message?: string }>;
 
@@ -90,30 +88,10 @@ export default function CashbackScreen() {
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>('available');
+  const [activeTab, setActiveTab] = useState<CouponTab>('available');
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const {
-    data: available,
-    isLoading: availableLoading,
-    isError: availableError,
-    refetch: refetchAvailable,
-  } = useQuery({
-    queryKey: ['coupons'],
-    queryFn: getCoupons,
-    enabled: activeTab === 'available',
-  });
-
-  const {
-    data: claimed,
-    isLoading: claimedLoading,
-    isError: claimedError,
-    refetch: refetchClaimed,
-  } = useQuery({
-    queryKey: ['coupons', 'claimed'],
-    queryFn: getClaimedCoupons,
-    enabled: activeTab === 'claimed',
-  });
+  const { available, claimed } = useCoupons(activeTab);
 
   const { mutate } = useClaimCoupon();
 
@@ -145,142 +123,6 @@ export default function CashbackScreen() {
     });
   }
 
-  function renderAvailable() {
-    if (availableLoading) {
-      return (
-        <View style={styles.skeletonList} testID="cashback-skeleton">
-          {Array.from({ length: 4 }, (_, i) => (
-            <RowSkeleton key={i} />
-          ))}
-        </View>
-      );
-    }
-    if (availableError) {
-      return (
-        <View style={styles.center}>
-          <AppText color="danger" style={styles.errorText}>Failed to load coupons.</AppText>
-          <Button title="Retry" onPress={() => refetchAvailable()} />
-        </View>
-      );
-    }
-    if (!available || available.length === 0) {
-      return (
-        <View style={styles.center}>
-          <Tag size={40} color={colors.textSubtle} />
-          <AppText color="textMuted" style={styles.emptyText}>No cashback coupons yet</AppText>
-          <AppText variant="caption" color="textSubtle" style={styles.emptyHint}>
-            Pay a merchant with USDT to earn UTL cashback.
-          </AppText>
-        </View>
-      );
-    }
-    return (
-      <FlatList
-        data={available}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <View testID="cashback-item" style={styles.row}>
-            <View style={styles.rowContent}>
-              <AppText style={styles.rowTitle}>
-                {cashbackPct ? `${cashbackPct} cashback on ` : 'Cashback on '}
-                ${formatUsdt(item.usdtAmountRaw)} USDT
-              </AppText>
-              <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
-                {formatUtl(item.utlAmountRaw)} UTL · {formatDate(item.createdAt)}
-              </AppText>
-              <MerchantAddressRow merchantAddress={item.merchantAddress} />
-            </View>
-            <TouchableOpacity
-              testID="claim-button"
-              style={[styles.claimButton, pendingId != null && pendingId !== item.id && styles.claimButtonDisabled]}
-              onPress={() => handleClaim(item)}
-              disabled={pendingId != null}
-            >
-              {pendingId === item.id ? (
-                <ActivityIndicator color={colors.textOnPrimary} size="small" />
-              ) : (
-                <AppText color="textOnPrimary" style={styles.claimButtonText}>Claim</AppText>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-      />
-    );
-  }
-
-  function renderClaimed() {
-    if (claimedLoading) {
-      return (
-        <View style={styles.skeletonList} testID="cashback-skeleton">
-          {Array.from({ length: 4 }, (_, i) => (
-            <RowSkeleton key={i} />
-          ))}
-        </View>
-      );
-    }
-    if (claimedError) {
-      return (
-        <View style={styles.center}>
-          <AppText color="danger" style={styles.errorText}>Failed to load claimed coupons.</AppText>
-          <Button title="Retry" onPress={() => refetchClaimed()} />
-        </View>
-      );
-    }
-    if (!claimed || claimed.length === 0) {
-      return (
-        <View style={styles.center}>
-          <CheckCheck size={40} color={colors.textSubtle} />
-          <AppText color="textMuted" style={styles.emptyText}>No claimed coupons yet</AppText>
-          <AppText variant="caption" color="textSubtle" style={styles.emptyHint}>
-            Coupons you redeem will show up here.
-          </AppText>
-        </View>
-      );
-    }
-    return (
-      <FlatList
-        data={claimed}
-        keyExtractor={(item: ClaimedCouponListItem) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }: { item: ClaimedCouponListItem }) => {
-          const explorerUrl = getExplorerTxUrl('ethereum', item.redemptionTxHash);
-          return (
-            <View testID="cashback-claimed-item" style={styles.row}>
-              <View style={styles.claimedRowContent}>
-                <AppText style={styles.rowTitle}>
-                  ${formatUsdt(item.usdtAmountRaw)} USDT → {formatUtl(item.utlAmountRaw)} UTL
-                </AppText>
-                <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
-                  ✓ Claimed {formatDate(item.redeemedAt)}
-                </AppText>
-
-                <MerchantAddressRow merchantAddress={item.merchantAddress} />
-
-                <View style={styles.addressRow}>
-                  <AppText variant="caption" color="textMuted">
-                    {truncateMiddle(item.redemptionTxHash)}
-                  </AppText>
-                  <TouchableOpacity
-                    onPress={() => copyToClipboard('Transaction hash', item.redemptionTxHash)}
-                    hitSlop={8}
-                  >
-                    <AppText variant="caption" color="primary" style={styles.copyLink}>Copy</AppText>
-                  </TouchableOpacity>
-                  {explorerUrl ? (
-                    <TouchableOpacity onPress={() => Linking.openURL(explorerUrl)} hitSlop={8}>
-                      <AppText variant="caption" color="primary" style={styles.copyLink}>Explorer</AppText>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-          );
-        }}
-      />
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Header
@@ -300,65 +142,106 @@ export default function CashbackScreen() {
         }
       />
 
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          testID="cashback-tab-available"
-          style={[styles.tab, activeTab === 'available' && styles.tabActive]}
-          onPress={() => setActiveTab('available')}
-        >
-          <AppText
-            color={activeTab === 'available' ? 'textPrimary' : 'textMuted'}
-            style={styles.tabText}
-          >
-            Available
-          </AppText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID="cashback-tab-claimed"
-          style={[styles.tab, activeTab === 'claimed' && styles.tabActive]}
-          onPress={() => setActiveTab('claimed')}
-        >
-          <AppText
-            color={activeTab === 'claimed' ? 'textPrimary' : 'textMuted'}
-            style={styles.tabText}
-          >
-            Claimed
-          </AppText>
-        </TouchableOpacity>
-      </View>
+      <SegmentedTabs
+        tabs={[
+          { key: 'available', label: 'Available', testID: 'cashback-tab-available' },
+          { key: 'claimed', label: 'Claimed', testID: 'cashback-tab-claimed' },
+        ]}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+      />
 
-      {activeTab === 'available' ? renderAvailable() : renderClaimed()}
+      {activeTab === 'available' ? (
+        <CouponList
+          items={available.data}
+          isLoading={available.isLoading}
+          isError={available.isError}
+          onRetry={() => available.refetch()}
+          keyExtractor={(item) => item.id}
+          emptyIcon={Tag}
+          emptyTitle="No cashback coupons yet"
+          emptyHint="Pay a merchant with USDT to earn UTL cashback."
+          errorText="Failed to load coupons."
+          renderItem={(item: CouponListItem) => (
+            <View testID="cashback-item" style={styles.row}>
+              <View style={styles.rowContent}>
+                <AppText style={styles.rowTitle}>
+                  {cashbackPct ? `${cashbackPct} cashback on ` : 'Cashback on '}
+                  ${formatUsdt(item.usdtAmountRaw)} USDT
+                </AppText>
+                <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
+                  {formatUtl(item.utlAmountRaw)} UTL · {formatDate(item.createdAt)}
+                </AppText>
+                <MerchantAddressRow merchantAddress={item.merchantAddress} />
+              </View>
+              <TouchableOpacity
+                testID="claim-button"
+                style={[styles.claimButton, pendingId != null && pendingId !== item.id && styles.claimButtonDisabled]}
+                onPress={() => handleClaim(item)}
+                disabled={pendingId != null}
+              >
+                {pendingId === item.id ? (
+                  <ActivityIndicator color={colors.textOnPrimary} size="small" />
+                ) : (
+                  <AppText color="textOnPrimary" style={styles.claimButtonText}>Claim</AppText>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      ) : (
+        <CouponList
+          items={claimed.data}
+          isLoading={claimed.isLoading}
+          isError={claimed.isError}
+          onRetry={() => claimed.refetch()}
+          keyExtractor={(item) => item.id}
+          emptyIcon={CheckCheck}
+          emptyTitle="No claimed coupons yet"
+          emptyHint="Coupons you redeem will show up here."
+          errorText="Failed to load claimed coupons."
+          renderItem={(item: ClaimedCouponListItem) => {
+            const explorerUrl = getExplorerTxUrl('ethereum', item.redemptionTxHash);
+            return (
+              <View testID="cashback-claimed-item" style={styles.row}>
+                <View style={styles.claimedRowContent}>
+                  <AppText style={styles.rowTitle}>
+                    ${formatUsdt(item.usdtAmountRaw)} USDT → {formatUtl(item.utlAmountRaw)} UTL
+                  </AppText>
+                  <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
+                    ✓ Claimed {formatDate(item.redeemedAt)}
+                  </AppText>
+
+                  <MerchantAddressRow merchantAddress={item.merchantAddress} />
+
+                  <View style={styles.addressRow}>
+                    <AppText variant="caption" color="textMuted">
+                      {truncateMiddle(item.redemptionTxHash)}
+                    </AppText>
+                    <TouchableOpacity
+                      onPress={() => copyToClipboard('Transaction hash', item.redemptionTxHash)}
+                      hitSlop={8}
+                    >
+                      <AppText variant="caption" color="primary" style={styles.copyLink}>Copy</AppText>
+                    </TouchableOpacity>
+                    {explorerUrl ? (
+                      <TouchableOpacity onPress={() => Linking.openURL(explorerUrl)} hitSlop={8}>
+                        <AppText variant="caption" color="primary" style={styles.copyLink}>Explorer</AppText>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  skeletonList: { paddingVertical: spacing.xs },
-  emptyText: { marginTop: spacing.md },
-  emptyHint: { marginTop: spacing.xs, textAlign: 'center' },
-  errorText: { marginBottom: spacing.lg, textAlign: 'center' },
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-    borderRadius: 10,
-    // surfaceMuted, not border: the hairline border tokens are translucent and
-    // read as invisible when used as a fill.
-    backgroundColor: colors.surfaceMuted,
-    padding: spacing.xs,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    borderRadius: radius.sm,
-  },
-  tabActive: { backgroundColor: colors.surface },
-  tabText: { fontWeight: '600' },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
