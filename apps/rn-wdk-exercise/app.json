@@ -6,7 +6,7 @@
       "com.space.utl"
     ],
     "slug": "space-utl",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -19,7 +19,7 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.space.utl",
-      "buildNumber": "29"
+      "buildNumber": "30"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +36,7 @@
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.space.utl",
-      "versionCode": 24
+      "versionCode": 25
     },
     "web": {
       "favicon": "./assets/favicon.png"
