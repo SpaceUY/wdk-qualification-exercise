@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAppNodeToken } from '@/utils/api';
+import { apiClient, getAppNodeToken } from '@/utils/api';
 
 // Separate Axios instance from utils/api.ts's apiClient: different base URL (the self-hosted
 // WDK stack's app-node, not this project's own backend) and a different auth token (app-node's
@@ -74,16 +74,16 @@ export type TokenTransfer = {
   type: string;
 };
 
+// Proxied through our own backend (not app-node directly, unlike every other function in
+// this file) — see apps/backend's wdk-app-node/token-transfers.service.ts. app-node's
+// ork/DHT shard lookup is unreliable (can fail for minutes at a stretch); the backend
+// retries server-side and falls back to a 24h Redis cache instead of erroring. The user
+// is derived from the caller's Cognito bearer token server-side, not passed explicitly.
 export async function getUserTokenTransfers(
-  userId: string,
   opts: { limit?: number; skip?: number } = {},
 ): Promise<TokenTransfer[]> {
-  const { data } = await appNodeClient.get<{ transfers: TokenTransfer[] }>(
-    `/api/v1/users/${encodeURIComponent(userId)}/token-transfers`,
-    {
-      params: { limit: opts.limit ?? 25, skip: opts.skip ?? 0, sort: 'desc' },
-      headers: await authHeaders(),
-    },
-  );
+  const { data } = await apiClient.get<{ transfers: TokenTransfer[] }>('/wdk-app-node/token-transfers', {
+    params: { limit: opts.limit ?? 25, skip: opts.skip ?? 0 },
+  });
   return data.transfers;
 }

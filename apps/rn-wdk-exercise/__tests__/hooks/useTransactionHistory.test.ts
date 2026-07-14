@@ -6,8 +6,7 @@ import React from 'react';
 const mockGetUserTokenTransfers = jest.fn();
 
 jest.mock('@/utils/appNodeApi', () => ({
-  getUserTokenTransfers: (userId: string, opts?: unknown) =>
-    mockGetUserTokenTransfers(userId, opts),
+  getUserTokenTransfers: (...args: unknown[]) => mockGetUserTokenTransfers(...args),
 }));
 
 import { useTransactionHistory } from '../../hooks/useTransactionHistory';
@@ -41,6 +40,7 @@ describe('useTransactionHistory', () => {
     const { result } = await renderHook(() => useTransactionHistory('user@example.com', true), { wrapper });
 
     await waitFor(() => expect(result.current.data).toEqual(transfers));
-    expect(mockGetUserTokenTransfers).toHaveBeenCalledWith('user@example.com', undefined);
+    // The user is derived server-side from the caller's bearer token, not passed explicitly.
+    expect(mockGetUserTokenTransfers).toHaveBeenCalledWith();
   });
 });

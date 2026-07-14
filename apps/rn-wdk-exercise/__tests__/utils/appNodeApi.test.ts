@@ -1,8 +1,9 @@
 jest.mock('@/utils/api', () => ({
   getAppNodeToken: jest.fn(),
+  apiClient: { get: jest.fn() },
 }));
 
-import { getAppNodeToken } from '@/utils/api';
+import { apiClient, getAppNodeToken } from '@/utils/api';
 import {
   appNodeClient,
   connectAppNode,
@@ -103,33 +104,29 @@ describe('appNodeApi', () => {
     patchSpy.mockRestore();
   });
 
-  it('getUserTokenTransfers requests the user transfers endpoint with defaults', async () => {
+  // Proxied through our own backend (not appNodeClient) — see apps/backend's
+  // token-transfers.service.ts — so this hits apiClient, not appNodeClient.
+  it('getUserTokenTransfers requests the backend proxy endpoint with defaults', async () => {
     const transfers = [{ transactionHash: '0xdead', blockchain: 'ethereum', token: 'usdt', from: 'a', to: 'b', amount: '1000000', ts: 1, type: 'received' }];
-    const getSpy = jest
-      .spyOn(appNodeClient, 'get' as any)
-      .mockResolvedValueOnce({ data: { transfers } });
+    const mockGet = apiClient.get as jest.Mock;
+    mockGet.mockResolvedValueOnce({ data: { transfers } });
 
-    const result = await getUserTokenTransfers('user@example.com');
+    const result = await getUserTokenTransfers();
 
-    expect(getSpy).toHaveBeenCalledWith('/api/v1/users/user%40example.com/token-transfers', {
-      params: { limit: 25, skip: 0, sort: 'desc' },
-      headers: { Authorization: 'Bearer app-node-jwt' },
+    expect(mockGet).toHaveBeenCalledWith('/wdk-app-node/token-transfers', {
+      params: { limit: 25, skip: 0 },
     });
     expect(result).toEqual(transfers);
-    getSpy.mockRestore();
   });
 
   it('getUserTokenTransfers honors custom limit/skip', async () => {
-    const getSpy = jest
-      .spyOn(appNodeClient, 'get' as any)
-      .mockResolvedValueOnce({ data: { transfers: [] } });
+    const mockGet = apiClient.get as jest.Mock;
+    mockGet.mockResolvedValueOnce({ data: { transfers: [] } });
 
-    await getUserTokenTransfers('user@example.com', { limit: 5, skip: 10 });
+    await getUserTokenTransfers({ limit: 5, skip: 10 });
 
-    expect(getSpy).toHaveBeenCalledWith('/api/v1/users/user%40example.com/token-transfers', {
-      params: { limit: 5, skip: 10, sort: 'desc' },
-      headers: { Authorization: 'Bearer app-node-jwt' },
+    expect(mockGet).toHaveBeenCalledWith('/wdk-app-node/token-transfers', {
+      params: { limit: 5, skip: 10 },
     });
-    getSpy.mockRestore();
   });
 });
