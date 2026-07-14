@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
 import { toast } from 'sonner-native';
 import * as Clipboard from 'expo-clipboard';
@@ -140,7 +140,7 @@ describe('BackupScreen', () => {
     expect(screen.getByText('Reveal Seed Phrase')).toBeTruthy();
   });
 
-  it('copies the revealed mnemonic to the clipboard', async () => {
+  it('copies the revealed mnemonic to the clipboard and warns it will auto-clear', async () => {
     await render(<BackupScreen />);
     await reveal();
     await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
@@ -148,9 +148,61 @@ describe('BackupScreen', () => {
     await fireEvent.press(screen.getByText('Copy to Clipboard'));
 
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith(MNEMONIC);
-    expect(toast.success).toHaveBeenCalledWith('Copied', {
-      description: 'Store it securely and never share it.',
+    expect(toast.warning).toHaveBeenCalledWith('Copied — clears in 60s', {
+      description:
+        'Other apps can read the clipboard. Paste it into your manager now; it will be cleared automatically.',
     });
+  });
+
+  it('clears the clipboard 60s after copying if it still holds the seed', async () => {
+    // Uses a setTimeout spy (invoked manually) instead of jest.useFakeTimers(): this file
+    // never mocks global timers elsewhere, and toggling fake/real timers mid-suite was
+    // observed to corrupt unrelated renders in later tests in this same file (see the
+    // equivalent note in dashboard.test.tsx).
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    (Clipboard.getStringAsync as jest.Mock).mockResolvedValue(MNEMONIC);
+
+    await render(<BackupScreen />);
+    await reveal();
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Copy to Clipboard'));
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(MNEMONIC);
+    const scheduled = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
+    expect(scheduled).toBeDefined();
+
+    await act(async () => {
+      (scheduled![0] as () => void)();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(Clipboard.getStringAsync).toHaveBeenCalled();
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('');
+  });
+
+  it('does not clear the clipboard if a different value was copied afterward', async () => {
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    (Clipboard.getStringAsync as jest.Mock).mockResolvedValue('something-else');
+
+    await render(<BackupScreen />);
+    await reveal();
+    await waitFor(() => expect(screen.getByTestId('seed-word-0')).toBeTruthy());
+
+    await fireEvent.press(screen.getByText('Copy to Clipboard'));
+
+    const scheduled = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
+    expect(scheduled).toBeDefined();
+
+    await act(async () => {
+      (scheduled![0] as () => void)();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(Clipboard.getStringAsync).toHaveBeenCalled();
+    expect(Clipboard.setStringAsync).not.toHaveBeenCalledWith('');
   });
 
   it('does not show the passphrase prompt when cloud-backup authorization is denied', async () => {

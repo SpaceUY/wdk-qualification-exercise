@@ -22,6 +22,8 @@ import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/color
 import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
 
+const CLIPBOARD_CLEAR_MS = 60_000;
+
 export default function BackupScreen() {
   // Blocks screenshots/screen recording (and Android's app-switcher preview) while
   // this screen is mounted — a captured seed phrase is a fully compromised wallet.
@@ -74,7 +76,17 @@ export default function BackupScreen() {
   async function copy() {
     if (!mnemonic) return;
     await Clipboard.setStringAsync(mnemonic);
-    toast.success('Copied', { description: 'Store it securely and never share it.' });
+    toast.warning('Copied — clears in 60s', {
+      description:
+        'Other apps can read the clipboard. Paste it into your manager now; it will be cleared automatically.',
+    });
+    setTimeout(() => {
+      // Only clear if the clipboard still holds the seed (don't clobber a later copy).
+      void (async () => {
+        const current = await Clipboard.getStringAsync();
+        if (current === mnemonic) await Clipboard.setStringAsync('');
+      })();
+    }, CLIPBOARD_CLEAR_MS);
   }
 
   async function uploadToCloud() {
