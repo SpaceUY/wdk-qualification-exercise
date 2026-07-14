@@ -11,14 +11,18 @@ import { toast } from 'sonner-native';
 import { BookUser, ChevronDown, QrCode } from 'lucide-react-native';
 import { ALL_ASSET_CONFIGS } from '@/config/assets';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
+import { useAssetBalances } from '@/hooks/useAssetBalances';
+import { usePrices } from '@/hooks/usePrices';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { Header, HeaderBackTitle } from '@/components/Header';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { TokenLogo } from '@/components/TokenLogo';
 import { TokenPickerSheet } from '@/components/TokenPickerSheet';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText, Button, Card, ScalePressable } from '@/components/ui';
+import { AmountText, AppText, Button, Card, ScalePressable } from '@/components/ui';
 import { isValidAddressForNetwork } from '@/utils/address';
+import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
 
 const INPUT_HEIGHT = 50;
 
@@ -31,6 +35,21 @@ export default function SendScreen() {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
+  const { balanceByAssetId } = useAssetBalances();
+  const { data: pricesData } = usePrices();
+  const isBalanceHidden = useSettingsStore((s) => s.isBalanceHidden);
+
+  const selectedBalanceResult = balanceByAssetId.get(selectedAsset.id);
+  const selectedRaw = selectedBalanceResult?.success ? selectedBalanceResult.balance : null;
+  // Full-precision human amount: Max fills this (nothing silently shaved off),
+  // while the label next to "Amount" shows the 6-decimal trimmed version.
+  const selectedBalance =
+    selectedRaw != null ? (formatBalanceFromRaw(selectedRaw, selectedAsset.decimals) ?? '0') : null;
+
+  function handleMaxAmount() {
+    if (selectedBalance == null) return;
+    setAmount(selectedBalance);
+  }
 
   useEffect(() => {
     if (params.scannedAddress) {
@@ -85,6 +104,15 @@ export default function SendScreen() {
         amount: amount.trim(),
       },
     });
+  }
+
+  function handleSelectAsset(asset: AssetConfig) {
+    // An amount typed for one token means nothing in another (different value,
+    // different decimals) — clear it on a real switch, keep it on a same-token tap.
+    if (asset.id !== selectedAsset.id) {
+      setAmount('');
+    }
+    setSelectedAsset(asset);
   }
 
   function handleScan() {
@@ -153,15 +181,44 @@ export default function SendScreen() {
             </ScalePressable>
           </View>
 
-          <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Amount</AppText>
-          <TextInput
-            style={styles.input}
-            value={amount}
-            onChangeText={setAmount}
-            placeholder={`0.00 ${selectedAsset.symbol}`}
-            placeholderTextColor={colors.textSubtle}
-            keyboardType="decimal-pad"
-          />
+          <View style={styles.amountLabelRow}>
+            <AppText variant="caption" color="textMuted" style={styles.amountLabel}>Amount</AppText>
+            <ScalePressable
+              activeScale={0.92}
+              testID="send-max-balance"
+              style={styles.balanceTap}
+              onPress={handleMaxAmount}
+              disabled={selectedBalance == null}
+              accessibilityLabel="Use maximum balance"
+            >
+              <AppText variant="caption" color="textMuted">Balance:</AppText>
+              <AmountText
+                variant="caption"
+                color="textMuted"
+                value={selectedBalance != null ? trimDisplayDecimals(selectedBalance, 6) : '—'}
+                hidden={isBalanceHidden}
+              />
+              {selectedBalance != null && (
+                <AppText variant="caption" color="primary" style={styles.maxText}>Max</AppText>
+              )}
+            </ScalePressable>
+          </View>
+          {/* The selected token's logo + symbol live inside the field so a bare
+              number never reads as ambiguous ("0.5 of what?"). */}
+          <View style={styles.amountRow}>
+            <TextInput
+              style={styles.amountInput}
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="0.00"
+              placeholderTextColor={colors.textSubtle}
+              keyboardType="decimal-pad"
+            />
+            <View style={styles.amountToken}>
+              <TokenLogo symbol={selectedAsset.symbol} size={20} />
+              <AppText variant="body" style={styles.amountSymbol}>{selectedAsset.symbol}</AppText>
+            </View>
+          </View>
         </Card>
       </ScrollView>
 
@@ -174,8 +231,11 @@ export default function SendScreen() {
         visible={pickerVisible}
         assets={ALL_ASSET_CONFIGS}
         selectedId={selectedAsset.id}
-        onSelect={setSelectedAsset}
+        onSelect={handleSelectAsset}
         onClose={() => setPickerVisible(false)}
+        balanceByAssetId={balanceByAssetId}
+        balancesHidden={isBalanceHidden}
+        prices={pricesData?.prices}
       />
     </SafeAreaView>
   );
@@ -212,6 +272,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.textPrimary,
   },
+  amountLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  amountLabel: { fontWeight: '600' },
+  balanceTap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  maxText: { fontWeight: '700' },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    paddingRight: 14,
+  },
+  amountInput: { flex: 1, padding: 14, fontSize: 15, color: colors.textPrimary },
+  amountToken: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  amountSymbol: { fontWeight: '600' },
   scanButton: {
     width: INPUT_HEIGHT,
     height: INPUT_HEIGHT,

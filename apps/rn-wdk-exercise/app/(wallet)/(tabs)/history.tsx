@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CircleHelp, Receipt } from 'lucide-react-native';
@@ -8,6 +9,7 @@ import { toast } from 'sonner-native';
 import type { TokenTransfer } from '@/utils/appNodeApi';
 import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHistory';
 import { useDirectionFilter } from '@/hooks/useDirectionFilter';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { getNetworkDisplayName, isHistorySupportedNetwork } from '@/config/networkMeta';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
@@ -22,14 +24,32 @@ import { FILTER_OVERLAY_HEIGHT, LIST_CONTENT_TOP_PADDING } from '@/app/(wallet)/
 
 const LOADING_SKELETON_ROWS = 6;
 
+// The transfers refetch is a single backend GET that often resolves in tens of
+// milliseconds — too fast for the spinner to register as feedback. Keep it up at
+// least this long so the pull gesture always gets a visible confirmation.
+const MIN_REFRESH_SPINNER_MS = 400;
+
 export default function HistoryScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const { network, symbol } = useLocalSearchParams<{ network?: string; symbol?: string }>();
-  const { transfers, isLoading, isError, syncStatus, retry, myAddresses } =
+  const { transfers, isLoading, isError, syncStatus, retry, myAddresses, refetch } =
     useFilteredTransactionHistory({ network, symbol });
   const [selected, setSelected] = useState<TokenTransfer | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetch(),
+        new Promise((resolve) => setTimeout(resolve, MIN_REFRESH_SPINNER_MS)),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+  const { gesture: pullGesture, handleScroll } = usePullToRefresh(handleRefresh, refreshing);
   const {
     filter: directionFilter,
     setFilter: setDirectionFilter,
@@ -59,33 +79,40 @@ export default function HistoryScreen() {
     );
   } else {
     content = (
-      <FlatList
-        style={styles.list}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        data={visibleTransfers ?? []}
-        keyExtractor={(item) => `${item.transactionHash}-${item.from}-${item.to}-${item.amount}-${item.ts}`}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Receipt size={40} color={colors.textSubtle} />
-            <AppText color="textMuted" style={styles.statusText}>No transactions yet</AppText>
-            <TouchableOpacity
-              style={styles.emptyCta}
-              onPress={() => router.push('/(wallet)/receive')}
-            >
-              <AppText color="primary" style={styles.emptyCtaText}>Receive funds</AppText>
-            </TouchableOpacity>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TransferRow
-            transfer={item}
-            myAddresses={myAddresses}
-            variant="history"
-            onPress={() => setSelected(item)}
-          />
-        )}
-      />
+      // Same no-<RefreshControl> pull-to-refresh as the dashboard list: the
+      // gesture is driven by usePullToRefresh, with the header spinner as the
+      // only loading feedback.
+      <GestureDetector gesture={pullGesture}>
+        <FlatList
+          style={styles.list}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          data={visibleTransfers ?? []}
+          keyExtractor={(item) => `${item.transactionHash}-${item.from}-${item.to}-${item.amount}-${item.ts}`}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Receipt size={40} color={colors.textSubtle} />
+              <AppText color="textMuted" style={styles.statusText}>No transactions yet</AppText>
+              <TouchableOpacity
+                style={styles.emptyCta}
+                onPress={() => router.push('/(wallet)/receive')}
+              >
+                <AppText color="primary" style={styles.emptyCtaText}>Receive funds</AppText>
+              </TouchableOpacity>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <TransferRow
+              transfer={item}
+              myAddresses={myAddresses}
+              variant="history"
+              onPress={() => setSelected(item)}
+            />
+          )}
+        />
+      </GestureDetector>
     );
   }
 
@@ -100,7 +127,14 @@ export default function HistoryScreen() {
     // TAB_BAR_CLEARANCE padding keeping the last row reachable.
     <SafeAreaView style={styles.screen} edges={['top']}>
       <Header
-        left={<AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>}
+        left={
+          <View style={styles.titleRow}>
+            <AppText variant="title">{symbol ? `History · ${symbol}` : 'History'}</AppText>
+            {refreshing && (
+              <ActivityIndicator testID="history-refresh-indicator" size="small" color={colors.textMuted} />
+            )}
+          </View>
+        }
         right={
           comingSoonMessage ? (
             <HeaderIconButton
@@ -146,6 +180,7 @@ export default function HistoryScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   listArea: { flex: 1 },
   list: { flex: 1 },
   container: {
