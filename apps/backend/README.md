@@ -6,7 +6,7 @@ NestJS REST API that powers the P2P retail cashback loop. It detects USDT paymen
 
 ```
 src/
-├── config/            # Namespaced ConfigModule factories (cognito, database, blockchain, redis, wdkIndexer)
+├── config/            # Namespaced ConfigModule factories (cognito, database, blockchain, redis, wdkIndexer, wdkAppNode, prices)
 ├── auth/               # Cognito RS256 JWT guard via jwks-rsa + passport-jwt
 ├── users/              # User registry (cognitoSub + email + walletAddress)
 ├── wallets/            # Encrypted seed backup + wallet address registration
@@ -14,7 +14,10 @@ src/
 ├── modules/indexer/    # Transfer detection → Bull queue → coupon-creation pipeline (port/adapter/consumer/processor);
 │                       # pluggable transport — self-hosted WDK Redis stream (default) or hosted WDK Indexer API (legacy fallback)
 ├── wdk/                # HTTP client for the hosted WDK Indexer API (wdk-api.tether.io)
-└── wdk-app-node/       # Mints short-lived JWTs so the mobile app can call app-node's own REST API directly
+├── wdk-app-node/       # Mints short-lived JWTs for app-node's own REST API, and proxies its token-transfers endpoint
+├── prices/             # USD spot price + history proxy over CoinGecko — public, no auth
+├── merchants/          # Affiliated merchant addresses/names + cashback rate — public, no auth
+└── health/             # Liveness check for the load balancer — public, no auth
 ```
 
 **Stack:** NestJS 10 · Mongoose · MongoDB · Redis + Bull · ethers v6 · AWS Cognito (RS256 JWTs) · `@nestjs/schedule` · `@nestjs/swagger`
@@ -25,16 +28,22 @@ Interactive Swagger UI is served at `/api/docs` (JSON at `/api/docs-json`) whene
 
 ## API endpoints
 
-All endpoints require a Cognito `id` token in the `Authorization: Bearer <token>` header.
+Endpoints marked **public** require no auth. All others require a Cognito `id` token in the `Authorization: Bearer <token>` header.
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/coupons` | List the authenticated user's unredeemed cashback coupons |
 | `GET` | `/coupons/claimed` | List the authenticated user's redeemed cashback coupons |
-| `POST` | `/wallets/backup` | Upsert encrypted seed ciphertext for the authenticated user |
-| `PUT` | `/wallets/address` | Register or update the user's EVM wallet address |
 | `POST` | `/coupons/claim` | Redeem a cashback coupon — transfers UTL tokens to the user's wallet |
+| `POST` | `/wallets/backup` | Upsert encrypted seed ciphertext for the authenticated user |
+| `GET` | `/wallets/backup/exists` | Check whether the authenticated user already has a cloud wallet backup |
+| `PUT` | `/wallets/address` | Register or update the user's EVM wallet address |
 | `GET` | `/wdk-app-node/token` | Mint a short-lived JWT for the self-hosted WDK stack's app-node API (see below) |
+| `GET` | `/wdk-app-node/token-transfers` | Proxy app-node's transaction history for the authenticated user, with retry + Redis fallback cache (see below) |
+| `GET` | `/prices` | **Public.** USD spot prices + 24h change for the assets the wallet displays |
+| `GET` | `/prices/history/:symbol` | **Public.** USD price series for one asset (`?range=1d\|1w\|1m\|1y`) |
+| `GET` | `/merchants` | **Public.** Affiliated merchant addresses, display names, and the current cashback rate |
+| `GET` | `/health` | **Public.** Liveness check for the load balancer |
 
 ### `GET /coupons`
 
@@ -46,10 +55,13 @@ All endpoints require a Cognito `id` token in the `Authorization: Bearer <token>
     "code": "<32-char hex>",
     "usdtAmountRaw": "1000000",
     "utlAmountRaw": "50000000000000000",
+    "merchantAddress": "0xabc...",
     "createdAt": "2024-01-01T00:00:00.000Z"
   }
 ]
 ```
+
+`merchantAddress` (the EVM address that received the original USDT payment) is `null` for coupons created before this field existed in the schema.
 
 ### `GET /coupons/claimed`
 
@@ -60,11 +72,22 @@ All endpoints require a Cognito `id` token in the `Authorization: Bearer <token>
     "id": "<uuid>",
     "usdtAmountRaw": "1000000",
     "utlAmountRaw": "50000000000000000",
+    "merchantAddress": "0xabc...",
     "redeemedAt": "2024-01-01T00:00:00.000Z",
     "redemptionTxHash": "0x...",
     "createdAt": "2024-01-01T00:00:00.000Z"
   }
 ]
+```
+
+### `POST /coupons/claim`
+
+```json
+// Request
+{ "code": "<32-char hex coupon code>" }
+
+// Response 201
+{ "redemptionTxHash": "0x..." }
 ```
 
 ### `POST /wallets/backup`
@@ -78,12 +101,24 @@ All endpoints require a Cognito `id` token in the `Authorization: Bearer <token>
 ```
 
 `ciphertext` is checked by a custom class-validator constraint, `IsWdkBackupCiphertextConstraint`
-(`src/wallets/dto/is-wdk-backup-ciphertext.validator.ts`) — it verifies the blob's shape and
-version byte (base64-decoded length ≥ version + 16-byte salt + 12-byte IV + 16-byte GCM tag,
-and a recognized version byte) but never decrypts it; the passphrase never leaves the client.
-The accepted version bytes must stay in sync with the mobile app's own versioned scheme
-(`apps/rn-wdk-exercise/utils/seedEncryption.ts`'s `SCRYPT_PARAMS_BY_VERSION`) — currently `0x01`
-(legacy) and `0x02` (current, scrypt N=2¹⁷ per the OWASP Password Storage Cheat Sheet).
+(`src/wallets/dto/is-wdk-backup-ciphertext.validator.ts`) — it verifies the blob's shape (base64-decoded
+length ≥ version + 16-byte salt + 12-byte IV + 16-byte GCM tag) and that the version byte falls in a
+deliberately wide range (`0x01`–`0x0f`, not an exact allowlist) but never decrypts it; the passphrase
+never leaves the client. An exact allowlist would need redeploying in lockstep with every KDF change in
+the mobile app's own versioned scheme (`apps/rn-wdk-exercise/utils/seedEncryption.ts`'s
+`SCRYPT_PARAMS_BY_VERSION`) — a sync that already broke once in production (the app shipped a new
+version byte while this validator's list still only recognized the old ones, turning every backup
+upload into a 400). The client itself still rejects unknown versions on restore via its own table.
+
+### `GET /wallets/backup/exists`
+
+```json
+// Response 200
+{ "exists": true }
+```
+
+Read-only — looks up the user by Cognito `sub` without creating a row, so calling it never has the
+side effect of registering a new user (unlike the other endpoints, which upsert on first call).
 
 ### `PUT /wallets/address`
 
@@ -95,15 +130,80 @@ The accepted version bytes must stay in sync with the mobile app's own versioned
 { "walletAddress": "0xabc..." }
 ```
 
-### `POST /coupons/claim`
+### `GET /wdk-app-node/token-transfers`
 
 ```json
-// Request
-{ "code": "<32-char hex coupon code>" }
-
-// Response 201
-{ "redemptionTxHash": "0x..." }
+// Response 200
+{
+  "transfers": [
+    {
+      "transactionHash": "0x...",
+      "blockchain": "ethereum",
+      "token": "usdt",
+      "from": "0x...",
+      "to": "0x...",
+      "amount": "1000000",
+      "ts": 1700000000000,
+      "type": "received"
+    }
+  ]
+}
 ```
+
+Query params: `limit` (default 25), `skip` (default 0). See [App-node integration](#app-node-integration) below.
+
+### `GET /prices`
+
+```json
+// Response 200
+{
+  "prices": { "ETH": 2500.12, "BTC": 65000.5, "sBTC": 65000.5, "USDT": 1.0, "UTL": null },
+  "changePct24h": { "ETH": 1.23, "BTC": -0.45, "sBTC": -0.45, "USDT": 0.01, "UTL": null },
+  "fetchedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+`null` means the asset has no market price (UTL) — clients must render "no data", never `$0`. Public, no auth. Backed by CoinGecko, cached in-process for 60s.
+
+### `GET /prices/history/:symbol`
+
+```json
+// Response 200 — GET /prices/history/BTC?range=1w
+{
+  "symbol": "BTC",
+  "range": "1w",
+  "points": [{ "timestamp": 1700000000000, "price": 65000.5 }],
+  "fetchedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+`range` is one of `1d` | `1w` | `1m` | `1y` (default `1d`). `points` is chronological, capped at 300 points (CoinGecko's raw series is downsampled). Empty `points` means the asset has no market (UTL). Public, no auth; 404 on an unknown symbol.
+
+### `GET /merchants`
+
+```json
+// Response 200
+{
+  "addresses": ["0xcafdb270dcfddc9dede4d444c955618c0ff05cff"],
+  "names": { "0xcafdb270dcfddc9dede4d444c955618c0ff05cff": "Test Merchant" },
+  "cashbackRate": 0.05
+}
+```
+
+`addresses` mirrors `MERCHANT_ADDRESSES` (the cashback pipeline's source of truth); `names` is
+display-only metadata (`src/config/merchants.config.ts`) and an address missing from it is still a
+valid merchant, just shown with a generic name client-side. `cashbackRate` is `cashbackBps / 10000`
+(currently hardcoded to 500 bps / 5% in `src/config/blockchain.config.ts`, not env-configurable).
+Public, no auth.
+
+### `GET /health`
+
+```json
+// Response 200
+{ "status": "ok" }
+```
+
+Public, no auth — liveness check for the load balancer.
 
 ## Transfer indexing pipeline
 
@@ -137,11 +237,17 @@ UTL raw = USDT raw × 500 / 10000 × 10^12
 
 The `10^12` factor adjusts for the decimal difference between USDT (6 decimals) and UTL (18 decimals). Example: 1 USDT → 0.05 UTL.
 
-## App-node auth bridge (`GET /wdk-app-node/token`)
+## App-node integration
 
-The mobile app talks directly to the self-hosted WDK stack's `app-node` REST API (`infra/wdk-stack`) for wallet registration and transaction history — a separate concern from this backend's own cashback API, using app-node's own auth scheme (HS256 JWT, payload `{ userId }`, verified against a shared secret) rather than Cognito.
+The mobile app talks to the self-hosted WDK stack's `app-node` REST API (`infra/wdk-stack`) for wallet registration and transaction history — a separate concern from this backend's own cashback API, using app-node's own auth scheme (HS256 JWT, payload `{ userId }`, verified against a shared secret) rather than Cognito. This backend bridges the two in two different ways:
 
-Since that's a symmetric shared secret, the mobile app can't be trusted to hold it directly — instead, `WdkAppNodeService.mintToken()` signs a short-lived token server-side (this endpoint is Cognito-guarded like everything else), scoped to the authenticated user's email (the same value used everywhere else as the WDK `userId`/wallet id). `WDK_APP_NODE_JWT_SECRET` must match `infra/wdk-stack/.env`'s `JWT_SECRET` exactly, or app-node will reject every token this backend mints.
+### `GET /wdk-app-node/token` — direct auth bridge
+
+Wallet registration (`POST /connect`, `POST`/`PATCH /wallets`) is still called directly by the mobile app against app-node. Since app-node's shared secret can't be trusted to the client, `WdkAppNodeService.mintToken()` signs a short-lived token server-side (this endpoint is Cognito-guarded like everything else), scoped to the authenticated user's email (the same value used everywhere else as the WDK `userId`/wallet id). `WDK_APP_NODE_JWT_SECRET` must match `infra/wdk-stack/.env`'s `JWT_SECRET` exactly, or app-node will reject every token this backend mints.
+
+### `GET /wdk-app-node/token-transfers` — server-side proxy
+
+Transaction history is **not** fetched directly from app-node by the mobile app. app-node's ork/DHT shard lookup is unreliable and can fail for minutes at a stretch, so `TokenTransfersService` (`src/wdk-app-node/token-transfers.service.ts`) proxies it server-side: it calls app-node's own `GET /api/v1/users/:userId/token-transfers` (minting its own token internally via `WdkAppNodeService`), retries twice with a short backoff (300ms/800ms) on failure, and on success caches the result in Redis for `WDK_APP_NODE_TOKEN_TRANSFERS_CACHE_TTL_SECONDS` (default 24h). If the live call still fails after retries, it serves the last cached value instead of erroring; only with no cache at all does it return a 503. `WDK_APP_NODE_BASE_URL` is where this backend reaches app-node (server-side network path, not necessarily the same as the mobile app's `EXPO_PUBLIC_APP_NODE_URL`).
 
 ## Environment variables
 
@@ -194,6 +300,16 @@ WDK_INDEXER_API_KEY=
 # this backend mints will be rejected by app-node.
 WDK_APP_NODE_JWT_SECRET=
 WDK_APP_NODE_TOKEN_TTL_SECONDS=3600
+
+# Where this backend reaches app-node server-side to proxy GET /wdk-app-node/token-transfers
+# (see App-node integration above). Not necessarily the same network path as the mobile
+# app's own EXPO_PUBLIC_APP_NODE_URL.
+WDK_APP_NODE_BASE_URL=http://localhost:3000
+WDK_APP_NODE_TOKEN_TRANSFERS_CACHE_TTL_SECONDS=86400
+
+# Optional CoinGecko demo/pro API key for GET /prices and /prices/history/:symbol — raises the
+# rate limit; empty means anonymous access (default CoinGecko base URL, in-process 60s cache).
+COINGECKO_API_KEY=
 ```
 
 ## Smart contracts
@@ -285,7 +401,7 @@ pnpm test:e2e            # hermetic end-to-end suite (test/*.e2e-spec.ts)
 pnpm lint                # ESLint
 ```
 
-128 unit tests across all service, controller, and indexer-pipeline layers, plus 12 end-to-end
+166 unit tests across all service, controller, and indexer-pipeline layers, plus 12 end-to-end
 tests (`test/wallets.e2e-spec.ts`, `coupons.e2e-spec.ts`, `cashback-flow.e2e-spec.ts`,
 `wdk-app-node.e2e-spec.ts`) covering the real HTTP layer against an in-memory MongoDB
 (`test/support/mongo-memory.ts`) and a mocked ethers provider (`test/support/ethers-mock.ts`) —
@@ -306,5 +422,8 @@ IndexerModule    → UsersModule, WdkEventBusModule, WdkModule, BullModule('tran
                    via INDEXER_TRANSPORT; writes Coupon rows via TransferProcessor)
 WdkEventBusModule → self-hosted WDK stack's Redis event bus (infra/wdk-stack)
 WdkModule        → hosted WDK Indexer REST client (wdk-api.tether.io) — deprecated fallback only
-WdkAppNodeModule → AuthModule (mints app-node JWTs for the mobile app; see App-node auth bridge)
+WdkAppNodeModule → AuthModule (mints app-node JWTs + proxies token-transfers; see App-node integration)
+PricesModule     → CoinGecko REST client — public, no auth
+MerchantsModule  → reads blockchain.merchantAddresses config — public, no auth
+HealthModule     → no dependencies — public, no auth
 ```
