@@ -1,30 +1,18 @@
-import type { MMKV } from 'react-native-mmkv';
-import { createMMKV } from 'react-native-mmkv';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { createSecureStorage } from '@/stores/secureStorage';
 
 type AuthStore = {
   userId: string | null;
   accessToken: string | null;
   refreshToken: string | null;
+  // False until persisted state has been read back from SecureStore (async).
+  // Readers that redirect on `userId` must wait for this to avoid a login flash.
+  _hasHydrated: boolean;
   setUserId: (id: string) => void;
   setAccessToken: (token: string) => void;
   setRefreshToken: (token: string | null) => void;
   clear: () => void;
-};
-
-let _instance: MMKV | null = null;
-function getInstance(): MMKV {
-  if (!_instance) {
-    _instance = createMMKV({ id: 'auth-store' });
-  }
-  return _instance;
-}
-
-const storage = {
-  getItem: (name: string) => getInstance().getString(name) ?? null,
-  setItem: (name: string, value: string) => getInstance().set(name, value),
-  removeItem: (name: string) => getInstance().remove(name),
 };
 
 export const useAuthStore = create<AuthStore>()(
@@ -33,6 +21,7 @@ export const useAuthStore = create<AuthStore>()(
       userId: null,
       accessToken: null,
       refreshToken: null,
+      _hasHydrated: false,
       setUserId: (id) => set({ userId: id }),
       setAccessToken: (token) => set({ accessToken: token }),
       setRefreshToken: (token) => set({ refreshToken: token }),
@@ -40,12 +29,15 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'auth-store',
-      storage: createJSONStorage(() => storage),
+      storage: createJSONStorage(() => createSecureStorage()),
       partialize: (state) => ({
         userId: state.userId,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),
+      onRehydrateStorage: () => () => {
+        useAuthStore.setState({ _hasHydrated: true });
+      },
     },
   ),
 );

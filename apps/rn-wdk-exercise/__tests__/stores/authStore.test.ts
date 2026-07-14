@@ -1,9 +1,11 @@
+import { __resetSecureStore } from 'expo-secure-store';
 import { useAuthStore } from '../../stores/authStore';
 
 describe('authStore', () => {
   beforeEach(() => {
     useAuthStore.setState({ userId: null });
     jest.clearAllMocks();
+    __resetSecureStore();
   });
 
   it('has null userId as initial state', () => {
@@ -72,6 +74,14 @@ describe('authStore', () => {
   describe('persisted storage', () => {
     it('clearStorage removes the persisted entry without throwing', () => {
       expect(() => useAuthStore.persist.clearStorage()).not.toThrow();
+    });
+
+    it('persists userId to secure storage', async () => {
+      const SecureStore = require('expo-secure-store');
+      useAuthStore.getState().setUserId('user@example.com');
+      await Promise.resolve();
+      const raw = await SecureStore.getItemAsync('auth-store');
+      expect(raw).toContain('user@example.com');
     });
   });
 });
