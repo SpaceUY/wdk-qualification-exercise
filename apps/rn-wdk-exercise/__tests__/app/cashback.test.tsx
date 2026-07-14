@@ -8,11 +8,13 @@ import type { CouponListItem, ClaimedCouponListItem } from '../../utils/api';
 const mockGetCoupons = jest.fn();
 const mockGetClaimedCoupons = jest.fn();
 const mockApiPost = jest.fn();
+const mockGetMerchants = jest.fn();
 
 jest.mock('../../utils/api', () => ({
   getCoupons: () => mockGetCoupons(),
   getClaimedCoupons: () => mockGetClaimedCoupons(),
   apiClient: { post: (...args: unknown[]) => mockApiPost(...args) },
+  getMerchants: () => mockGetMerchants(),
 }));
 
 jest.mock('@tetherto/wdk-react-native-core', () => ({
@@ -72,6 +74,7 @@ describe('CashbackScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetCoupons.mockResolvedValue([]);
     mockGetClaimedCoupons.mockResolvedValue([]);
+    mockGetMerchants.mockResolvedValue({ addresses: [], names: {}, cashbackRate: 0.05 });
   });
 
   it('shows an empty state when there are no available coupons', async () => {
@@ -106,6 +109,17 @@ describe('CashbackScreen', () => {
       screen.getByText(`2.0000 UTL · ${new Date('2024-01-15T00:00:00.000Z').toLocaleDateString()}`),
     ).toBeTruthy();
     expect(screen.getByText('Claim')).toBeTruthy();
+  });
+
+  it('renders the live cashback rate from the merchants API instead of a hardcoded value', async () => {
+    mockGetCoupons.mockResolvedValue([coupon()]);
+    mockGetMerchants.mockResolvedValue({ addresses: [], names: {}, cashbackRate: 0.03 });
+
+    await renderScreen();
+
+    await waitFor(() =>
+      expect(screen.getByText('3% cashback on $100.00 USDT')).toBeTruthy(),
+    );
   });
 
   it('claims a coupon and shows a success alert, then refetches available coupons', async () => {

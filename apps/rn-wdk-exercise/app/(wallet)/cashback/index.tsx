@@ -29,6 +29,7 @@ import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button } from '@/components/ui';
 import { Header, HeaderBackTitle, HeaderIconButton } from '@/components/Header';
 import { RowSkeleton } from '@/components/RowSkeleton';
+import { useMerchants } from '@/hooks/useMerchants';
 
 type Tab = 'available' | 'claimed';
 type ClaimResponse = { redemptionTxHash: string };
@@ -116,6 +117,10 @@ export default function CashbackScreen() {
 
   const { mutate } = useClaimCoupon();
 
+  const { data: merchants } = useMerchants();
+  // null until the rate resolves — omit the percentage rather than promise a wrong one.
+  const cashbackPct = merchants ? `${Math.round(merchants.cashbackRate * 100)}%` : null;
+
   function handleClaim(coupon: CouponListItem) {
     setPendingId(coupon.id);
     mutate(coupon.code, {
@@ -125,7 +130,9 @@ export default function CashbackScreen() {
         // Success is a toast (non-blocking confirmation); errors stay as alerts
         // because they need the user's attention before retrying.
         toast.success('Coupon Redeemed!', {
-          description: '5% cashback applied to your UTL balance.',
+          description: cashbackPct
+            ? `${cashbackPct} cashback applied to your UTL balance.`
+            : 'Cashback applied to your UTL balance.',
         });
       },
       onError: (err) => {
@@ -176,7 +183,8 @@ export default function CashbackScreen() {
           <View testID="cashback-item" style={styles.row}>
             <View style={styles.rowContent}>
               <AppText style={styles.rowTitle}>
-                5% cashback on ${formatUsdt(item.usdtAmountRaw)} USDT
+                {cashbackPct ? `${cashbackPct} cashback on ` : 'Cashback on '}
+                ${formatUsdt(item.usdtAmountRaw)} USDT
               </AppText>
               <AppText variant="caption" color="textMuted" style={styles.rowSubtitle}>
                 {formatUtl(item.utlAmountRaw)} UTL · {formatDate(item.createdAt)}
