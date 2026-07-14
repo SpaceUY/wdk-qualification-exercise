@@ -10,7 +10,6 @@ apps/
   backend/           # NestJS API + blockchain listener
 infra/
   wdk-stack/         # Self-hosted WDK stack (indexers, transaction routers, ORK, app-node) — see infra/wdk-stack/README.md
-packages/            # Shared packages (if any)
 ```
 
 **Tooling:** pnpm workspaces · Turborepo
@@ -19,8 +18,8 @@ packages/            # Shared packages (if any)
 
 - Node.js ^24 (required by `apps/backend`'s `engines` field)
 - pnpm ≥ 10 (both apps pin `packageManager: pnpm@10.15.1`)
-- MongoDB instance (local or remote; bundled in `docker-compose.yml`)
-- Redis instance (local or remote — Bull queue backend; bundled in `docker-compose.yml`)
+- MongoDB instance (local or remote; bundled in `apps/backend/docker-compose.yml`)
+- Redis instance (local or remote — Bull queue backend; bundled in `apps/backend/docker-compose.yml`)
 - Ethereum Sepolia RPC endpoint (HTTP — used to sign/send the UTL cashback payout)
 - WDK Indexer API key — free, from [docs.wdk.tether.io/tools/indexer-api/get-started](https://docs.wdk.tether.io/tools/indexer-api/get-started) — used to detect incoming USDT payments
 - AWS Cognito User Pool (provision it with `pnpm infra:dev` — see [Infrastructure](#infrastructure-aws-cognito-via-sst))
@@ -77,7 +76,7 @@ Take the printed `userPoolId` and feed it into:
 - `apps/backend/.env.local` → `COGNITO_USER_POOL_ID`
 - `apps/rn-wdk-exercise/.env.local` → `EXPO_PUBLIC_COGNITO_DOMAIN` (from `cognitoDomain`) and `EXPO_PUBLIC_COGNITO_CLIENT_ID` (from `userPoolClientId`)
 
-The mobile app's OAuth client uses `rn-wdk-exercise://` as its callback/logout URL and PKCE (no client secret).
+The mobile app's OAuth client uses the `space-utl://` URL scheme as its callback/logout URL (app display name "Northstar", package/bundle id `com.space.utl`) and PKCE (no client secret).
 
 ## Docker Quick Start (backend)
 

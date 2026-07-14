@@ -2,12 +2,19 @@
 
 A React Native + Expo reference implementation of the [Tether WDK](https://github.com/tetherto/wdk), demonstrating a production-shaped multi-chain self-custody wallet with biometric authentication and cloud key backup (iCloud on iOS, Google Drive on Android).
 
+The app is branded **Northstar** in-product (`app.json`'s `expo.name`), with package/bundle id `com.space.utl` and URL scheme `space-utl://` (used for both the Cognito OAuth callback/logout redirect and Android's Google Drive OAuth redirect) — the directory/repo name `rn-wdk-exercise` predates the rebrand and no longer matches what ships.
+
 ## What's implemented
+
+### Onboarding
+- First-run, one-time slide carousel (`components/onboarding/`) shown before the auth gate, gated by `settingsStore`'s `hasSeenOnboarding` flag
+- `app/index.tsx` routes: not seen onboarding → `(onboarding)`; seen but logged out → `(auth)`; logged in → `(wallet)`
 
 ### Authentication
 - Sign-in via AWS Cognito Hosted UI using OAuth 2.0 PKCE (`useCognito`, `expo-auth-session`)
 - The user's verified email is decoded from the Cognito ID token and used as the `userId` / wallet identifier
-- Session (`userId` + Cognito ID token) persisted to MMKV via Zustand so the user stays logged in across app restarts
+- Session (`userId` + Cognito ID token + refresh token) persisted to the OS Keychain/Keystore (`expo-secure-store`, via a chunking adapter for `zustand/persist` — see `stores/secureStorage.ts`) so the user stays logged in across app restarts
+- Expired ID tokens are refreshed transparently: `utils/api.ts`'s Axios response interceptor catches a 401, exchanges the stored refresh token for a new ID token (coalescing concurrent 401s onto a single refresh call), and retries the original request once
 
 ### Wallet bootstrap
 `useWalletBootstrap` runs automatically after login with three paths:
@@ -16,11 +23,31 @@ A React Native + Expo reference implementation of the [Tether WDK](https://githu
 3. **No local wallet, no cloud backup** — create a new wallet, then fire-and-forget upload to iCloud (iOS) or prompt the user to back up via Google Drive (Android)
 
 ### Dashboard
-- Displays live balances for all configured EVM/BTC/Tron assets, refreshed every 30 s, plus Spark every 60 s
-- Shows the user's Ethereum address
+- Displays live balances for all configured EVM/BTC/Tron assets, refreshed every 30 s, plus Spark every 60 s, each with a USD-equivalent value and 24h change pill from `GET /prices`
+- Total portfolio value ("hero") with a hide/reveal toggle (`settingsStore.isBalanceHidden`) that masks every amount in the app, not just this screen
+- Mainnet/testnet filter chips (`NetworkFilterChips`) let the user narrow the token list to real-funds networks or testnets only
+- Custom from-scratch pull-to-refresh gesture (`usePullToRefresh`) instead of RN's `<RefreshControl>`, to avoid both platforms' native pull-chrome
+- A floating glass-morphism tab bar (`components/navigation/GlassTabBar.tsx`) hosts the two real tabs — Home and History; every other wallet screen (Send, Receive, Settings, Wallet setup, Cashback) is a Stack push from here, not a hidden tab, so it gets a real native transition
+- Tapping an asset row opens its [asset detail screen](#asset-detail) (balance, price chart, filtered history)
 - Retry button on bootstrap error
-- Logout clears the session
 - Tron balance now resolves too — see [Networks and assets](#networks-and-assets) for the upstream address-validation bug this required patching
+
+### Settings
+- Reached from the dashboard's header icon (`app/(wallet)/settings.tsx`)
+- Links to the seed-phrase / backup flow
+- Logout — unloads the WDK worklet's in-memory seed first (so a different user signing in afterwards can't read balances against this wallet's still-loaded seed), then signs out of Cognito and clears the session
+- Shows the installed app version (`Constants.expoConfig.version`)
+
+### Address book
+- Per-device, backend-never-sees-it contact list (`stores/addressBookStore.ts`, persisted to MMKV) of `{ name, address, network }`, where `network: null` means "any EVM chain" (one 0x address works across Ethereum/Arbitrum/Polygon)
+- Reached from the Send flow's recipient picker (`app/(wallet)/send/address-book.tsx`), with two tabs: **Contacts** (the user's own saved addresses, filtered to only those valid on the network being sent on) and **Merchants** (affiliated merchant addresses from `GET /merchants`, with display names and a generic "Affiliated merchant" fallback for unnamed ones)
+- Add-contact form (`app/(wallet)/address-book/add.tsx`) is shared between the standalone Address Book screen and a modal stacked on top of the send-flow picker
+- A contact's network defaults to whatever network the send flow was on when "Add contact" was tapped
+
+### Asset detail
+- Tapping a dashboard row opens `app/(wallet)/asset/[id].tsx`: balance, USD value + 24h change, a price chart, and that asset's filtered transaction history in one screen
+- Price chart (`components/asset/PriceChart.tsx`, via `react-native-wagmi-charts`) with 1D/1W/1M/1Y range pills backed by `GET /prices/history/:symbol`; assets with no market (UTL) show a "coming soon" banner instead of a chart
+- History section reuses the same direction filter (all/received/sent) and network-support gating as the History tab, scoped to just this asset
 
 ### Send
 - Asset picker (chip selector across all networks)
@@ -45,10 +72,11 @@ A React Native + Expo reference implementation of the [Tether WDK](https://githu
 - Tabs are lazy-loaded — each query only runs while its tab is active (`enabled: activeTab === ...`)
 
 ### Transaction history
-- Lists on-chain transfers (sent/received, direction inferred from the WDK response, falling back to an address comparison) for Ethereum/USDT and Bitcoin/BTC, with tx hash, chain/token, timestamp, and formatted amount
-- Data comes from the self-hosted WDK stack's `app-node` REST API (`GET /users/:userId/token-transfers`) — not from the wallet SDK itself, which has no history method (see `docs/wdk-sdk-spike.md`) — via a dedicated auth flow: `useAppNodeWalletSync` registers the wallet's ethereum/bitcoin addresses with app-node (idempotent, re-runs whenever a new address resolves), gated on a short-lived JWT minted by the backend's `GET /wdk-app-node/token` (a different auth scheme than the Cognito token used everywhere else — see [`apps/backend/README.md`](../backend/README.md#app-node-auth-bridge-get-wdk-app-nodetoken))
+- Lists on-chain transfers (sent/received, direction inferred from the WDK response, falling back to an address comparison) for Ethereum/USDT and Bitcoin/BTC, with tx hash, chain/token, timestamp, and formatted amount; filterable by direction (all/received/sent) via `useDirectionFilter`
+- Wallet address registration still talks directly to the self-hosted WDK stack's `app-node` REST API: `useAppNodeWalletSync` registers the wallet's ethereum/bitcoin addresses with app-node (idempotent, re-runs whenever a new address resolves), gated on a short-lived JWT minted by the backend's `GET /wdk-app-node/token` (a different auth scheme than the Cognito token used everywhere else — see [`apps/backend/README.md`](../backend/README.md#get-wdk-app-nodetoken--direct-auth-bridge))
+- The transfer list itself, however, is **not** fetched from app-node directly anymore — it goes through the backend's `GET /wdk-app-node/token-transfers` proxy (`useTransactionHistory` → `getUserTokenTransfers` in `utils/appNodeApi.ts`), because app-node's own ork/DHT shard lookup can fail for minutes at a stretch; the backend absorbs that with a server-side retry and a 24h Redis fallback cache (see [`apps/backend/README.md`](../backend/README.md#get-wdk-app-nodetoken-transfers--server-side-proxy)). The client's own React Query retry (`RETRY_DELAYS_MS`) is only a backstop for the rare case both the backend's retry and its cache miss.
 - Spark and Tron are excluded from history for now: Spark would additionally require deposit-address/identity-key placeholders unrelated to history (see the Spark deposit-flow note above); Tron addresses are now readable client-side (the `isValidAddress` bug below is fixed), but `useAppNodeWalletSync`/`history.tsx` haven't been extended to register/display a Tron address yet — that wiring is separate, still-unstarted work
-- Only reachable when the self-hosted stack's `app-node` is running and reachable at `EXPO_PUBLIC_APP_NODE_URL` — same local-dev constraint as the BTC/Spark mainnet verification work documented in `docs/qualification-todo.md`
+- Only reachable when the self-hosted stack's `app-node` is running and reachable (directly by the client for registration, and by the backend server-side via `WDK_APP_NODE_BASE_URL` for the proxy) — same local-dev constraint as the BTC/Spark mainnet verification work documented in `docs/qualification-todo.md`
 
 ### Seed phrase / backup
 - **View seed phrase** — biometric gate before revealing the 12-word grid
@@ -71,25 +99,30 @@ A React Native + Expo reference implementation of the [Tether WDK](https://githu
 - Wraps `expo-local-authentication`; fails closed — if biometrics are unavailable (no hardware or nothing enrolled) or the prompt doesn't succeed, `unlock()` denies access and the app stays locked
 
 ### Backend API integration (`utils/api.ts`)
-Axios instance pre-configured with the backend base URL. Attaches the Cognito `id` token as a `Bearer` header on every request via a request interceptor.
+Axios instance pre-configured with the backend base URL (`EXPO_PUBLIC_API_URL`, port 3001 locally). A request interceptor attaches the Cognito `id` token as a `Bearer` header; a response interceptor transparently refreshes an expired token on a 401 and retries the request once (see Authentication above).
 
 - `getCoupons()` → `GET /coupons`
 - `getClaimedCoupons()` → `GET /coupons/claimed`
 - `postWalletBackup(ciphertext)` → `POST /wallets/backup`
+- `getWalletBackupExists()` → `GET /wallets/backup/exists`
 - `putWalletAddress(address)` → `PUT /wallets/address`
 - `getAppNodeToken()` → `GET /wdk-app-node/token` — mints the separate app-node JWT (see Transaction history above)
+- `getPrices()` → `GET /prices` (`usePrices` hook) — USD spot prices + 24h change for the dashboard/asset-detail screens
+- `getPriceHistory(symbol, range)` → `GET /prices/history/:symbol` (`usePriceHistory` hook) — feeds the asset-detail price chart
+- `getMerchants()` → `GET /merchants` (`useMerchants` hook) — merchant addresses/names/cashback rate for the send-flow address book and confirm screen
 
 `POST /coupons/claim` is called directly via `apiClient` from the cashback screen rather than through a wrapper in `utils/api.ts`.
 
 ### App-node integration (`utils/appNodeApi.ts`)
-A separate Axios instance pointed at `EXPO_PUBLIC_APP_NODE_URL` (the self-hosted WDK stack's `app-node`, not this project's own backend) — no shared interceptor state, since its Bearer token (from `getAppNodeToken()`) is minted fresh per call rather than cached:
+A separate Axios instance (`appNodeClient`) pointed at `EXPO_PUBLIC_APP_NODE_URL` (the self-hosted WDK stack's `app-node`, not this project's own backend) — no shared interceptor state, since its Bearer token (from `getAppNodeToken()`) is minted fresh per call rather than cached:
 
 - `connectAppNode()` → `POST /api/v1/connect` (idempotent shard resolution)
 - `getAppNodeUserWallet()` → `GET /api/v1/wallets?type=user`
 - `createAppNodeWallet(addresses)` / `updateAppNodeWalletAddresses(walletId, addresses)` → `POST` / `PATCH /api/v1/wallets`
-- `getUserTokenTransfers(userId, opts)` → `GET /api/v1/users/:userId/token-transfers`
 
-`hooks/useAppNodeWalletSync.ts` orchestrates the first three (create-if-missing, patch-if-a-known-address-is-missing) and `hooks/useTransactionHistory.ts` wraps the last one in a React Query hook.
+`hooks/useAppNodeWalletSync.ts` orchestrates these three (create-if-missing, patch-if-a-known-address-is-missing) against app-node directly.
+
+`getUserTokenTransfers(opts)`, also exported from this file, is the one exception — it calls **this project's own backend** (`apiClient.get('/wdk-app-node/token-transfers')`), not `appNodeClient`, since that call is proxied server-side (see Transaction history above). `hooks/useTransactionHistory.ts` wraps it in a React Query hook.
 
 ### Cloud backup utility (`utils/cloudBackup.ts`)
 Platform-aware wrapper around `@tetherto/wdk-backup-cloud-react-native`:
@@ -124,12 +157,13 @@ Arbitrum and Polygon were previously unwired despite `config/assets.ts` already 
 
 ## Tech Stack
 
-- **Runtime:** React Native 0.81, Expo 54, Expo Router 6
-- **State:** Zustand v5 (auth + wallet onboarding), TanStack React Query v5 (server state)
+- **Runtime:** React Native 0.81, React 19, Expo 54, Expo Router 6
+- **State:** Zustand v5 (auth persisted to Keychain/Keystore, wallet onboarding + address book + settings persisted to MMKV), TanStack React Query v5 (server state)
 - **Forms:** React Hook Form + Zod
 - **Styling:** NativeWind (Tailwind for RN)
+- **UI/UX:** `react-native-reanimated` + `react-native-gesture-handler` (custom pull-to-refresh, glass tab bar), `react-native-wagmi-charts` (asset price chart), `lucide-react-native` (icons), `sonner-native` (toasts), `expo-linear-gradient`
 - **Crypto:** @tetherto/wdk-react-native-core, wdk-wallet-evm, wdk-wallet-btc, wdk-wallet-spark, wdk-wallet-tron
-- **Auth:** AWS Cognito (PKCE OAuth via expo-auth-session), expo-local-authentication
+- **Auth:** AWS Cognito (PKCE OAuth via expo-auth-session), expo-local-authentication, expo-secure-store (Keychain/Keystore-backed session persistence)
 - **Testing:** Jest (jest-expo preset), @testing-library/react-native
 
 ## Testing
@@ -175,20 +209,34 @@ coverageThreshold: {
 ```
 app/
   _layout.tsx               Root layout — WdkAppProvider + QueryClientProvider + AppLockOverlay
-  index.tsx                 Auth gate redirect
+  index.tsx                 Onboarding/auth gate redirect
+  +native-intent.ts          Suppresses the Android Google-Drive OAuth redirect from being treated as a route
+  (onboarding)/
+    index.tsx               First-run, one-time slide carousel
   (auth)/
     index.tsx               Login screen (Cognito PKCE via useCognito)
   (wallet)/
-    _layout.tsx             Wallet tab shell
-    index.tsx               Dashboard (balances + actions + Cashback button)
+    _layout.tsx             Stack shell — (tabs) plus every other wallet screen as a pushed Stack screen
+    (tabs)/
+      _layout.tsx           Home/History behind the floating GlassTabBar
+      index.tsx             Dashboard (balances + prices + network filter + actions)
+      history.tsx           Transaction history (ETH/BTC, via the backend's token-transfers proxy)
+      listLayout.ts          Shared list-layout constants (floating filter row height/offset)
     receive.tsx             Receive screen with QR
-    history.tsx             Transaction history (ETH/BTC, via app-node)
+    settings.tsx            Settings — seed phrase link, logout, app version
+    address-book/
+      index.tsx             Saved contacts list
+      add.tsx               Add-contact form
+    asset/
+      [id].tsx              Asset detail — balance, price chart, filtered history
     cashback/
       index.tsx             Cashback coupon list + claim flow
     send/
       index.tsx             Send form
       confirm.tsx           Transaction review + biometric confirm
       scan.tsx              QR code scanner (merchant QR + ethereum:/bitcoin: URIs)
+      address-book.tsx      Recipient picker — Contacts / Merchants tabs
+      add-contact.tsx       Re-exports address-book/add.tsx, stacked as a modal over the picker
     wallet-setup/
       index.tsx             Seed phrase options menu
       backup.tsx            View / copy / iCloud or Google Drive upload
@@ -198,30 +246,57 @@ app/
 components/
   AppLockOverlay.tsx        Biometric gate overlay shown when app returns to foreground
   PassphraseInput.tsx       Passphrase entry (+ optional confirm) for backup encryption (see Seed phrase / backup)
+  Header.tsx                Shared screen header (title / back button / icon-button slots)
+  ComingSoonBanner.tsx      "Not available yet" banner (asset price history, unsupported networks)
+  TransferRow.tsx, TransferDetailModal.tsx   Transaction row + tap-through detail modal
+  RowSkeleton.tsx           Loading placeholder for balance/transfer rows
+  onboarding/               First-run carousel (slide content, carousel, single-slide component)
+  addressBook/              Contact/merchant row builders + row component for the send-flow picker
+  asset/                    PriceChart + AssetHistoryEmpty for the asset detail screen
+  balance/                  AssetRow, BalanceHeroView, NetworkFilterChips, buildAssetRows
+  navigation/GlassTabBar.tsx  Floating glass-morphism tab bar (Home/History)
+  ui/                       Design-system primitives (AppText, AmountText, Button, Card, FilterChips, Skeleton, ...)
 
 config/
   networks.ts               WdkConfigs for Ethereum, Arbitrum, Polygon, Bitcoin, Spark, and Tron (see Networks and assets)
   assets.ts                 AssetConfig definitions + BaseAsset instances
+  networkMeta.ts             Mainnet/testnet + brand-color + history-support metadata (split out of assets.ts to avoid its WDK-dependent side effects at import time)
+  cognito.ts                 Cognito OAuth discovery/client config
 
 hooks/
   useAppLockBiometrics.ts   App lock hook — triggers biometric prompt on foreground resume
   useCognito.ts             Cognito PKCE auth hook (expo-auth-session)
   useBiometrics.ts          Thin wrapper over expo-local-authentication
-  useGoogleAuth.ts          Google OAuth hook (expo-auth-session) for Android backup
+  useGoogleAuth.ts / .android.ts   Google OAuth hook (expo-auth-session) for Android backup
   useWalletBootstrap.ts     Three-path bootstrap (local / cloud / new)
   useWalletData.ts          Wraps useWalletManager with safe create/restore helpers
-  useAppNodeWalletSync.ts   Registers ethereum/bitcoin addresses with app-node (see Transaction history)
-  useTransactionHistory.ts  React Query wrapper over app-node's token-transfers endpoint
+  useWalletRegistration.ts  Registers the resolved ethereum address with the backend (PUT /wallets/address)
+  useAssetBalances.ts       Aggregates the per-chain WDK balance hooks into one lookup/loading-flag/refetch
+  usePrices.ts / usePriceHistory.ts   React Query wrappers over GET /prices and /prices/history/:symbol
+  useMerchants.ts            React Query wrapper over GET /merchants
+  useAppNodeWalletSync.ts   Registers ethereum/bitcoin addresses directly with app-node (see Transaction history)
+  useTransactionHistory.ts  React Query wrapper over the backend's token-transfers proxy
+  useFilteredTransactionHistory.ts   Combines app-node sync + transfer fetch, optionally narrowed to one network/symbol
+  useDirectionFilter.ts      Shared all/received/sent filter, used by History and Asset detail
+  usePullToRefresh.ts        Custom pull-to-refresh gesture (avoids native RefreshControl chrome on both platforms)
 
 stores/
-  authStore.ts              userId + accessToken persisted to MMKV
+  authStore.ts              userId + Cognito ID/refresh tokens, persisted to the Keychain/Keystore
   walletOnboardingStore.ts  Onboarding flow state persisted to MMKV
+  addressBookStore.ts       Device-local saved contacts, persisted to MMKV (never sent to the backend)
+  settingsStore.ts          Balance-hidden toggle + one-time onboarding-seen flag, persisted to MMKV
+  appLockStore.ts           App-lock state
+  mmkvStorage.ts / secureStorage.ts   Zustand-persist storage adapters (MMKV / Keychain-Keystore)
 
 utils/
-  api.ts                    Axios client for the NestJS backend (Bearer token injected automatically)
-  appNodeApi.ts             Axios client for the self-hosted WDK stack's app-node (separate auth/base URL)
+  api.ts                    Axios client for the NestJS backend (Bearer token injected + refreshed automatically)
+  appNodeApi.ts             Axios client for app-node directly (wallet registration) plus the backend's token-transfers proxy call
   merchantQR.ts             Parse merchant payment QR codes into address + amount
-  balance.ts                Raw ↔ human decimal conversion helpers
+  balance.ts                Raw ↔ human decimal conversion + fiat formatting helpers
+  address.ts                 Address formatting/validation helpers
+  addressBook.ts             Contact/merchant network-matching + label helpers for the address book
+  transfers.ts                Shared transfer-direction inference
+  explorer.ts                 Block-explorer link builder per network
   cloudBackup.ts            Platform-aware cloud backup/restore helpers (iCloud iOS, Google Drive Android)
   seedEncryption.ts         Passphrase-based AES-256-GCM encryption for backups (see Seed phrase / backup)
 ```
@@ -273,7 +348,7 @@ All variables are prefixed with `EXPO_PUBLIC_` and have working defaults out of 
 | `EXPO_PUBLIC_COGNITO_DOMAIN` | — | Cognito Hosted UI domain, e.g. `https://your-pool.auth.us-east-1.amazoncognito.com` (see [SST/Cognito infra](../../README.md#infrastructure-aws-cognito-via-sst)) |
 | `EXPO_PUBLIC_COGNITO_CLIENT_ID` | — | Cognito app client ID (public client, no secret) |
 | `EXPO_PUBLIC_API_URL` | `http://localhost:3001` | Base URL of the [backend API](../backend/README.md) — 3001 locally, since the self-hosted WDK stack's app-node owns port 3000 |
-| `EXPO_PUBLIC_APP_NODE_URL` | `http://localhost:3000` | Base URL of the self-hosted WDK stack's `app-node` (see [`infra/wdk-stack`](../../infra/wdk-stack/README.md)), used directly for wallet registration + transaction history |
+| `EXPO_PUBLIC_APP_NODE_URL` | `http://localhost:3000` | Base URL of the self-hosted WDK stack's `app-node` (see [`infra/wdk-stack`](../../infra/wdk-stack/README.md)), used directly for wallet registration only — transaction history is proxied through the backend instead (see Transaction history above) |
 
 #### Google Cloud Console setup (Android only)
 
@@ -282,8 +357,8 @@ To enable Google Drive backup on Android:
 1. Create a project at [console.cloud.google.com](https://console.cloud.google.com) and enable the **Google Drive API**
 2. Under **APIs & Services → Credentials**, create:
    - An **OAuth 2.0 Web client ID** (for token exchange)
-   - An **OAuth 2.0 Android client ID** with package name `com.spacedev.rnwdkexercise`
-3. Add `rn-wdk-exercise://` as an authorized redirect URI on the Web client
+   - An **OAuth 2.0 Android client ID** with package name `com.space.utl`
+3. Add `space-utl://` as an authorized redirect URI on the Web client
 4. Set both IDs in your `.env.local`
 
 ### Run
@@ -318,6 +393,6 @@ npx eas submit --platform all --latest
 
 - The WDK worklet bundle (`.wdk-bundle/`) must be committed or regenerated before running the app — the native runtime cannot bundle it on the fly.
 - Wallet IDs are the user's verified Cognito email address. A single device can hold multiple wallets (one per email).
-- Login requires a running Cognito User Pool (see [SST/Cognito infra](../../README.md#infrastructure-aws-cognito-via-sst)) and the cashback/wallet-backup screens require the [`apps/backend`](../backend/README.md) API to be reachable at `EXPO_PUBLIC_API_URL`. The transaction history screen additionally requires the self-hosted [`infra/wdk-stack`](../../infra/wdk-stack/README.md)'s `app-node` reachable at `EXPO_PUBLIC_APP_NODE_URL`.
+- Login requires a running Cognito User Pool (see [SST/Cognito infra](../../README.md#infrastructure-aws-cognito-via-sst)) and the cashback/wallet-backup/prices/merchants screens require the [`apps/backend`](../backend/README.md) API to be reachable at `EXPO_PUBLIC_API_URL`. Wallet address registration (`useAppNodeWalletSync`) additionally requires the self-hosted [`infra/wdk-stack`](../../infra/wdk-stack/README.md)'s `app-node` reachable directly at `EXPO_PUBLIC_APP_NODE_URL`; the transaction history list itself only needs the backend (which reaches app-node server-side — see Transaction history above).
 - **Bitcoin and Spark run on mainnet — real funds are at risk on those two networks** (a deliberate project requirement; Spark runs on top of Bitcoin, so it carries the same requirement). Ethereum and Tron stay on public testnets (Sepolia / Nile). Double-check recipient addresses and amounts before sending BTC or Spark from this app.
 - ERC-20 tokens whose contract address is the zero address (`0x000…`) are automatically excluded from balance fetching — they appear in the dashboard with `—` and produce no errors. Set the corresponding `EXPO_PUBLIC_*_ADDRESS` env var to a real contract address to activate them.
