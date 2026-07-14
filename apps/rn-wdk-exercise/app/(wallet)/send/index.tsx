@@ -15,6 +15,7 @@ import { Header, HeaderBackTitle } from '@/components/Header';
 import { NetworkFundsBanner } from '@/components/NetworkFundsBanner';
 import { TokenLogo } from '@/components/TokenLogo';
 import { TokenPickerSheet } from '@/components/TokenPickerSheet';
+import { useAssetBalances } from '@/hooks/useAssetBalances';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button, Card, ScalePressable } from '@/components/ui';
@@ -31,6 +32,7 @@ export default function SendScreen() {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
+  const { balanceByAssetId } = useAssetBalances();
 
   useEffect(() => {
     if (params.scannedAddress) {
@@ -174,6 +176,7 @@ export default function SendScreen() {
         visible={pickerVisible}
         assets={ALL_ASSET_CONFIGS}
         selectedId={selectedAsset.id}
+        balanceByAssetId={balanceByAssetId}
         onSelect={setSelectedAsset}
         onClose={() => setPickerVisible(false)}
       />
