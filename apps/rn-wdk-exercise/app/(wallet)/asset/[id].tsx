@@ -340,7 +340,7 @@ export default function AssetDetailScreen() {
       <FlatList
         contentContainerStyle={styles.container}
         data={historyReady ? (visibleTransfers ?? []) : []}
-        keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
+        keyExtractor={(item) => `${item.transactionHash}-${item.from}-${item.to}-${item.amount}-${item.ts}`}
         ListHeaderComponent={header}
         ListEmptyComponent={historyEmpty}
         renderItem={({ item }) => (

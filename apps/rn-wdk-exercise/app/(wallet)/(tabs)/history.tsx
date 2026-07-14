@@ -80,7 +80,7 @@ export default function HistoryScreen() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         data={visibleTransfers ?? []}
-        keyExtractor={(item, index) => `${item.transactionHash}-${index}`}
+        keyExtractor={(item) => `${item.transactionHash}-${item.from}-${item.to}-${item.amount}-${item.ts}`}
         ListEmptyComponent={
           <View style={styles.center}>
             <Receipt size={40} color={colors.textSubtle} />
