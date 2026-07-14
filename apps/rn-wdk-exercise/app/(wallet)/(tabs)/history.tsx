@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowDownLeft, ArrowUpRight, CircleHelp, Receipt } from 'lucide-react-native';
+import { CircleHelp, Receipt } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
 import type { TokenTransfer } from '@/utils/appNodeApi';
-import { trimDisplayDecimals } from '@/utils/balance';
-import { formatTransferDate, isReceived } from '@/utils/transfers';
 import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHistory';
 import { useDirectionFilter } from '@/hooks/useDirectionFilter';
 import { getNetworkDisplayName, isHistorySupportedNetwork } from '@/config/networkMeta';
@@ -19,7 +17,7 @@ import { Header, HeaderIconButton } from '@/components/Header';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
 import { RowSkeleton } from '@/components/RowSkeleton';
-import { TokenLogo } from '@/components/TokenLogo';
+import { TransferRow } from '@/components/TransferRow';
 
 const LOADING_SKELETON_ROWS = 6;
 // Height of the floating filter row + its fade tail — the gradient overlay is this
@@ -84,48 +82,14 @@ export default function HistoryScreen() {
             </TouchableOpacity>
           </View>
         }
-        renderItem={({ item }) => {
-          const amount = trimDisplayDecimals(item.amount || '0', 6);
-          const received = isReceived(item, myAddresses);
-
-          return (
-            // TouchableOpacity, not Pressable: NativeWind v4's component interop drops
-            // Pressable's function-form `style` prop, so the row loses its card styles.
-            <TouchableOpacity
-              style={styles.row}
-              activeOpacity={0.7}
-              onPress={() => setSelected(item)}
-            >
-              <View style={styles.rowLeft}>
-                <View style={styles.avatar}>
-                  <View style={styles.directionCircle}>
-                    {received ? (
-                      <ArrowDownLeft size={20} color={colors.success} strokeWidth={2.5} />
-                    ) : (
-                      <ArrowUpRight size={20} color={colors.danger} strokeWidth={2.5} />
-                    )}
-                  </View>
-                  {/* Token badge, overlapping the bottom-right edge of the direction icon. */}
-                  <View style={styles.tokenBadge}>
-                    <TokenLogo symbol={item.token?.toUpperCase() ?? ''} size={18} />
-                  </View>
-                </View>
-                <View style={styles.info}>
-                  <AppText style={styles.itemTitle}>
-                    {received ? 'Receive' : 'Send'} {item.token?.toUpperCase()} on {item.blockchain}
-                  </AppText>
-                  <AppText variant="caption" color="textSubtle" style={styles.date}>
-                    {formatTransferDate(item.ts)}
-                  </AppText>
-                </View>
-              </View>
-              <AppText variant="mono" color={received ? 'success' : 'textPrimary'}>
-                {received ? '+' : '-'}
-                {amount}
-              </AppText>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={({ item }) => (
+          <TransferRow
+            transfer={item}
+            myAddresses={myAddresses}
+            variant="history"
+            onPress={() => setSelected(item)}
+          />
+        )}
       />
     );
   }
@@ -208,38 +172,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterChips: { marginTop: spacing.sm },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   skeletonList: { paddingTop: LIST_CONTENT_TOP_PADDING, paddingBottom: spacing.md },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: 10,
-    marginBottom: spacing.sm,
-  },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
-  avatar: { width: 40, height: 40 },
-  directionCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tokenBadge: {
-    position: 'absolute',
-    right: -3,
-    bottom: -3,
-    borderRadius: 12,
-    // Ring in the card's own color so the badge reads as sitting on top of the
-    // direction icon rather than merging into it.
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  info: { flex: 1 },
-  itemTitle: { fontWeight: '600' },
-  date: { marginTop: 2 },
   statusText: { marginTop: spacing.md },
   errorText: { textAlign: 'center' },
   emptyCta: {
