@@ -87,8 +87,10 @@ export function PriceChart({ points, hasMarketData, isLoading, isError, onRetry,
 
   const chartPoints = points.map((p) => ({ timestamp: p.timestamp, value: p.price }));
   const prices = chartPoints.map((p) => p.value);
-  const high = Math.max(...prices);
-  const low = Math.min(...prices);
+  // Guarded against an empty series (unreachable today — !hasMarketData catches it
+  // upstream — but avoids Math.max(...[]) => -Infinity if that ever changes).
+  const high = prices.length ? Math.max(...prices) : 0;
+  const low = prices.length ? Math.min(...prices) : 0;
   const isUp =
     chartPoints.length > 1
       ? (chartPoints[chartPoints.length - 1]?.value ?? 0) >= (chartPoints[0]?.value ?? 0)
