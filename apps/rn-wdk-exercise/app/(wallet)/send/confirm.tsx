@@ -59,7 +59,9 @@ function getSendErrorMessage(err: unknown): string {
   const rule = SEND_ERROR_RULES.find(({ pattern }) => pattern.test(raw));
   if (rule) return rule.message;
   // No rule matched — never surface a raw ethers/provider string to the user.
-  console.error('[send] unhandled transaction error:', raw);
+  // Dev-only log: keeps raw provider text (which may carry tx details) out of
+  // production logs while still aiding local debugging.
+  if (__DEV__) console.error('[send] unhandled transaction error:', raw);
   return GENERIC_SEND_ERROR;
 }
 
