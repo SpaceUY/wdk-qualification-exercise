@@ -51,10 +51,16 @@ const SEND_ERROR_RULES: Array<{ pattern: RegExp; message: string }> = [
   },
 ];
 
+const GENERIC_SEND_ERROR =
+  'Something went wrong sending your transaction. Please try again.';
+
 function getSendErrorMessage(err: unknown): string {
-  const raw = err instanceof Error ? err.message : 'Transaction failed';
+  const raw = err instanceof Error ? err.message : String(err);
   const rule = SEND_ERROR_RULES.find(({ pattern }) => pattern.test(raw));
-  return rule ? rule.message : raw;
+  if (rule) return rule.message;
+  // No rule matched — never surface a raw ethers/provider string to the user.
+  console.error('[send] unhandled transaction error:', raw);
+  return GENERIC_SEND_ERROR;
 }
 
 export default function ConfirmSendScreen() {

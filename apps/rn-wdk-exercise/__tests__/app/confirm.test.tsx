@@ -200,12 +200,17 @@ describe('ConfirmSendScreen', () => {
       amount: '0.01',
       symbol: 'ETH',
     });
-    mockCallAccountMethod.mockRejectedValue(new Error('Network unreachable'));
+    mockCallAccountMethod.mockRejectedValue(new Error('some totally unmapped internal error'));
 
     await renderScreen();
     await fireEvent.press(screen.getByText('Confirm & Send'));
 
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Error', 'Network unreachable'));
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Something went wrong sending your transaction. Please try again.',
+      ),
+    );
     expect(screen.getByText('Confirm & Send')).toBeTruthy();
   });
 
