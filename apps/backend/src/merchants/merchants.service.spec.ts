@@ -8,10 +8,10 @@ jest.mock('../config/merchants.config', () => ({
 
 describe('MerchantsService', () => {
   let service: MerchantsService;
-  let configService: { get: jest.Mock };
+  let configService: { get: jest.Mock; getOrThrow: jest.Mock };
 
   beforeEach(async () => {
-    configService = { get: jest.fn() };
+    configService = { get: jest.fn(), getOrThrow: jest.fn().mockReturnValue(500n) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [MerchantsService, { provide: ConfigService, useValue: configService }],
@@ -24,7 +24,6 @@ describe('MerchantsService', () => {
     it('returns configured addresses with the cashback rate derived from cashbackBps', () => {
       configService.get.mockImplementation((key: string) => {
         if (key === 'blockchain.merchantAddresses') return ['0xabc123', '0xdef456'];
-        if (key === 'blockchain.cashbackBps') return 500n;
         return undefined;
       });
 
@@ -40,7 +39,6 @@ describe('MerchantsService', () => {
     it('omits addresses that have no entry in MERCHANT_NAMES from the names map', () => {
       configService.get.mockImplementation((key: string) => {
         if (key === 'blockchain.merchantAddresses') return ['0xdef456'];
-        if (key === 'blockchain.cashbackBps') return 500n;
         return undefined;
       });
 
@@ -49,12 +47,21 @@ describe('MerchantsService', () => {
       expect(result.names).toEqual({});
     });
 
-    it('defaults to an empty addresses array and 500 bps when config values are missing', () => {
+    it('defaults to an empty addresses array when merchantAddresses is missing', () => {
       configService.get.mockReturnValue(undefined);
 
       const result = service.getMerchants();
 
-      expect(result).toEqual({ addresses: [], names: {}, cashbackRate: 0.05 });
+      expect(result.addresses).toEqual([]);
+    });
+
+    it('throws when cashbackBps is not configured, instead of silently defaulting', () => {
+      configService.get.mockReturnValue(undefined);
+      configService.getOrThrow.mockImplementation(() => {
+        throw new Error('Configuration key "blockchain.cashbackBps" does not exist');
+      });
+
+      expect(() => service.getMerchants()).toThrow();
     });
   });
 });

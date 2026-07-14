@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { CouponsService } from './coupons.service';
 import { Coupon } from './entities/coupon.entity';
 import { UsersService } from '../users/users.service';
+import { CACHE_REDIS_CLIENT } from '../redis/redis-cache.tokens';
 import type { UserDocument } from '../users/entities/user.entity';
 
 type MockModel = {
@@ -71,10 +72,16 @@ jest.mock('ethers', () => ({
   },
 }));
 
+type MockRedis = {
+  set: jest.Mock;
+  eval: jest.Mock;
+};
+
 describe('CouponsService', () => {
   let service: CouponsService;
   let couponModel: MockModel;
   let usersService: jest.Mocked<UsersService>;
+  let redis: MockRedis;
 
   const mockUser: Partial<UserDocument> = {
     id: 'user-id',
@@ -95,6 +102,10 @@ describe('CouponsService', () => {
 
   beforeEach(async () => {
     couponModel = createMockModel();
+    redis = {
+      set: jest.fn().mockResolvedValue('OK'),
+      eval: jest.fn().mockResolvedValue(1),
+    };
     mockTransferFn.mockReset();
     mockWaitFn.mockReset();
     mockWaitFn.mockResolvedValue({ hash: '0xreceipt' });
@@ -120,6 +131,7 @@ describe('CouponsService', () => {
           provide: ConfigService,
           useValue: { getOrThrow: jest.fn().mockReturnValue('mock-value') },
         },
+        { provide: CACHE_REDIS_CLIENT, useValue: redis },
       ],
     }).compile();
 
@@ -321,6 +333,106 @@ describe('CouponsService', () => {
         (call) => (call[1] as Record<string, unknown>)['redeemed'] === false,
       );
       expect(rollbackCalls).toHaveLength(0);
+    });
+  });
+
+  describe('treasury nonce serialization', () => {
+    it('never lets a second claim start building its transfer before the first one is broadcast', async () => {
+      const couponA = { ...mockCoupon, _id: 'coupon-a', code: 'codeA' };
+      const couponB = { ...mockCoupon, _id: 'coupon-b', code: 'codeB' };
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as UserDocument);
+      couponModel.findOne.mockImplementation((query: { code: string }) =>
+        Promise.resolve(query.code === 'codeA' ? couponA : couponB),
+      );
+      couponModel.findOneAndUpdate.mockImplementation((query: { _id: string }) =>
+        Promise.resolve({ ...(query._id === 'coupon-a' ? couponA : couponB), redeemed: true }),
+      );
+      couponModel.updateOne.mockResolvedValue(undefined);
+
+      const order: string[] = [];
+      mockPopulateTransactionFn.mockImplementation(async () => {
+        order.push('populate');
+        return { to: '0xutladdress', data: '0xencodeddata' };
+      });
+      mockBroadcastTransactionFn.mockImplementation(async () => {
+        order.push('broadcast');
+        return mockTxFn;
+      });
+
+      await Promise.all([
+        service.claimCoupon('codeA', 'cognito-sub'),
+        service.claimCoupon('codeB', 'cognito-sub'),
+      ]);
+
+      // Each populate must be immediately followed by its own broadcast — the two
+      // treasury sends never interleave, which is what keeps the nonce sequential.
+      expect(order).toEqual(['populate', 'broadcast', 'populate', 'broadcast']);
+    });
+  });
+
+  describe('distributed treasury lock', () => {
+    beforeEach(() => {
+      (usersService.findByCognitoSub as jest.Mock).mockResolvedValue(mockUser as UserDocument);
+      couponModel.findOne.mockResolvedValue(mockCoupon);
+      couponModel.findOneAndUpdate.mockResolvedValue({ ...mockCoupon, redeemed: true });
+      couponModel.updateOne.mockResolvedValue(undefined);
+    });
+
+    it('acquires the Redis lock before sending and releases it with the same token after', async () => {
+      await service.claimCoupon(mockCoupon.code as string, 'cognito-sub');
+
+      expect(redis.set).toHaveBeenCalledWith(
+        'coupons:treasury-send-lock',
+        expect.any(String),
+        'PX',
+        expect.any(Number),
+        'NX',
+      );
+      const token = redis.set.mock.calls[0]?.[1] as string;
+      expect(redis.eval).toHaveBeenCalledWith(
+        expect.stringContaining('redis.call("del", KEYS[1])'),
+        1,
+        'coupons:treasury-send-lock',
+        token,
+      );
+    });
+
+    it('rolls back the coupon and asks for a retry when another instance holds the lock past the timeout', async () => {
+      redis.set.mockResolvedValue(null);
+
+      await expect(
+        service.claimCoupon(mockCoupon.code as string, 'cognito-sub'),
+      ).rejects.toThrow('UTL transfer is busy — please retry');
+
+      expect(couponModel.updateOne).toHaveBeenCalledWith(
+        { _id: 'coupon-id' },
+        { redeemed: false, redeemedAt: null },
+      );
+      // Nothing may be signed or broadcast without the distributed lock.
+      expect(mockPopulateTransactionFn).not.toHaveBeenCalled();
+      expect(mockBroadcastTransactionFn).not.toHaveBeenCalled();
+    });
+
+    it('fails closed (rollback + retriable error) when Redis is unreachable', async () => {
+      redis.set.mockRejectedValue(new Error('connection refused'));
+
+      await expect(
+        service.claimCoupon(mockCoupon.code as string, 'cognito-sub'),
+      ).rejects.toThrow('UTL transfer is busy — please retry');
+
+      expect(couponModel.updateOne).toHaveBeenCalledWith(
+        { _id: 'coupon-id' },
+        { redeemed: false, redeemedAt: null },
+      );
+      expect(mockPopulateTransactionFn).not.toHaveBeenCalled();
+    });
+
+    it('does not fail a successful transfer when releasing the lock errors (TTL reclaims it)', async () => {
+      redis.eval.mockRejectedValue(new Error('connection reset'));
+
+      const result = await service.claimCoupon(mockCoupon.code as string, 'cognito-sub');
+
+      expect(result).toEqual({ redemptionTxHash: '0xreceipt' });
     });
   });
 

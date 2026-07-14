@@ -30,7 +30,7 @@ function makeJob(overrides: Partial<TransferEventDto> = {}): Job<TransferEventDt
 
 const mockConfigValues: Record<string, unknown> = {
   'blockchain.merchantAddresses': ['0xmerchant'],
-  'blockchain.cashbackBps': 500,
+  'blockchain.cashbackBps': 500n,
   'blockchain.minPayoutUsdtRaw': 10_000,
 };
 
@@ -54,7 +54,14 @@ describe('TransferProcessor', () => {
         },
         {
           provide: ConfigService,
-          useValue: { get: jest.fn((key: string) => mockConfigValues[key]) },
+          useValue: {
+            get: jest.fn((key: string) => mockConfigValues[key]),
+            getOrThrow: jest.fn((key: string) => {
+              const value = mockConfigValues[key];
+              if (value === undefined) throw new Error(`Missing config: ${key}`);
+              return value;
+            }),
+          },
         },
       ],
     }).compile();

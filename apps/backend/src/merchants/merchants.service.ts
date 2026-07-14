@@ -9,7 +9,6 @@ export type MerchantsResponse = {
 };
 
 const BASIS_POINTS_DENOMINATOR = 10000;
-const DEFAULT_CASHBACK_BPS = 500n;
 
 @Injectable()
 export class MerchantsService {
@@ -17,7 +16,7 @@ export class MerchantsService {
 
   getMerchants(): MerchantsResponse {
     const addresses = this.configService.get<string[]>('blockchain.merchantAddresses') ?? [];
-    const cashbackBps = this.configService.get<bigint>('blockchain.cashbackBps') ?? DEFAULT_CASHBACK_BPS;
+    const cashbackBps = this.configService.getOrThrow<bigint>('blockchain.cashbackBps');
 
     const names: Record<string, string> = {};
     for (const address of addresses) {

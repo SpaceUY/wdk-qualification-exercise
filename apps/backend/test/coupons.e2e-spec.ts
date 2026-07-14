@@ -12,9 +12,11 @@ import { Coupon, CouponDocument } from '../src/coupons/entities/coupon.entity';
 import { User, UserDocument } from '../src/users/entities/user.entity';
 import { blockchainConfig } from '../src/config/blockchain.config';
 import { cognitoConfig } from '../src/config/cognito.config';
+import { CACHE_REDIS_CLIENT } from '../src/redis/redis-cache.tokens';
 import { TEST_USER, createMockJwtAuthGuard } from './support/auth';
 import { startInMemoryMongo, stopInMemoryMongo, clearCollections } from './support/mongo-memory';
 import { MOCK_REDEMPTION_TX_HASH } from './support/ethers-mock';
+import { createMockRedisClient } from './support/redis-mock';
 
 jest.mock('ethers', () => {
   const {
@@ -55,6 +57,10 @@ describe('Coupons (e2e)', () => {
     })
       .overrideGuard(JwtAuthGuard)
       .useValue(createMockJwtAuthGuard(TEST_USER))
+      // CouponsModule pulls in RedisCacheModule for the treasury lock; stub the
+      // client so the e2e run needs no Redis instance.
+      .overrideProvider(CACHE_REDIS_CLIENT)
+      .useValue(createMockRedisClient())
       .compile();
 
     app = moduleRef.createNestApplication();
