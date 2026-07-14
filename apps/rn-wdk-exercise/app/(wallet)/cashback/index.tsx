@@ -193,9 +193,9 @@ export default function CashbackScreen() {
             </View>
             <TouchableOpacity
               testID="claim-button"
-              style={styles.claimButton}
+              style={[styles.claimButton, pendingId != null && pendingId !== item.id && styles.claimButtonDisabled]}
               onPress={() => handleClaim(item)}
-              disabled={pendingId === item.id}
+              disabled={pendingId != null}
             >
               {pendingId === item.id ? (
                 <ActivityIndicator color={colors.textOnPrimary} size="small" />
@@ -383,4 +383,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
   claimButtonText: { fontWeight: '600' },
+  claimButtonDisabled: { opacity: 0.5 },
 });

@@ -142,6 +142,38 @@ describe('CashbackScreen', () => {
     await waitFor(() => expect(mockGetCoupons).toHaveBeenCalledTimes(2));
   });
 
+  it('disables every claim button while a claim is in flight, keeping the spinner on the pressed row only', async () => {
+    mockGetCoupons.mockResolvedValue([
+      coupon({ id: 'coupon-1', code: 'SAVE5' }),
+      coupon({ id: 'coupon-2', code: 'SAVE10' }),
+    ]);
+    let resolvePost: (value: { data: { redemptionTxHash: string } }) => void;
+    mockApiPost.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePost = resolve;
+      }),
+    );
+
+    await renderScreen();
+    const buttons = await screen.findAllByTestId('claim-button');
+    expect(buttons).toHaveLength(2);
+
+    await fireEvent.press(buttons[0]);
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith('/coupons/claim', { code: 'SAVE5' }),
+    );
+
+    // Sibling button must be disabled too — pressing it must not trigger a second claim.
+    await fireEvent.press(buttons[1]);
+    expect(mockApiPost).toHaveBeenCalledTimes(1);
+    expect(buttons[1].props.accessibilityState?.disabled).toBe(true);
+    expect(buttons[0].props.accessibilityState?.disabled).toBe(true);
+
+    resolvePost!({ data: { redemptionTxHash: '0xabc' } });
+    await waitFor(() => expect(mockGetCoupons).toHaveBeenCalledTimes(2));
+  });
+
   it('shows the server error message when claiming fails', async () => {
     mockGetCoupons.mockResolvedValue([coupon()]);
     mockApiPost.mockRejectedValue({
