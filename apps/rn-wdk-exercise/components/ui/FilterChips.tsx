@@ -1,12 +1,9 @@
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { LiquidGlassView } from '@callstack/liquid-glass';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText } from './AppText';
-
-const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { ScalePressable } from './ScalePressable';
 
 export type FilterChipOption<T extends string> = { key: T; label: string };
 
@@ -65,20 +62,12 @@ function FilterChip({
   onPress: () => void;
   styles: Styles;
 }) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
-    <AnimatedPressable
+    <ScalePressable
       testID={testID}
       accessibilityRole="button"
       accessibilityState={{ selected: isActive }}
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.92, PRESS_SPRING); }}
-      onPressOut={() => { scale.value = withSpring(1, PRESS_SPRING); }}
-      style={animatedStyle}
     >
       <LiquidGlassView effect="none" colorScheme="dark" style={styles.chip}>
         <View style={[styles.chipSurface, isActive ? styles.chipSurfaceActive : styles.chipSurfaceInactive]}>
@@ -91,7 +80,7 @@ function FilterChip({
           </AppText>
         </View>
       </LiquidGlassView>
-    </AnimatedPressable>
+    </ScalePressable>
   );
 }
 

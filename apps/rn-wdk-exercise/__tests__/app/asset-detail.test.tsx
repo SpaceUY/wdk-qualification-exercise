@@ -36,7 +36,10 @@ jest.mock('../../hooks/useFilteredTransactionHistory', () => ({
   useFilteredTransactionHistory: (...args: unknown[]) => mockUseFilteredTransactionHistory(...args),
 }));
 
-import AssetDetailScreen, { CHART_AXIS_WIDTH } from '../../app/(wallet)/asset/[id]';
+import AssetDetailScreen from '../../app/(wallet)/asset/[id]';
+
+// Mirrors PriceChart's private CHART_AXIS_WIDTH (components/asset/PriceChart.tsx).
+const CHART_AXIS_WIDTH = 70;
 import { BTC_CONFIG, ETH_CONFIG, UTL_CONFIG } from '../../config/assets';
 
 function buildTransfer(overrides: Partial<TokenTransfer> = {}): TokenTransfer {

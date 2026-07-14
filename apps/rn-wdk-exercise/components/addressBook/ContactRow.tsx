@@ -1,13 +1,9 @@
-import { Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText } from '@/components/ui';
+import { AppText, ScalePressable } from '@/components/ui';
 import type { ContactRowData } from './buildContactRows';
-
-const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export type ContactRowProps = {
   contact: ContactRowData;
@@ -21,17 +17,12 @@ export type ContactRowProps = {
 export function ContactRow({ contact, onPress, onDelete }: ContactRowProps) {
   const colors = useThemeColors();
   const styles = useThemedStyles(createStyles);
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   return (
-    <AnimatedPressable
-      style={[styles.row, animatedStyle]}
+    <ScalePressable
+      activeScale={0.97}
+      style={styles.row}
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.97, PRESS_SPRING); }}
-      onPressOut={() => { scale.value = withSpring(1, PRESS_SPRING); }}
     >
       <View style={styles.avatar}>
         <AppText variant="subtitle" color="primary">{contact.initials}</AppText>
@@ -50,7 +41,7 @@ export function ContactRow({ contact, onPress, onDelete }: ContactRowProps) {
           <Trash2 size={18} color={colors.danger} />
         </TouchableOpacity>
       )}
-    </AnimatedPressable>
+    </ScalePressable>
   );
 }
 

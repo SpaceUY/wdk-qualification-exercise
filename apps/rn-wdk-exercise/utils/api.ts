@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as AuthSession from 'expo-auth-session';
 import { useAuthStore } from '@/stores/authStore';
+import { COGNITO_CLIENT_ID, cognitoDiscovery } from '@/config/cognito';
 
 export const apiClient = axios.create({
   // 3001, not 3000 — the self-hosted WDK stack's app-node owns port 3000 locally (see
@@ -16,15 +17,8 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Must match hooks/useCognito.ts's discovery config — used here only to refresh an expired
-// idToken via the Cognito refresh_token grant, not for the initial sign-in flow.
-const COGNITO_DOMAIN = process.env.EXPO_PUBLIC_COGNITO_DOMAIN ?? '';
-const COGNITO_CLIENT_ID = process.env.EXPO_PUBLIC_COGNITO_CLIENT_ID ?? '';
-const cognitoDiscovery: AuthSession.DiscoveryDocument = {
-  authorizationEndpoint: `${COGNITO_DOMAIN}/oauth2/authorize`,
-  tokenEndpoint: `${COGNITO_DOMAIN}/oauth2/token`,
-  revocationEndpoint: `${COGNITO_DOMAIN}/oauth2/revoke`,
-};
+// Used here only to refresh an expired idToken via the Cognito refresh_token grant,
+// not for the initial sign-in flow (see hooks/useCognito.ts for that).
 
 // Coalesces concurrent 401s onto a single refresh call instead of firing one per request.
 let refreshPromise: Promise<string | null> | null = null;

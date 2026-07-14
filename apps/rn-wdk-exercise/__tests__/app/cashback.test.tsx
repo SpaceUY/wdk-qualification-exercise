@@ -8,11 +8,13 @@ import type { CouponListItem, ClaimedCouponListItem } from '../../utils/api';
 const mockGetCoupons = jest.fn();
 const mockGetClaimedCoupons = jest.fn();
 const mockApiPost = jest.fn();
+const mockGetMerchants = jest.fn();
 
 jest.mock('../../utils/api', () => ({
   getCoupons: () => mockGetCoupons(),
   getClaimedCoupons: () => mockGetClaimedCoupons(),
   apiClient: { post: (...args: unknown[]) => mockApiPost(...args) },
+  getMerchants: () => mockGetMerchants(),
 }));
 
 jest.mock('@tetherto/wdk-react-native-core', () => ({
@@ -72,6 +74,7 @@ describe('CashbackScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockGetCoupons.mockResolvedValue([]);
     mockGetClaimedCoupons.mockResolvedValue([]);
+    mockGetMerchants.mockResolvedValue({ addresses: [], names: {}, cashbackRate: 0.05 });
   });
 
   it('shows an empty state when there are no available coupons', async () => {
@@ -108,6 +111,17 @@ describe('CashbackScreen', () => {
     expect(screen.getByText('Claim')).toBeTruthy();
   });
 
+  it('renders the live cashback rate from the merchants API instead of a hardcoded value', async () => {
+    mockGetCoupons.mockResolvedValue([coupon()]);
+    mockGetMerchants.mockResolvedValue({ addresses: [], names: {}, cashbackRate: 0.03 });
+
+    await renderScreen();
+
+    await waitFor(() =>
+      expect(screen.getByText('3% cashback on $100.00 USDT')).toBeTruthy(),
+    );
+  });
+
   it('claims a coupon and shows a success alert, then refetches available coupons', async () => {
     mockGetCoupons.mockResolvedValue([coupon()]);
     mockApiPost.mockResolvedValue({ data: { redemptionTxHash: '0xabc' } });
@@ -125,6 +139,38 @@ describe('CashbackScreen', () => {
         description: '5% cashback applied to your UTL balance.',
       }),
     );
+    await waitFor(() => expect(mockGetCoupons).toHaveBeenCalledTimes(2));
+  });
+
+  it('disables every claim button while a claim is in flight, keeping the spinner on the pressed row only', async () => {
+    mockGetCoupons.mockResolvedValue([
+      coupon({ id: 'coupon-1', code: 'SAVE5' }),
+      coupon({ id: 'coupon-2', code: 'SAVE10' }),
+    ]);
+    let resolvePost: (value: { data: { redemptionTxHash: string } }) => void;
+    mockApiPost.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePost = resolve;
+      }),
+    );
+
+    await renderScreen();
+    const buttons = await screen.findAllByTestId('claim-button');
+    expect(buttons).toHaveLength(2);
+
+    await fireEvent.press(buttons[0]);
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith('/coupons/claim', { code: 'SAVE5' }),
+    );
+
+    // Sibling button must be disabled too — pressing it must not trigger a second claim.
+    await fireEvent.press(buttons[1]);
+    expect(mockApiPost).toHaveBeenCalledTimes(1);
+    expect(buttons[1].props.accessibilityState?.disabled).toBe(true);
+    expect(buttons[0].props.accessibilityState?.disabled).toBe(true);
+
+    resolvePost!({ data: { redemptionTxHash: '0xabc' } });
     await waitFor(() => expect(mockGetCoupons).toHaveBeenCalledTimes(2));
   });
 

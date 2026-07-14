@@ -8,4 +8,5 @@ export { Card, type CardProps } from './Card';
 export { Divider, type DividerProps } from './Divider';
 export { FilterChips, type FilterChipOption, type FilterChipsProps } from './FilterChips';
 export { PaginationDots, type PaginationDotsProps } from './PaginationDots';
+export { ScalePressable, type ScalePressableProps } from './ScalePressable';
 export { Skeleton, type SkeletonProps } from './Skeleton';

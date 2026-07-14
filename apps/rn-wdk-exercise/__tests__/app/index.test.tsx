@@ -6,15 +6,23 @@ import RootIndex from '../../app/index';
 describe('RootIndex', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useAuthStore.setState({ userId: null, accessToken: null });
+    useAuthStore.setState({ userId: null, accessToken: null, _hasHydrated: true });
     // Onboarding already seen by default so the pre-existing auth-routing tests
     // exercise the auth branch; the first-run branch has its own test below.
     useSettingsStore.setState({ hasSeenOnboarding: true });
   });
 
+  it('renders nothing until auth store hydrates', async () => {
+    useAuthStore.setState({ _hasHydrated: false });
+
+    const { toJSON } = await render(<RootIndex />);
+
+    expect(toJSON()).toBeNull();
+  });
+
   it('redirects to onboarding on first run, before any auth routing', async () => {
     useSettingsStore.setState({ hasSeenOnboarding: false });
-    useAuthStore.setState({ userId: 'user@test.com' });
+    useAuthStore.setState({ userId: 'user@test.com', _hasHydrated: true });
 
     await render(<RootIndex />);
 
@@ -22,7 +30,7 @@ describe('RootIndex', () => {
   });
 
   it('redirects to the wallet when a user is signed in', async () => {
-    useAuthStore.setState({ userId: 'user@test.com' });
+    useAuthStore.setState({ userId: 'user@test.com', _hasHydrated: true });
 
     await render(<RootIndex />);
 

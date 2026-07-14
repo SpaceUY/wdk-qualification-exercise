@@ -1,16 +1,11 @@
 import type { ComponentType, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { Pressable } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LiquidGlassView } from '@callstack/liquid-glass';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText } from '@/components/ui';
-
-const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { AppText, ScalePressable } from '@/components/ui';
 
 type IconComponent = ComponentType<{ size?: number; color?: string }>;
 
@@ -40,21 +35,16 @@ type HeaderIconButtonProps = {
 export function HeaderIconButton({ icon: Icon, onPress, accessibilityLabel, testID }: HeaderIconButtonProps) {
   const colors = useThemeColors();
   const styles = useThemedStyles(createIconButtonStyles);
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   return (
-    <AnimatedPressable
+    <ScalePressable
+      activeScale={0.88}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={8}
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.88, PRESS_SPRING); }}
-      onPressOut={() => { scale.value = withSpring(1, PRESS_SPRING); }}
-      style={[styles.button, animatedStyle]}
+      style={styles.button}
     >
       <LiquidGlassView effect="none" colorScheme="dark" style={styles.glass}>
         {/* The border/background live on this plain View, not on LiquidGlassView
@@ -65,7 +55,7 @@ export function HeaderIconButton({ icon: Icon, onPress, accessibilityLabel, test
           <Icon size={20} color={colors.textPrimary} />
         </View>
       </LiquidGlassView>
-    </AnimatedPressable>
+    </ScalePressable>
   );
 }
 

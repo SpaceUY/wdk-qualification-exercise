@@ -61,7 +61,7 @@ describe('ConfirmSendScreen', () => {
   });
 
   it('shows "Asset not found" for an unknown assetId', async () => {
-    setParams({ assetId: 'does-not-exist', network: 'ethereum', recipient: '0xTo', amount: '1' });
+    setParams({ assetId: 'does-not-exist', recipient: '0xTo', amount: '1' });
 
     await renderScreen();
 
@@ -71,11 +71,8 @@ describe('ConfirmSendScreen', () => {
   it('renders the transaction details for a known asset', async () => {
     setParams({
       assetId: ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount: '0.01',
-      decimals: '18',
-      symbol: 'ETH',
     });
 
     await renderScreen();
@@ -88,10 +85,8 @@ describe('ConfirmSendScreen', () => {
   it('does not show a real-funds warning for a testnet asset', async () => {
     setParams({
       assetId: ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount: '0.01',
-      symbol: 'ETH',
     });
 
     await renderScreen();
@@ -102,10 +97,8 @@ describe('ConfirmSendScreen', () => {
   it('shows a real-funds warning for a mainnet asset', async () => {
     setParams({
       assetId: BTC_CONFIG.id,
-      network: 'bitcoin',
       recipient: 'bc1RecipientAddress',
       amount: '0.001',
-      symbol: 'BTC',
     });
 
     await renderScreen();
@@ -117,10 +110,8 @@ describe('ConfirmSendScreen', () => {
     mockAuthenticate.mockResolvedValue(false);
     setParams({
       assetId: ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount: '0.01',
-      symbol: 'ETH',
     });
 
     await renderScreen();
@@ -134,10 +125,8 @@ describe('ConfirmSendScreen', () => {
     const amount = '0.01';
     setParams({
       assetId: ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount,
-      symbol: 'ETH',
     });
     mockCallAccountMethod.mockResolvedValue(undefined);
 
@@ -161,10 +150,8 @@ describe('ConfirmSendScreen', () => {
     const amount = '5';
     setParams({
       assetId: USDT_ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount,
-      symbol: 'USDT',
     });
     mockCallAccountMethod.mockResolvedValue(undefined);
 
@@ -180,8 +167,8 @@ describe('ConfirmSendScreen', () => {
     );
   });
 
-  it('defaults to the ethereum network when no network param is provided', async () => {
-    setParams({ assetId: ETH_CONFIG.id, recipient: '0xRecipientAddress', amount: '0.01', symbol: 'ETH' });
+  it('uses the network derived from the asset config when sending', async () => {
+    setParams({ assetId: ETH_CONFIG.id, recipient: '0xRecipientAddress', amount: '0.01' });
     mockCallAccountMethod.mockResolvedValue(undefined);
 
     await renderScreen();
@@ -195,17 +182,20 @@ describe('ConfirmSendScreen', () => {
   it('shows an error alert and re-enables the button when the send fails', async () => {
     setParams({
       assetId: ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount: '0.01',
-      symbol: 'ETH',
     });
-    mockCallAccountMethod.mockRejectedValue(new Error('Network unreachable'));
+    mockCallAccountMethod.mockRejectedValue(new Error('some totally unmapped internal error'));
 
     await renderScreen();
     await fireEvent.press(screen.getByText('Confirm & Send'));
 
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith('Error', 'Network unreachable'));
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Something went wrong sending your transaction. Please try again.',
+      ),
+    );
     expect(screen.getByText('Confirm & Send')).toBeTruthy();
   });
 
@@ -238,10 +228,8 @@ describe('ConfirmSendScreen', () => {
   ])('maps "%s" to a friendly message', async (rawMessage, friendlyMessage) => {
     setParams({
       assetId: ETH_CONFIG.id,
-      network: 'ethereum',
       recipient: '0xRecipientAddress',
       amount: '0.01',
-      symbol: 'ETH',
     });
     mockCallAccountMethod.mockRejectedValue(new Error(rawMessage));
 
@@ -260,10 +248,8 @@ describe('ConfirmSendScreen', () => {
       });
       setParams({
         assetId: USDT_ETH_CONFIG.id,
-        network: 'ethereum',
         recipient: '0xMerchantAddress',
         amount: '100',
-        symbol: 'USDT',
       });
 
       await renderScreen();
@@ -281,10 +267,8 @@ describe('ConfirmSendScreen', () => {
       });
       setParams({
         assetId: USDT_ETH_CONFIG.id,
-        network: 'ethereum',
         recipient: '0xMerchantAddress',
         amount: '100',
-        symbol: 'USDT',
       });
 
       await renderScreen();
@@ -300,10 +284,8 @@ describe('ConfirmSendScreen', () => {
       });
       setParams({
         assetId: USDT_ETH_CONFIG.id,
-        network: 'ethereum',
         recipient: '0xMerchantAddress',
         amount: '100',
-        symbol: 'USDT',
       });
 
       await renderScreen();
@@ -320,10 +302,8 @@ describe('ConfirmSendScreen', () => {
       });
       setParams({
         assetId: ETH_CONFIG.id,
-        network: 'ethereum',
         recipient: '0xMerchantAddress',
         amount: '0.01',
-        symbol: 'ETH',
       });
 
       await renderScreen();

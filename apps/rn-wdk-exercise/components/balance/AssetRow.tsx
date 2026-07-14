@@ -1,13 +1,9 @@
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AmountText, AppText } from '@/components/ui';
+import { AmountText, AppText, ScalePressable } from '@/components/ui';
 import { TokenLogo } from '@/components/TokenLogo';
 import type { AssetRowData } from './buildAssetRows';
-
-const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export type AssetRowProps = {
   asset: AssetRowData;
@@ -19,17 +15,12 @@ export type AssetRowProps = {
 // on the right — the Trust Wallet hierarchy.
 export function AssetRow({ asset, hidden, onPress }: AssetRowProps) {
   const styles = useThemedStyles(createStyles);
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   return (
-    <AnimatedPressable
-      style={[styles.row, animatedStyle]}
+    <ScalePressable
+      activeScale={0.97}
+      style={styles.row}
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.97, PRESS_SPRING); }}
-      onPressOut={() => { scale.value = withSpring(1, PRESS_SPRING); }}
     >
       <View style={styles.identity}>
         <TokenLogo symbol={asset.symbol} size={36} />
@@ -68,7 +59,7 @@ export function AssetRow({ asset, hidden, onPress }: AssetRowProps) {
           </AppText>
         )}
       </View>
-    </AnimatedPressable>
+    </ScalePressable>
   );
 }
 
