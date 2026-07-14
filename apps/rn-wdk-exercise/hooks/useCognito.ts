@@ -9,8 +9,12 @@ WebBrowser.maybeCompleteAuthSession();
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64)) as Record<string, unknown>;
+    const base64url = token.split('.')[1] ?? '';
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    // atob requires the input length to be a multiple of 4; base64url strips '='
+    // padding, so restore it or atob throws on some payloads.
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
   } catch {
     return {};
   }
