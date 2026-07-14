@@ -167,7 +167,7 @@ describe('ConfirmSendScreen', () => {
     );
   });
 
-  it('defaults to the ethereum network when no network param is provided', async () => {
+  it('uses the network derived from the asset config when sending', async () => {
     setParams({ assetId: ETH_CONFIG.id, recipient: '0xRecipientAddress', amount: '0.01' });
     mockCallAccountMethod.mockResolvedValue(undefined);
 
