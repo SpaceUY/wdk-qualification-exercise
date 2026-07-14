@@ -3,7 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WalletsController } from './wallets.controller';
 import { WalletsService } from './wallets.service';
 import { UsersService } from '../users/users.service';
-import { CouponsService } from '../coupons/coupons.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import type { User } from '../users/entities/user.entity';
 import type { EncryptedBackup } from './entities/encrypted-backup.entity';
@@ -13,7 +12,6 @@ describe('WalletsController', () => {
   let controller: WalletsController;
   let walletsService: jest.Mocked<WalletsService>;
   let usersService: jest.Mocked<UsersService>;
-  let couponsService: jest.Mocked<CouponsService>;
 
   const authUser: AuthenticatedUser = { sub: 'cognito-sub', email: 'test@example.com' };
   const mockUser: Partial<User> = { id: 'user-id', walletAddress: null };
@@ -24,19 +22,18 @@ describe('WalletsController', () => {
       providers: [
         {
           provide: WalletsService,
-          useValue: { upsertBackup: jest.fn(), hasBackupForUser: jest.fn() },
+          useValue: {
+            upsertBackup: jest.fn(),
+            hasBackupForUser: jest.fn(),
+            registerAddress: jest.fn(),
+          },
         },
         {
           provide: UsersService,
           useValue: {
             findOrCreate: jest.fn(),
             findByCognitoSub: jest.fn(),
-            updateWalletAddress: jest.fn(),
           },
-        },
-        {
-          provide: CouponsService,
-          useValue: { linkOrphanedCoupons: jest.fn() },
         },
       ],
     }).compile();
@@ -44,7 +41,6 @@ describe('WalletsController', () => {
     controller = module.get(WalletsController);
     walletsService = module.get(WalletsService);
     usersService = module.get(UsersService);
-    couponsService = module.get(CouponsService);
   });
 
   describe('backup', () => {
@@ -96,27 +92,17 @@ describe('WalletsController', () => {
   });
 
   describe('updateAddress', () => {
-    it('registers wallet address for the authenticated user', async () => {
-      (usersService.findOrCreate as jest.Mock).mockResolvedValue(mockUser as User);
+    it('delegates to WalletsService.registerAddress and returns the updated address', async () => {
       const updated: Partial<User> = { walletAddress: '0xabc' };
-      (usersService.updateWalletAddress as jest.Mock).mockResolvedValue(updated as User);
+      (walletsService.registerAddress as jest.Mock).mockResolvedValue(updated as User);
 
-      const result = await controller.updateAddress(authUser, {
-        walletAddress: '0xabc',
-      });
+      const result = await controller.updateAddress(authUser, { walletAddress: '0xabc' });
 
-      expect(usersService.updateWalletAddress).toHaveBeenCalledWith('user-id', '0xabc');
+      expect(walletsService.registerAddress).toHaveBeenCalledWith(
+        { cognitoSub: 'cognito-sub', email: 'test@example.com' },
+        '0xabc',
+      );
       expect(result).toEqual({ walletAddress: '0xabc' });
-    });
-
-    it('links any coupons orphaned under this address after registering it', async () => {
-      (usersService.findOrCreate as jest.Mock).mockResolvedValue(mockUser as User);
-      const updated: Partial<User> = { walletAddress: '0xabc' };
-      (usersService.updateWalletAddress as jest.Mock).mockResolvedValue(updated as User);
-
-      await controller.updateAddress(authUser, { walletAddress: '0xabc' });
-
-      expect(couponsService.linkOrphanedCoupons).toHaveBeenCalledWith('user-id', '0xabc');
     });
   });
 });

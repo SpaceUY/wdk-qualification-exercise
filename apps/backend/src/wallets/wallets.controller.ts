@@ -5,7 +5,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { WalletsService } from './wallets.service';
 import { UsersService } from '../users/users.service';
-import { CouponsService } from '../coupons/coupons.service';
 import { BackupWalletDto } from './dto/backup-wallet.dto';
 import { UpdateWalletAddressDto } from './dto/update-wallet-address.dto';
 
@@ -17,7 +16,6 @@ export class WalletsController {
   constructor(
     private readonly walletsService: WalletsService,
     private readonly usersService: UsersService,
-    private readonly couponsService: CouponsService,
   ) {}
 
   @Post('backup')
@@ -53,12 +51,10 @@ export class WalletsController {
     @CurrentUser() authUser: AuthenticatedUser,
     @Body() dto: UpdateWalletAddressDto,
   ): Promise<{ walletAddress: string }> {
-    const user = await this.usersService.findOrCreate({
-      cognitoSub: authUser.sub,
-      email: authUser.email,
-    });
-    const updated = await this.usersService.updateWalletAddress(user.id, dto.walletAddress);
-    await this.couponsService.linkOrphanedCoupons(user.id, dto.walletAddress);
+    const updated = await this.walletsService.registerAddress(
+      { cognitoSub: authUser.sub, email: authUser.email },
+      dto.walletAddress,
+    );
     return { walletAddress: updated.walletAddress as string };
   }
 }

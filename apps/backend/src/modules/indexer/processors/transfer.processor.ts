@@ -86,7 +86,7 @@ export class TransferProcessor {
       const merchantList =
         this.configService.get<string[]>('blockchain.merchantAddresses') ?? [];
       this.merchantAddresses = new Set(merchantList.map((a) => a.toLowerCase()));
-      this.cashbackBps = BigInt(this.configService.get<number>('blockchain.cashbackBps') ?? 500);
+      this.cashbackBps = this.configService.getOrThrow<bigint>('blockchain.cashbackBps');
       this.minPayoutUsdtRaw = BigInt(
         this.configService.get<number>('blockchain.minPayoutUsdtRaw') ?? 10_000,
       );

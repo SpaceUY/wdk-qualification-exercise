@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { WalletsService } from './wallets.service';
 import { EncryptedBackup } from './entities/encrypted-backup.entity';
+import { UsersService } from '../users/users.service';
+import type { UserDocument } from '../users/entities/user.entity';
+import { CouponsService } from '../coupons/coupons.service';
 
 type MockModel = {
   findOneAndUpdate: jest.Mock;
@@ -15,6 +18,8 @@ function createMockModel(): MockModel {
 describe('WalletsService', () => {
   let service: WalletsService;
   let backupModel: MockModel;
+  let usersService: jest.Mocked<UsersService>;
+  let couponsService: jest.Mocked<CouponsService>;
 
   beforeEach(async () => {
     backupModel = createMockModel();
@@ -23,10 +28,17 @@ describe('WalletsService', () => {
       providers: [
         WalletsService,
         { provide: getModelToken(EncryptedBackup.name), useValue: backupModel },
+        {
+          provide: UsersService,
+          useValue: { findOrCreate: jest.fn(), updateWalletAddress: jest.fn() },
+        },
+        { provide: CouponsService, useValue: { linkOrphanedCoupons: jest.fn() } },
       ],
     }).compile();
 
     service = module.get(WalletsService);
+    usersService = module.get(UsersService);
+    couponsService = module.get(CouponsService);
   });
 
   describe('upsertBackup', () => {
@@ -72,6 +84,24 @@ describe('WalletsService', () => {
       backupModel.exists.mockResolvedValue(null);
 
       await expect(service.hasBackupForUser('user-1')).resolves.toBe(false);
+    });
+  });
+
+  describe('registerAddress', () => {
+    const userParams = { cognitoSub: 'cognito-sub', email: 'test@example.com' };
+    const mockUser: Partial<UserDocument> = { id: 'user-id' };
+
+    it('finds or creates the user, updates the wallet address, then links orphaned coupons', async () => {
+      (usersService.findOrCreate as jest.Mock).mockResolvedValue(mockUser as UserDocument);
+      const updated: Partial<UserDocument> = { id: 'user-id', walletAddress: '0xabc' };
+      (usersService.updateWalletAddress as jest.Mock).mockResolvedValue(updated as UserDocument);
+
+      const result = await service.registerAddress(userParams, '0xabc');
+
+      expect(usersService.findOrCreate).toHaveBeenCalledWith(userParams);
+      expect(usersService.updateWalletAddress).toHaveBeenCalledWith('user-id', '0xabc');
+      expect(couponsService.linkOrphanedCoupons).toHaveBeenCalledWith('user-id', '0xabc');
+      expect(result).toBe(updated);
     });
   });
 });

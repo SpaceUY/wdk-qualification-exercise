@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
+import { RedisCacheModule } from '../redis/redis-cache.module';
 import { Coupon, CouponSchema } from './entities/coupon.entity';
 import { CouponsController } from './coupons.controller';
 import { CouponsService } from './coupons.service';
@@ -11,6 +12,7 @@ import { CouponsService } from './coupons.service';
     MongooseModule.forFeature([{ name: Coupon.name, schema: CouponSchema }]),
     AuthModule,
     UsersModule,
+    RedisCacheModule,
   ],
   controllers: [CouponsController],
   providers: [CouponsService],
