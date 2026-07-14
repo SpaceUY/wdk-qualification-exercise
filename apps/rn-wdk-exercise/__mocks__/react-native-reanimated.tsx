@@ -1,12 +1,17 @@
 import { View } from 'react-native';
+import { useRef } from 'react';
 import type { ComponentProps, ComponentType } from 'react';
 
 // Minimal stub of the Reanimated API surface the app uses (GlassTabBar,
 // AssetRow/NetworkFilterChips press-scale, usePullToRefresh). Shared values are
 // plain {value} boxes and springs resolve instantly, so animated styles compute
 // synchronously to their target values in tests.
+// The box must be stable across renders (like the real hook), so mutations made
+// in effects/gesture callbacks survive re-renders and tests can assert on them.
 export function useSharedValue<T>(initial: T): { value: T } {
-  return { value: initial };
+  const ref = useRef<{ value: T } | null>(null);
+  ref.current ??= { value: initial };
+  return ref.current;
 }
 
 export function withSpring<T>(toValue: T): T {
