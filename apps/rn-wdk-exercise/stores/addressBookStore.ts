@@ -1,7 +1,6 @@
-import type { MMKV } from 'react-native-mmkv';
-import { createMMKV } from 'react-native-mmkv';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { createMMKVStorage } from '@/stores/mmkvStorage';
 
 export type AddressBookContact = {
   id: string;
@@ -28,20 +27,6 @@ type AddressBookStore = {
   removeContact: (id: string) => void;
 };
 
-let _instance: MMKV | null = null;
-function getInstance(): MMKV {
-  if (!_instance) {
-    _instance = createMMKV({ id: 'address-book-store' });
-  }
-  return _instance;
-}
-
-const storage = {
-  getItem: (name: string) => getInstance().getString(name) ?? null,
-  setItem: (name: string, value: string) => getInstance().set(name, value),
-  removeItem: (name: string) => getInstance().remove(name),
-};
-
 // 100% device-local by design (privacy: alias ↔ address pairs never reach the backend).
 export const useAddressBookStore = create<AddressBookStore>()(
   persist(
@@ -59,7 +44,7 @@ export const useAddressBookStore = create<AddressBookStore>()(
     }),
     {
       name: 'address-book-store',
-      storage: createJSONStorage(() => storage),
+      storage: createJSONStorage(() => createMMKVStorage('address-book-store')),
       partialize: (state) => ({ contacts: state.contacts }),
     },
   ),
