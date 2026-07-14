@@ -62,5 +62,5 @@ export function useFilteredTransactionHistory({
     [ethereum, bitcoin],
   );
 
-  return { transfers, isLoading, isError, syncStatus, syncError, myAddresses, retry };
+  return { transfers, isLoading, isError, syncStatus, syncError, myAddresses, retry, refetch: refetchTransfers };
 }

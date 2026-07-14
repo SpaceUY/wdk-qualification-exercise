@@ -1,35 +1,53 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { AssetConfig } from '@tetherto/wdk-react-native-core';
+import type { AssetBalanceResult } from '@/hooks/useAssetBalances';
+import { isMainnetNetwork } from '@/config/networkMeta';
+import { computeFiatValue, formatBalanceFromRaw, formatFiat, trimDisplayDecimals } from '@/utils/balance';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText } from '@/components/ui';
+import { AmountText, AppText, NetworkBadge } from '@/components/ui';
 import { TokenLogo } from '@/components/TokenLogo';
 import { BottomSheet } from '@/components/BottomSheet';
-import { isMainnetNetwork } from '@/config/networkMeta';
-import type { AssetBalanceResult } from '@/hooks/useAssetBalances';
-import { formatBalanceFromRaw, trimDisplayDecimals } from '@/utils/balance';
 
 type TokenPickerSheetProps = {
   visible: boolean;
   assets: AssetConfig[];
   selectedId: string;
-  // Display-ready balances keyed by asset id (from useAssetBalances). Optional so
-  // callers without balance data still render a valid picker (amounts show '—').
-  balanceByAssetId?: Map<string, AssetBalanceResult>;
   onSelect: (asset: AssetConfig) => void;
   onClose: () => void;
+  // Raw balance results keyed by asset id (from useAssetBalances). Optional so
+  // callers without balance data still render a valid picker (amounts show '—').
+  balanceByAssetId?: Map<string, AssetBalanceResult>;
+  balancesHidden?: boolean;
+  prices?: Record<string, number | null>;
 };
 
-// Mirrors buildAssetRows: raw→human via decimals, then trim to 6 for display; '—'
-// when the balance is unknown (missing or failed fetch) rather than a misleading 0.
-function formatAssetBalance(asset: AssetConfig, result: AssetBalanceResult | undefined): string {
+// Same raw→display pipeline as the dashboard's buildAssetRows: '—' when the
+// balance is unknown (failed/missing fetch), never a fake 0; fiat computed from
+// the full-precision amount and null (rendered as nothing) when unknowable.
+function formatRowBalance(
+  result: AssetBalanceResult | undefined,
+  decimals: number,
+  price: number | null | undefined,
+): { cryptoAmount: string; fiatAmount: string | null } {
   const raw = result?.success ? result.balance : null;
-  if (raw == null) return '—';
-  const human = formatBalanceFromRaw(raw, asset.decimals) ?? '0';
-  return trimDisplayDecimals(human, 6);
+  const human = raw != null ? (formatBalanceFromRaw(raw, decimals) ?? '0') : null;
+  return {
+    cryptoAmount: human != null ? trimDisplayDecimals(human, 6) : '—',
+    fiatAmount: formatFiat(computeFiatValue(human, price)),
+  };
 }
 
-export function TokenPickerSheet({ visible, assets, selectedId, balanceByAssetId, onSelect, onClose }: TokenPickerSheetProps) {
+export function TokenPickerSheet({
+  visible,
+  assets,
+  selectedId,
+  onSelect,
+  onClose,
+  balanceByAssetId,
+  balancesHidden = false,
+  prices,
+}: TokenPickerSheetProps) {
   const styles = useThemedStyles(createStyles);
 
   function handleSelect(asset: AssetConfig) {
@@ -43,8 +61,11 @@ export function TokenPickerSheet({ visible, assets, selectedId, balanceByAssetId
         <AppText variant="subtitle" style={styles.title}>Select Token</AppText>
         {assets.map((item) => {
           const isSelected = item.id === selectedId;
-          const isMainnet = isMainnetNetwork(item.network);
-          const balance = formatAssetBalance(item, balanceByAssetId?.get(item.id));
+          const { cryptoAmount, fiatAmount } = formatRowBalance(
+            balanceByAssetId?.get(item.id),
+            item.decimals,
+            prices?.[item.symbol],
+          );
           return (
             <TouchableOpacity
               key={item.id}
@@ -55,22 +76,19 @@ export function TokenPickerSheet({ visible, assets, selectedId, balanceByAssetId
               <View style={styles.rowIdentity}>
                 <TokenLogo symbol={item.symbol} size={36} />
                 <View>
-                  <View style={styles.symbolRow}>
+                  <View style={styles.rowSymbolRow}>
                     <AppText variant="body" style={styles.rowSymbol}>{item.symbol}</AppText>
-                    <View style={[styles.chip, isMainnet ? styles.chipMainnet : styles.chipTestnet]}>
-                      <AppText
-                        variant="caption"
-                        color={isMainnet ? 'successText' : 'warningText'}
-                        style={styles.chipText}
-                      >
-                        {isMainnet ? 'Mainnet' : 'Testnet'}
-                      </AppText>
-                    </View>
+                    <NetworkBadge isMainnet={isMainnetNetwork(item.network)} />
                   </View>
                   <AppText variant="caption" color="textMuted">{item.network}</AppText>
                 </View>
               </View>
-              <AppText variant="body" style={styles.rowBalance}>{balance}</AppText>
+              <View style={styles.amounts}>
+                <AmountText value={cryptoAmount} hidden={balancesHidden} />
+                {fiatAmount != null && (
+                  <AmountText variant="caption" color="textMuted" value={fiatAmount} hidden={balancesHidden} />
+                )}
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -99,11 +117,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Selected token: darker gray fill across the whole row (replaces the check tick).
   rowSelected: { backgroundColor: colors.surfaceMuted },
   rowIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  symbolRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rowSymbolRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowSymbol: { fontWeight: '600' },
-  chip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
-  chipMainnet: { backgroundColor: colors.successBg },
-  chipTestnet: { backgroundColor: colors.warningBg },
-  chipText: { fontSize: 10, lineHeight: 14, fontWeight: '700' },
-  rowBalance: { fontWeight: '600' },
+  amounts: { alignItems: 'flex-end', gap: 2 },
 });

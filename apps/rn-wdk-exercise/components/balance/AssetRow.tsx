@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AmountText, AppText, ScalePressable } from '@/components/ui';
+import { AmountText, AppText, NetworkBadge, ScalePressable } from '@/components/ui';
 import { TokenLogo } from '@/components/TokenLogo';
 import type { AssetRowData } from './buildAssetRows';
 
@@ -27,15 +27,7 @@ export function AssetRow({ asset, hidden, onPress }: AssetRowProps) {
         <View>
           <View style={styles.symbolRow}>
             <AppText variant="subtitle">{asset.symbol}</AppText>
-            <View style={[styles.chip, asset.isMainnet ? styles.chipMainnet : styles.chipTestnet]}>
-              <AppText
-                variant="caption"
-                color={asset.isMainnet ? 'successText' : 'warningText'}
-                style={styles.chipText}
-              >
-                {asset.isMainnet ? 'Mainnet' : 'Testnet'}
-              </AppText>
-            </View>
+            <NetworkBadge isMainnet={asset.isMainnet} />
           </View>
           <AppText variant="caption" color="textMuted" style={styles.network}>
             {asset.network}
@@ -80,10 +72,6 @@ const createStyles = (colors: ThemeColors) =>
     identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     symbolRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     network: { marginTop: 2 },
-    chip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
-    chipMainnet: { backgroundColor: colors.successBg },
-    chipTestnet: { backgroundColor: colors.warningBg },
-    chipText: { fontSize: 10, lineHeight: 14, fontWeight: '700' },
     changePct: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
     amounts: { alignItems: 'flex-end', gap: 2 },
   });

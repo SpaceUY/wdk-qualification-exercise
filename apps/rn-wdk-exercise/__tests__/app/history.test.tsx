@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { Linking } from 'react-native';
+import { Gesture } from 'react-native-gesture-handler';
 import { router, useLocalSearchParams } from 'expo-router';
 import { toast } from 'sonner-native';
 import * as Clipboard from 'expo-clipboard';
@@ -20,6 +21,14 @@ jest.mock('../../hooks/useAppNodeWalletSync', () => ({
 const mockUseTransactionHistory = jest.fn();
 jest.mock('../../hooks/useTransactionHistory', () => ({
   useTransactionHistory: (...args: unknown[]) => mockUseTransactionHistory(...args),
+}));
+
+// The gesture itself is unit-tested in __tests__/hooks/usePullToRefresh.test.ts;
+// here the hook is mocked (with a real no-op gesture so GestureDetector renders)
+// to capture the screen's onRefresh callback and test the wiring around it.
+const mockUsePullToRefresh = jest.fn();
+jest.mock('../../hooks/usePullToRefresh', () => ({
+  usePullToRefresh: (...args: unknown[]) => mockUsePullToRefresh(...args),
 }));
 
 function buildTransfer(overrides: Partial<TokenTransfer> = {}): TokenTransfer {
@@ -48,6 +57,10 @@ describe('HistoryScreen', () => {
     });
     mockUseAppNodeWalletSync.mockReturnValue({ status: 'done', error: null, retry: jest.fn() });
     mockUseTransactionHistory.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: jest.fn() });
+    mockUsePullToRefresh.mockReturnValue({
+      gesture: Gesture.Simultaneous(Gesture.Pan(), Gesture.Native()),
+      handleScroll: jest.fn(),
+    });
     (useLocalSearchParams as jest.Mock).mockReturnValue({});
   });
 
@@ -367,6 +380,62 @@ describe('HistoryScreen', () => {
     expect(screen.getByText('Send BTC on bitcoin')).toBeTruthy();
     expect(screen.queryByText('Receive BTC on bitcoin')).toBeNull();
     expect(screen.queryByText('Send USDT on ethereum')).toBeNull();
+  });
+
+  it('refetches history and shows the header spinner while a pull-to-refresh is in flight', async () => {
+    // A refetch promise that never resolves keeps `refreshing` true for the assertion.
+    const mockRefetch = jest.fn(() => new Promise(() => {}));
+    mockUseTransactionHistory.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetch,
+    });
+
+    await render(<HistoryScreen />);
+    expect(screen.queryByTestId('history-refresh-indicator')).toBeNull();
+
+    const [onRefresh] = mockUsePullToRefresh.mock.lastCall as [() => Promise<void>];
+    await act(async () => {
+      onRefresh();
+    });
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('history-refresh-indicator')).toBeTruthy();
+  });
+
+  it('keeps the refresh spinner up for the minimum duration when the refetch resolves instantly', async () => {
+    // setTimeout spy instead of jest.useFakeTimers() — same reasoning as
+    // dashboard.test.tsx: toggling fake/real timers mid-suite corrupts later renders.
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    const mockRefetch = jest.fn().mockResolvedValue(undefined);
+    mockUseTransactionHistory.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetch,
+    });
+
+    await render(<HistoryScreen />);
+
+    const [onRefresh] = mockUsePullToRefresh.mock.lastCall as [() => Promise<void>];
+    await act(async () => {
+      onRefresh();
+    });
+
+    // The refetch already resolved, but the 400ms minimum hasn't elapsed yet.
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('history-refresh-indicator')).toBeTruthy();
+
+    const scheduled = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 400);
+    expect(scheduled).toBeDefined();
+    await act(async () => {
+      (scheduled![0] as () => void)();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId('history-refresh-indicator')).toBeNull();
+    setTimeoutSpy.mockRestore();
   });
 
   it('filters transfers by network and symbol when navigated to from a token row', async () => {
