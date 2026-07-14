@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
-  Pressable,
   StyleSheet,
   TextInput,
   View,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { toast } from 'sonner-native';
 import { BookUser, ChevronDown, QrCode } from 'lucide-react-native';
@@ -19,14 +17,10 @@ import { TokenLogo } from '@/components/TokenLogo';
 import { TokenPickerSheet } from '@/components/TokenPickerSheet';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
-import { AppText, Button, Card } from '@/components/ui';
+import { AppText, Button, Card, ScalePressable } from '@/components/ui';
 import { isValidAddressForNetwork } from '@/utils/address';
 
 const INPUT_HEIGHT = 50;
-// Matches the press-scale spring used by HeaderIconButton and AssetRow, so every
-// tappable surface in the app compresses with the same feel.
-const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 };
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function SendScreen() {
   const router = useRouter();
@@ -37,19 +31,6 @@ export default function SendScreen() {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
-
-  const tokenTriggerScale = useSharedValue(1);
-  const tokenTriggerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: tokenTriggerScale.value }],
-  }));
-  const scanButtonScale = useSharedValue(1);
-  const scanButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scanButtonScale.value }],
-  }));
-  const addressBookButtonScale = useSharedValue(1);
-  const addressBookButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: addressBookButtonScale.value }],
-  }));
 
   useEffect(() => {
     if (params.scannedAddress) {
@@ -126,12 +107,11 @@ export default function SendScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Card elevated style={styles.formCard}>
           <AppText variant="caption" color="textMuted" style={styles.label}>Token</AppText>
-          <AnimatedPressable
+          <ScalePressable
+            activeScale={0.97}
             testID="token-picker-trigger"
-            style={[styles.tokenTrigger, tokenTriggerAnimatedStyle]}
+            style={styles.tokenTrigger}
             onPress={() => setPickerVisible(true)}
-            onPressIn={() => { tokenTriggerScale.value = withSpring(0.97, PRESS_SPRING); }}
-            onPressOut={() => { tokenTriggerScale.value = withSpring(1, PRESS_SPRING); }}
           >
             <View style={styles.tokenTriggerIdentity}>
               <TokenLogo symbol={selectedAsset.symbol} size={32} />
@@ -141,7 +121,7 @@ export default function SendScreen() {
               </View>
             </View>
             <ChevronDown size={20} color={colors.textMuted} />
-          </AnimatedPressable>
+          </ScalePressable>
 
           <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Recipient</AppText>
           <View style={styles.recipientRow}>
@@ -154,25 +134,23 @@ export default function SendScreen() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <AnimatedPressable
-              style={[styles.scanButton, scanButtonAnimatedStyle]}
+            <ScalePressable
+              activeScale={0.88}
+              style={styles.scanButton}
               onPress={handleScan}
-              onPressIn={() => { scanButtonScale.value = withSpring(0.88, PRESS_SPRING); }}
-              onPressOut={() => { scanButtonScale.value = withSpring(1, PRESS_SPRING); }}
               accessibilityLabel="Scan QR code"
             >
               <QrCode size={22} color={colors.textPrimary} />
-            </AnimatedPressable>
-            <AnimatedPressable
+            </ScalePressable>
+            <ScalePressable
+              activeScale={0.88}
               testID="send-open-address-book"
-              style={[styles.scanButton, addressBookButtonAnimatedStyle]}
+              style={styles.scanButton}
               onPress={handleOpenAddressBook}
-              onPressIn={() => { addressBookButtonScale.value = withSpring(0.88, PRESS_SPRING); }}
-              onPressOut={() => { addressBookButtonScale.value = withSpring(1, PRESS_SPRING); }}
               accessibilityLabel="Open address book"
             >
               <BookUser size={22} color={colors.textPrimary} />
-            </AnimatedPressable>
+            </ScalePressable>
           </View>
 
           <AppText variant="caption" color="textMuted" style={[styles.label, styles.sectionLabel]}>Amount</AppText>

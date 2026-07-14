@@ -32,3 +32,7 @@ export const typography = {
 } satisfies Record<string, TextStyle>;
 
 export type TypographyVariant = keyof typeof typography;
+
+// Press-scale spring shared by every tappable surface (chips, rows, icon buttons)
+// so they compress with one consistent feel. Consumed via components/ui/ScalePressable.
+export const PRESS_SPRING = { damping: 18, stiffness: 260, mass: 0.6 } as const;
