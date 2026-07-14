@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +13,12 @@ import { useAssetBalances } from '@/hooks/useAssetBalances';
 import { usePrices } from '@/hooks/usePrices';
 import { usePriceHistory } from '@/hooks/usePriceHistory';
 import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHistory';
+import { useDirectionFilter } from '@/hooks/useDirectionFilter';
 import { buildAssetRows } from '@/components/balance';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { formatFiat } from '@/utils/balance';
-import { isReceived } from '@/utils/transfers';
-import { AmountText, AppText, FilterChips, Skeleton, type FilterChipOption } from '@/components/ui';
+import { AmountText, AppText, FilterChips, Skeleton } from '@/components/ui';
 import { Header, HeaderBackTitle } from '@/components/Header';
 import { TransferRow } from '@/components/TransferRow';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
@@ -46,14 +46,6 @@ function computeAxisWidth(high: number, low: number): number {
   return Math.min(CHART_AXIS_WIDTH, Math.max(AXIS_MIN_WIDTH, widestLabelLength * AXIS_CHAR_WIDTH));
 }
 
-type DirectionFilter = 'all' | 'received' | 'sent';
-
-const DIRECTION_FILTERS: FilterChipOption<DirectionFilter>[] = [
-  { key: 'all', label: 'All' },
-  { key: 'received', label: 'Received' },
-  { key: 'sent', label: 'Sent' },
-];
-
 // Same top/bottom-gutter mapping react-native-wagmi-charts uses internally for its
 // Path and HorizontalLine, so these labels line up with what's actually plotted.
 function computeAxisTicks(low: number, high: number) {
@@ -80,7 +72,6 @@ export default function AssetDetailScreen() {
 
   const [range, setRange] = useState<PriceHistoryRange>('1d');
   const [selected, setSelected] = useState<TokenTransfer | null>(null);
-  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
 
   const { balanceByAssetId } = useAssetBalances();
   const { data: pricesData } = usePrices();
@@ -102,12 +93,12 @@ export default function AssetDetailScreen() {
       enabled: historySupported,
     });
 
-  const visibleTransfers = useMemo(() => {
-    if (directionFilter === 'all') return transfers;
-    return transfers?.filter(
-      (t) => isReceived(t, myAddresses) === (directionFilter === 'received'),
-    );
-  }, [transfers, directionFilter, myAddresses]);
+  const {
+    filter: directionFilter,
+    setFilter: setDirectionFilter,
+    options: directionOptions,
+    visibleTransfers,
+  } = useDirectionFilter(transfers, myAddresses);
 
   if (!asset) {
     return (
@@ -276,7 +267,7 @@ export default function AssetDetailScreen() {
 
       {historySupported && (
         <FilterChips
-          options={DIRECTION_FILTERS}
+          options={directionOptions}
           value={directionFilter}
           onChange={setDirectionFilter}
           testIDPrefix="asset-history-filter"

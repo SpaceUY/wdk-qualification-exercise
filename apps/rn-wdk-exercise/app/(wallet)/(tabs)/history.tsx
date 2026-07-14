@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,11 +9,12 @@ import type { TokenTransfer } from '@/utils/appNodeApi';
 import { trimDisplayDecimals } from '@/utils/balance';
 import { formatTransferDate, isReceived } from '@/utils/transfers';
 import { useFilteredTransactionHistory } from '@/hooks/useFilteredTransactionHistory';
+import { useDirectionFilter } from '@/hooks/useDirectionFilter';
 import { getNetworkDisplayName, isHistorySupportedNetwork } from '@/config/networkMeta';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { gradients } from '@/theme/gradients';
-import { AppText, FilterChips, type FilterChipOption } from '@/components/ui';
+import { AppText, FilterChips } from '@/components/ui';
 import { Header, HeaderIconButton } from '@/components/Header';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
@@ -28,14 +29,6 @@ const FILTER_OVERLAY_HEIGHT = 72;
 // close under the filter row while the fade still softens the overlap.
 const LIST_CONTENT_TOP_PADDING = 64;
 
-type DirectionFilter = 'all' | 'received' | 'sent';
-
-const DIRECTION_FILTERS: FilterChipOption<DirectionFilter>[] = [
-  { key: 'all', label: 'All' },
-  { key: 'received', label: 'Received' },
-  { key: 'sent', label: 'Sent' },
-];
-
 export default function HistoryScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -44,14 +37,12 @@ export default function HistoryScreen() {
   const { transfers, isLoading, isError, syncStatus, retry, myAddresses } =
     useFilteredTransactionHistory({ network, symbol });
   const [selected, setSelected] = useState<TokenTransfer | null>(null);
-  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
-
-  const visibleTransfers = useMemo(() => {
-    if (directionFilter === 'all') return transfers;
-    return transfers?.filter(
-      (t) => isReceived(t, myAddresses) === (directionFilter === 'received'),
-    );
-  }, [transfers, directionFilter, myAddresses]);
+  const {
+    filter: directionFilter,
+    setFilter: setDirectionFilter,
+    options: directionOptions,
+    visibleTransfers,
+  } = useDirectionFilter(transfers, myAddresses);
 
   let content;
   if (syncStatus === 'syncing' || (syncStatus === 'done' && isLoading)) {
@@ -176,7 +167,7 @@ export default function HistoryScreen() {
             pointerEvents="none"
           />
           <FilterChips
-            options={DIRECTION_FILTERS}
+            options={directionOptions}
             value={directionFilter}
             onChange={setDirectionFilter}
             testIDPrefix="history-filter"
