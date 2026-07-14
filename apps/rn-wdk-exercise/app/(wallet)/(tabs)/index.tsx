@@ -22,14 +22,7 @@ import { AssetRow, BalanceHeroView, buildAssetRows, NetworkFilterChips, type Net
 import { RowSkeleton } from '@/components/RowSkeleton';
 import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { Header, HeaderIconButton } from '@/components/Header';
-
-// Height of the floating filter row + its fade tail — the overlay below is this
-// tall so the gradient has room to fade out before the chips.
-const FILTER_OVERLAY_HEIGHT = 72;
-// List content's own top padding is shorter than the overlay on purpose: the first
-// row starts inside the gradient's fade tail instead of fully clearing it, so the
-// gap to the filter row reads tighter while the fade still softens the overlap.
-const LIST_CONTENT_TOP_PADDING = 64;
+import { FILTER_OVERLAY_HEIGHT, LIST_CONTENT_TOP_PADDING } from '@/app/(wallet)/(tabs)/listLayout';
 
 export default function DashboardScreen() {
   const router = useRouter();

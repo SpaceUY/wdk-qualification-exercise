@@ -18,14 +18,9 @@ import { TAB_BAR_CLEARANCE } from '@/components/navigation/GlassTabBar';
 import { TransferDetailModal } from '@/components/TransferDetailModal';
 import { RowSkeleton } from '@/components/RowSkeleton';
 import { TransferRow } from '@/components/TransferRow';
+import { FILTER_OVERLAY_HEIGHT, LIST_CONTENT_TOP_PADDING } from '@/app/(wallet)/(tabs)/listLayout';
 
 const LOADING_SKELETON_ROWS = 6;
-// Height of the floating filter row + its fade tail — the gradient overlay is this
-// tall so it can fade out below the chips. Mirrors the dashboard's filter treatment.
-const FILTER_OVERLAY_HEIGHT = 72;
-// List/skeleton content starts inside the gradient's fade tail so the first row sits
-// close under the filter row while the fade still softens the overlap.
-const LIST_CONTENT_TOP_PADDING = 64;
 
 export default function HistoryScreen() {
   const router = useRouter();
