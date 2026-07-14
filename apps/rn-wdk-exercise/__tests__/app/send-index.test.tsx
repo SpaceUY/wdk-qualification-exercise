@@ -4,7 +4,11 @@ import { toast } from 'sonner-native';
 
 // config/assets.ts constructs BaseAsset instances at import time — stub it so the real
 // @tetherto/wdk-react-native-core package (and its ESM-only immer dependency) never loads.
+// useAssetBalances (via the token picker) pulls balances through these WDK hooks; the
+// send screen doesn't assert on balances, so they just return empty data.
 jest.mock('@tetherto/wdk-react-native-core', () => ({
+  useBalancesForWallet: () => ({ data: undefined, isLoading: false, refetch: jest.fn() }),
+  useBalance: () => ({ data: undefined, isLoading: false, refetch: jest.fn() }),
   BaseAsset: class {
     config: unknown;
     constructor(config: unknown) {
