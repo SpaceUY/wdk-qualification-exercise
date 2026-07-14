@@ -16,6 +16,9 @@ jest.mock('@tetherto/wdk-react-native-core', () => ({
 import SendScreen from '../../app/(wallet)/send/index';
 import { ETH_CONFIG, BTC_CONFIG } from '../../config/assets';
 
+const VALID_EVM_ADDRESS = '0x' + '1'.repeat(40);
+const VALID_BTC_ADDRESS = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+
 function setParams(params: Record<string, string>) {
   (useLocalSearchParams as jest.Mock).mockReturnValue(params);
 }
@@ -62,7 +65,7 @@ describe('SendScreen', () => {
   it('shows a specific error toast for a zero amount', async () => {
     await render(<SendScreen />);
 
-    await fillForm('0xRecipient', '0');
+    await fillForm(VALID_EVM_ADDRESS, '0');
     await fireEvent.press(screen.getByText('Review Transaction'));
 
     expect(toast.error).toHaveBeenCalledWith('Invalid Amount', {
@@ -74,7 +77,7 @@ describe('SendScreen', () => {
   it('accepts a comma decimal separator (iOS locale keyboards) and navigates', async () => {
     await render(<SendScreen />);
 
-    await fillForm('0xRecipientAddress', '0,5');
+    await fillForm(VALID_EVM_ADDRESS, '0,5');
     await fireEvent.press(screen.getByText('Review Transaction'));
 
     expect(toast.error).not.toHaveBeenCalled();
@@ -92,7 +95,7 @@ describe('SendScreen', () => {
 
     for (const pasted of ['1e3', '0x10', '1.2.3', 'Infinity']) {
       (toast.error as jest.Mock).mockClear();
-      await fillForm('0xRecipient', pasted);
+      await fillForm(VALID_EVM_ADDRESS, pasted);
       await fireEvent.press(screen.getByText('Review Transaction'));
 
       expect(toast.error).toHaveBeenCalledWith('Invalid Amount', {
@@ -105,14 +108,14 @@ describe('SendScreen', () => {
   it('navigates to confirm with the default (first) asset when the form is valid', async () => {
     await render(<SendScreen />);
 
-    await fillForm('  0xRecipientAddress  ', '  0.5  ');
+    await fillForm(`  ${VALID_EVM_ADDRESS}  `, '  0.5  ');
     await fireEvent.press(screen.getByText('Review Transaction'));
 
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/(wallet)/send/confirm',
       params: {
         assetId: ETH_CONFIG.id,
-        recipient: '0xRecipientAddress',
+        recipient: VALID_EVM_ADDRESS,
         amount: '0.5',
       },
     });
@@ -122,14 +125,14 @@ describe('SendScreen', () => {
     await render(<SendScreen />);
 
     await selectToken(BTC_CONFIG.id);
-    await fillForm('bc1RecipientAddress', '0.01', BTC_CONFIG.symbol);
+    await fillForm(VALID_BTC_ADDRESS, '0.01', BTC_CONFIG.symbol);
     await fireEvent.press(screen.getByText('Review Transaction'));
 
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/(wallet)/send/confirm',
       params: {
         assetId: BTC_CONFIG.id,
-        recipient: 'bc1RecipientAddress',
+        recipient: VALID_BTC_ADDRESS,
         amount: '0.01',
       },
     });

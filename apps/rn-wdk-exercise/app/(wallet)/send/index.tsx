@@ -20,6 +20,7 @@ import { TokenPickerSheet } from '@/components/TokenPickerSheet';
 import { useThemeColors, useThemedStyles, type ThemeColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { AppText, Button, Card } from '@/components/ui';
+import { isValidAddressForNetwork } from '@/utils/address';
 
 const INPUT_HEIGHT = 50;
 // Matches the press-scale spring used by HeaderIconButton and AssetRow, so every
@@ -63,6 +64,12 @@ export default function SendScreen() {
     if (!recipient.trim()) {
       toast.error('Recipient Required', {
         description: 'Enter a recipient address or scan a QR code.',
+      });
+      return false;
+    }
+    if (!isValidAddressForNetwork(recipient, selectedAsset.network)) {
+      toast.error('Invalid Address', {
+        description: `That doesn't look like a valid ${selectedAsset.network} address.`,
       });
       return false;
     }
