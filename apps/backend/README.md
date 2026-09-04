@@ -268,10 +268,9 @@ ETHEREUM_RPC_URL=https://rpc.sepolia.org
 USDT_CONTRACT_ADDRESS=0x...
 UTL_CONTRACT_ADDRESS=0x...
 
-# Treasury wallet that sends UTL cashback — derived via @tetherto/wdk-wallet-evm from a
-# BIP-39 seed phrase, not a raw private key
-TREASURY_SEED_PHRASE=word1 word2 ... word12
-TREASURY_DERIVATION_PATH=0'/0/0
+# Treasury wallet that sends UTL cashback — wrapped by @tetherto/wdk-wallet-evm's
+# WalletAccountEvm.fromPrivateKey(), same key/address as before
+TREASURY_PRIVATE_KEY=0x...
 
 # Comma-separated list of merchant addresses to watch
 MERCHANT_ADDRESSES=0xabc...,0xdef...

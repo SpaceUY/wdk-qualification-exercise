@@ -57,15 +57,15 @@ export class CouponsService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     const rpcUrl = this.configService.getOrThrow<string>('blockchain.rpcUrl');
-    const seedPhrase = this.configService.getOrThrow<string>('blockchain.treasurySeedPhrase');
-    const derivationPath = this.configService.getOrThrow<string>('blockchain.treasuryDerivationPath');
+    const privateKey = this.configService.getOrThrow<string>('blockchain.treasuryPrivateKey');
     const utlAddress = this.configService.getOrThrow<string>('blockchain.utlAddress');
 
-    // Treasury key is derived via WDK's EVM wallet module from a BIP-39 seed phrase,
-    // instead of holding a raw private key. Everything that touches the key
-    // (signing, broadcasting) goes through this account's public API only —
-    // see buildSignAndBroadcast below for why we don't use its one-shot transfer().
-    this.treasuryAccount = new WalletAccountEvm(seedPhrase, derivationPath, { provider: rpcUrl });
+    // Treasury key is wrapped by WDK's EVM wallet module instead of a raw
+    // ethers.Wallet — same private key, same address, but everything that touches
+    // the key (signing, broadcasting) now goes through this account's public API
+    // only. See buildSignAndBroadcast below for why we don't use its one-shot
+    // transfer().
+    this.treasuryAccount = WalletAccountEvm.fromPrivateKey(privateKey, { provider: rpcUrl });
     this.treasuryAddress = await this.treasuryAccount.getAddress();
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
     this.utlContract = new ethers.Contract(utlAddress, ERC20_TRANSFER_ABI, this.provider);

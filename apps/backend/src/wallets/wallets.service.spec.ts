@@ -10,7 +10,7 @@ import { CouponsService } from '../coupons/coupons.service';
 // package, which Jest can't parse without a transform. This spec mocks
 // CouponsService entirely and never exercises treasury signing, so a trivial mock
 // of the module is enough to let it load.
-jest.mock('@tetherto/wdk-wallet-evm', () => ({ WalletAccountEvm: jest.fn() }));
+jest.mock('@tetherto/wdk-wallet-evm', () => ({ WalletAccountEvm: { fromPrivateKey: jest.fn() } }));
 // Same problem, same fix, for CouponsService's @tetherto/wdk-wallet import
 // (used only for the NoSuchElementError class).
 jest.mock('@tetherto/wdk-wallet', () => ({

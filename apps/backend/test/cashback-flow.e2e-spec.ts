@@ -42,7 +42,7 @@ jest.mock('ethers', () => {
 // mock the module boundary so the real bip39/seed validation never runs in tests.
 jest.mock('@tetherto/wdk-wallet-evm', () => {
   const { createMockWalletAccountEvm } = require('./support/ethers-mock');
-  return { WalletAccountEvm: jest.fn().mockImplementation(() => createMockWalletAccountEvm()) };
+  return { WalletAccountEvm: { fromPrivateKey: jest.fn().mockImplementation(() => createMockWalletAccountEvm()) } };
 });
 
 // `@tetherto/wdk-wallet` ships ESM-only, which jest's default transform can't parse —

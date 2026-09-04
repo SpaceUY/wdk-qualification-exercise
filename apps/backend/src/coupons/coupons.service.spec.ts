@@ -83,13 +83,15 @@ jest.mock('ethers', () => ({
 // entirely through its public API (getAddress/signTransaction/sendTransaction/
 // getTransaction/waitForTransaction) — no internal/protected field is touched.
 jest.mock('@tetherto/wdk-wallet-evm', () => ({
-  WalletAccountEvm: jest.fn().mockImplementation(() => ({
-    getAddress: (...args: unknown[]) => mockTreasuryGetAddressFn(...args),
-    signTransaction: (...args: unknown[]) => mockSignTransactionFn(...args),
-    sendTransaction: (...args: unknown[]) => mockSendTransactionFn(...args),
-    getTransaction: (...args: unknown[]) => mockGetTransactionFn(...args),
-    waitForTransaction: (...args: unknown[]) => mockWaitForTransactionFn(...args),
-  })),
+  WalletAccountEvm: {
+    fromPrivateKey: jest.fn().mockImplementation(() => ({
+      getAddress: (...args: unknown[]) => mockTreasuryGetAddressFn(...args),
+      signTransaction: (...args: unknown[]) => mockSignTransactionFn(...args),
+      sendTransaction: (...args: unknown[]) => mockSendTransactionFn(...args),
+      getTransaction: (...args: unknown[]) => mockGetTransactionFn(...args),
+      waitForTransaction: (...args: unknown[]) => mockWaitForTransactionFn(...args),
+    })),
+  },
 }));
 
 // `@tetherto/wdk-wallet` ships ESM-only, which jest's default transform can't parse —

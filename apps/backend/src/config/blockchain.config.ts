@@ -18,12 +18,7 @@ export const blockchainConfig = registerAs('blockchain', () => ({
   chainId: 11155111,
   usdtAddress: process.env['USDT_CONTRACT_ADDRESS'] ?? '',
   utlAddress: process.env['UTL_CONTRACT_ADDRESS'] ?? '',
-  // BIP-39 seed phrase for the treasury account — derived via WDK's EVM wallet module
-  // (@tetherto/wdk-wallet-evm) instead of holding a raw private key directly.
-  treasurySeedPhrase: process.env['TREASURY_SEED_PHRASE'] ?? '',
-  // BIP-44 path appended after "m/44'/60'" (see WalletAccountEvm). "0'/0/0" is the
-  // treasury's first derived account.
-  treasuryDerivationPath: process.env['TREASURY_DERIVATION_PATH'] ?? "0'/0/0",
+  treasuryPrivateKey: process.env['TREASURY_PRIVATE_KEY'] ?? '',
   merchantAddresses: (process.env['MERCHANT_ADDRESSES'] ?? '')
     .split(',')
     .map((a: string) => a.trim())

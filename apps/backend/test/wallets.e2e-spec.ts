@@ -36,7 +36,7 @@ jest.mock('ethers', () => {
 // bip39/seed validation never runs against the test env's placeholder config.
 jest.mock('@tetherto/wdk-wallet-evm', () => {
   const { createMockWalletAccountEvm } = require('./support/ethers-mock');
-  return { WalletAccountEvm: jest.fn().mockImplementation(() => createMockWalletAccountEvm()) };
+  return { WalletAccountEvm: { fromPrivateKey: jest.fn().mockImplementation(() => createMockWalletAccountEvm()) } };
 });
 
 // `@tetherto/wdk-wallet` ships ESM-only, which jest's default transform can't parse —
