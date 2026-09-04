@@ -161,11 +161,15 @@ jobs:
 
       - name: Wait for environment to be Ready
         run: |
-          for i in $(seq 1 30); do
+          # 60 attempts * 10s = 10 minutes. Bumped from 5 minutes after a real deploy
+          # (bookworm-slim base image, no build cache on EB's side) took 4m14s just for
+          # `docker build`, plus pull/boot — the old 5-minute budget had the app come up
+          # healthy 9 seconds after this loop already gave up and reported failure.
+          for i in $(seq 1 60); do
             read -r STATUS VERSION < <(aws elasticbeanstalk describe-environments \
               --environment-names "${{ env.EB_ENVIRONMENT_NAME }}" \
               --query 'Environments[0].[Status,VersionLabel]' --output text)
-            echo "Status: $STATUS, Version: $VERSION ($i/30)"
+            echo "Status: $STATUS, Version: $VERSION ($i/60)"
             if [ "$STATUS" = "Ready" ] && [ "$VERSION" = "${{ github.sha }}" ]; then
               exit 0
             fi
