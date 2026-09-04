@@ -19,21 +19,30 @@ import { MOCK_REDEMPTION_TX_HASH } from './support/ethers-mock';
 import { createMockRedisClient } from './support/redis-mock';
 
 jest.mock('ethers', () => {
-  const {
-    createMockUtlContract,
-    createMockTreasuryWallet,
-    createMockProvider,
-    createMockTransactionFrom,
-  } = require('./support/ethers-mock');
+  const { createMockUtlContract, createMockTransactionFrom, createMockJsonRpcProvider } =
+    require('./support/ethers-mock');
   return {
     ethers: {
-      JsonRpcProvider: jest.fn().mockImplementation(() => createMockProvider()),
-      Wallet: jest.fn().mockImplementation(() => createMockTreasuryWallet()),
       Contract: jest.fn().mockImplementation(() => createMockUtlContract()),
       Transaction: { from: createMockTransactionFrom() },
+      JsonRpcProvider: jest.fn().mockImplementation(() => createMockJsonRpcProvider()),
     },
   };
 });
+
+// CouponsService derives the treasury signer via WDK instead of `new ethers.Wallet(...)` —
+// mock the module boundary so the real bip39/seed validation never runs in tests.
+jest.mock('@tetherto/wdk-wallet-evm', () => {
+  const { createMockWalletAccountEvm } = require('./support/ethers-mock');
+  return { WalletAccountEvm: { fromPrivateKey: jest.fn().mockImplementation(() => createMockWalletAccountEvm()) } };
+});
+
+// `@tetherto/wdk-wallet` ships ESM-only, which jest's default transform can't parse —
+// mocked (like wdk-wallet-evm above) rather than fighting transformIgnorePatterns.
+// Only `NoSuchElementError` is actually imported by CouponsService.
+jest.mock('@tetherto/wdk-wallet', () => ({
+  NoSuchElementError: class NoSuchElementError extends Error {},
+}));
 
 jest.setTimeout(60000);
 

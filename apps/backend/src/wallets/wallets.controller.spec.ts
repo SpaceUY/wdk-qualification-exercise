@@ -8,6 +8,16 @@ import type { User } from '../users/entities/user.entity';
 import type { EncryptedBackup } from './entities/encrypted-backup.entity';
 import { BackupWalletDto } from './dto/backup-wallet.dto';
 
+// CouponsService (pulled in transitively via WalletsService) statically imports the
+// real, ESM-only @tetherto/wdk-wallet-evm package, which Jest can't parse without a
+// transform. This spec never exercises treasury signing, so a trivial mock is enough.
+jest.mock('@tetherto/wdk-wallet-evm', () => ({ WalletAccountEvm: { fromPrivateKey: jest.fn() } }));
+// Same problem, same fix, for CouponsService's @tetherto/wdk-wallet import
+// (used only for the NoSuchElementError class).
+jest.mock('@tetherto/wdk-wallet', () => ({
+  NoSuchElementError: class NoSuchElementError extends Error {},
+}));
+
 describe('WalletsController', () => {
   let controller: WalletsController;
   let walletsService: jest.Mocked<WalletsService>;

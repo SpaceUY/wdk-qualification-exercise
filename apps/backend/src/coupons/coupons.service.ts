@@ -11,12 +11,21 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ethers } from 'ethers';
+import { WalletAccountEvm, type EvmTransaction } from '@tetherto/wdk-wallet-evm';
+import { NoSuchElementError } from '@tetherto/wdk-wallet';
 import type Redis from 'ioredis';
 import { Coupon, CouponDocument } from './entities/coupon.entity';
 import { UsersService } from '../users/users.service';
 import { CACHE_REDIS_CLIENT } from '../redis/redis-cache.tokens';
 import type { CouponListItemDto, ClaimedCouponListItemDto } from './dto/list-coupons.dto';
 
+// We encode the ERC-20 transfer ourselves with a plain ethers.Contract instead of
+// WDK's own transfer builder. WDK does have one (WalletAccountEvm._getTransferTransaction),
+// but it's `protected` — the only public ways to reach it are quoteTransfer() (returns
+// just a fee, not the built tx) or transfer() itself (signs AND broadcasts in one call,
+// see buildSignAndBroadcast below for why that's not an option here). Reaching into the
+// protected method to save this one ethers call would trade a real improvement (fully
+// public API, version-bump-safe) for a cosmetic one — not worth it.
 const ERC20_TRANSFER_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
 ] as const;
@@ -28,8 +37,14 @@ class TreasuryLockUnavailableError extends Error {}
 @Injectable()
 export class CouponsService implements OnModuleInit {
   private readonly logger = new Logger(CouponsService.name);
+  // Plain read-only ethers provider for populating a transaction (nonce, fee data,
+  // chainId, gas estimate) before signing. No key material touches this — it only
+  // ever does unauthenticated chain reads against the same RPC endpoint WDK itself
+  // is configured with. Signing and broadcasting go through `treasuryAccount`'s
+  // public API below, not through this provider.
   private provider!: ethers.JsonRpcProvider;
-  private treasuryWallet!: ethers.Wallet;
+  private treasuryAccount!: WalletAccountEvm;
+  private treasuryAddress!: string;
   private utlContract!: ethers.Contract;
   // First layer of treasury-send serialization: an in-process queue, so claims in
   // this process line up cheaply instead of all polling Redis. The second layer,
@@ -47,14 +62,20 @@ export class CouponsService implements OnModuleInit {
     private readonly redis: Redis,
   ) {}
 
-  onModuleInit(): void {
+  async onModuleInit(): Promise<void> {
     const rpcUrl = this.configService.getOrThrow<string>('blockchain.rpcUrl');
     const privateKey = this.configService.getOrThrow<string>('blockchain.treasuryPrivateKey');
     const utlAddress = this.configService.getOrThrow<string>('blockchain.utlAddress');
 
+    // Treasury key is wrapped by WDK's EVM wallet module instead of a raw
+    // ethers.Wallet — same private key, same address, but everything that touches
+    // the key (signing, broadcasting) now goes through this account's public API
+    // only. See buildSignAndBroadcast below for why we don't use its one-shot
+    // transfer().
+    this.treasuryAccount = WalletAccountEvm.fromPrivateKey(privateKey, { provider: rpcUrl });
+    this.treasuryAddress = await this.treasuryAccount.getAddress();
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.treasuryWallet = new ethers.Wallet(privateKey, this.provider);
-    this.utlContract = new ethers.Contract(utlAddress, ERC20_TRANSFER_ABI, this.treasuryWallet);
+    this.utlContract = new ethers.Contract(utlAddress, ERC20_TRANSFER_ABI, this.provider);
   }
 
   async claimCoupon(
@@ -83,12 +104,13 @@ export class CouponsService implements OnModuleInit {
     );
     if (!locked) throw new BadRequestException('Coupon already redeemed');
 
-    // Build, sign, and broadcast under the treasury lock: populateTransaction reads the
-    // treasury wallet's pending nonce, so a second claim must not start building its own
-    // transaction until this one has been broadcast (see `localTreasuryQueue` above).
-    let tx: ethers.TransactionResponse;
+    // Build, sign, and broadcast under the treasury lock: the nonce we read while
+    // populating the transaction only stays valid until the next one is broadcast,
+    // so a second claim must not start building its own until this one is sent
+    // (see `localTreasuryQueue` above).
+    let txHash: string;
     try {
-      tx = await this.withTreasuryLock(() =>
+      txHash = await this.withTreasuryLock(() =>
         this.buildSignAndBroadcast(coupon, recipientAddress, couponCode),
       );
     } catch (err) {
@@ -105,8 +127,8 @@ export class CouponsService implements OnModuleInit {
     }
 
     try {
-      const receipt = await tx.wait(1);
-      if (!receipt) throw new Error('Transaction receipt is null');
+      const receipt = await this.treasuryAccount.waitForTransaction(txHash);
+      if (!receipt.success) throw new Error(`Transaction reverted on-chain (tx ${receipt.hash})`);
 
       this.logger.log(
         `UTL transferred: ${receipt.hash} — ${coupon.utlAmountRaw} raw UTL to ${recipientAddress}`,
@@ -115,7 +137,7 @@ export class CouponsService implements OnModuleInit {
       return { redemptionTxHash: receipt.hash };
     } catch (err) {
       this.logger.error(
-        `UTL transfer broadcast (tx ${tx.hash}) but confirmation failed for coupon ${couponCode} — verify on-chain before retrying`,
+        `UTL transfer broadcast (tx ${txHash}) but confirmation failed for coupon ${couponCode} — verify on-chain before retrying`,
         err,
       );
       throw new BadRequestException(
@@ -128,11 +150,16 @@ export class CouponsService implements OnModuleInit {
     coupon: CouponDocument,
     recipientAddress: string,
     couponCode: string,
-  ): Promise<ethers.TransactionResponse> {
-    // Build and sign the transfer ourselves (instead of the one-shot contract.transfer()
-    // convenience call) so we know the transaction's hash BEFORE it's broadcast. That
-    // hash is what lets us later ask the chain "did this exact transaction land?"
+  ): Promise<string> {
+    // Build the transfer ourselves and sign it via WDK's treasuryAccount.signTransaction()
+    // (instead of the one-shot transfer()/sendTransaction() convenience calls, which sign
+    // AND broadcast in one step) so we know the transaction's hash BEFORE it's broadcast.
+    // That hash is what lets us later ask the chain "did this exact transaction land?"
     // instead of guessing from an ambiguous broadcast failure — see the catch block below.
+    //
+    // Populating (nonce/fee/gas/chainId) is done via a plain ethers provider — WDK's
+    // signTransaction() signs exactly what it's given, it doesn't populate defaults, and
+    // this step never touches key material, just unauthenticated chain reads.
     let signedTx: string;
     let txHash: string;
     try {
@@ -141,8 +168,26 @@ export class CouponsService implements OnModuleInit {
         recipientAddress,
         BigInt(coupon.utlAmountRaw),
       ]);
-      const populated = await this.treasuryWallet.populateTransaction({ to: utlAddress, data });
-      signedTx = await this.treasuryWallet.signTransaction(populated);
+
+      const [nonce, feeData, network, gasLimit] = await Promise.all([
+        this.provider.getTransactionCount(this.treasuryAddress, 'pending'),
+        this.provider.getFeeData(),
+        this.provider.getNetwork(),
+        this.provider.estimateGas({ to: utlAddress, data, from: this.treasuryAddress }),
+      ]);
+
+      const tx: EvmTransaction = {
+        to: utlAddress,
+        data,
+        value: 0n,
+        nonce,
+        gasLimit,
+        maxFeePerGas: feeData.maxFeePerGas ?? undefined,
+        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? undefined,
+        chainId: network.chainId,
+      };
+
+      signedTx = await this.treasuryAccount.signTransaction(tx);
       const parsed = ethers.Transaction.from(signedTx).hash;
       if (!parsed) throw new Error('Signed transaction has no hash');
       txHash = parsed;
@@ -162,7 +207,8 @@ export class CouponsService implements OnModuleInit {
     await this.couponModel.updateOne({ _id: coupon._id }, { redemptionTxHash: txHash });
 
     try {
-      return await this.provider.broadcastTransaction(signedTx);
+      const result = await this.treasuryAccount.sendTransaction(signedTx);
+      return result.hash;
     } catch (broadcastErr) {
       const wasBroadcast = await this.wasTransactionBroadcast(txHash);
 
@@ -207,11 +253,17 @@ export class CouponsService implements OnModuleInit {
 
     for (let attempt = 1; attempt <= CouponsService.BROADCAST_VERIFY_ATTEMPTS; attempt++) {
       try {
-        const found = await this.provider.getTransaction(txHash);
+        // WDK's getTransaction throws NoSuchElementError instead of returning null —
+        // reaching this line at all (no throw) means the chain has a record of it.
+        await this.treasuryAccount.getTransaction(txHash);
         lastCallSucceeded = true;
-        if (found) return true;
-      } catch {
-        lastCallSucceeded = false;
+        return true;
+      } catch (err) {
+        if (err instanceof NoSuchElementError) {
+          lastCallSucceeded = true;
+        } else {
+          lastCallSucceeded = false;
+        }
       }
       if (attempt < CouponsService.BROADCAST_VERIFY_ATTEMPTS) {
         await this.delay(CouponsService.BROADCAST_VERIFY_DELAY_MS);

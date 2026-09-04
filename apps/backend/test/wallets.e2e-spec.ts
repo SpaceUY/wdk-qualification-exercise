@@ -23,15 +23,28 @@ import { startInMemoryMongo, stopInMemoryMongo, clearCollections } from './suppo
 import { createMockRedisClient } from './support/redis-mock';
 
 jest.mock('ethers', () => {
-  const { createMockUtlContract } = require('./support/ethers-mock');
+  const { createMockUtlContract, createMockJsonRpcProvider } = require('./support/ethers-mock');
   return {
     ethers: {
-      JsonRpcProvider: jest.fn(),
-      Wallet: jest.fn(),
       Contract: jest.fn().mockImplementation(() => createMockUtlContract()),
+      JsonRpcProvider: jest.fn().mockImplementation(() => createMockJsonRpcProvider()),
     },
   };
 });
+
+// CouponsModule's onModuleInit derives the treasury signer via WDK — mock it so real
+// bip39/seed validation never runs against the test env's placeholder config.
+jest.mock('@tetherto/wdk-wallet-evm', () => {
+  const { createMockWalletAccountEvm } = require('./support/ethers-mock');
+  return { WalletAccountEvm: { fromPrivateKey: jest.fn().mockImplementation(() => createMockWalletAccountEvm()) } };
+});
+
+// `@tetherto/wdk-wallet` ships ESM-only, which jest's default transform can't parse —
+// mocked (like wdk-wallet-evm above) rather than fighting transformIgnorePatterns.
+// Only `NoSuchElementError` is actually imported by CouponsService.
+jest.mock('@tetherto/wdk-wallet', () => ({
+  NoSuchElementError: class NoSuchElementError extends Error {},
+}));
 
 describe('Wallets (e2e)', () => {
   let app: INestApplication;
