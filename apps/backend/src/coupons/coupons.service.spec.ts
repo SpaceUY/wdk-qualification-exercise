@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NoSuchElementError } from '@tetherto/wdk-wallet';
 import { CouponsService } from './coupons.service';
 import { Coupon } from './entities/coupon.entity';
 import { UsersService } from '../users/users.service';
@@ -34,42 +35,69 @@ function createChainableFind<T>(result: T) {
   };
 }
 
-const mockTransferFn = jest.fn();
-const mockWaitFn = jest.fn().mockResolvedValue({ hash: '0xreceipt' });
-const mockTxFn = { hash: '0xbroadcast', wait: mockWaitFn };
 const mockEncodeFunctionDataFn = jest.fn().mockReturnValue('0xencodeddata');
-const mockGetAddressFn = jest.fn().mockResolvedValue('0xutladdress');
-const mockPopulateTransactionFn = jest.fn();
-const mockSignTransactionFn = jest.fn();
-const mockBroadcastTransactionFn = jest.fn();
-const mockGetTransactionFn = jest.fn();
+const mockUtlGetAddressFn = jest.fn().mockResolvedValue('0xutladdress');
 const mockTransactionFromFn = jest.fn();
+
+// Plain read-only chain calls used to populate a transaction (nonce/fee/gas/chainId)
+// before it's handed to WDK's treasuryAccount.signTransaction() — never touches key
+// material.
+const mockGetTransactionCountFn = jest.fn();
+const mockGetFeeDataFn = jest.fn();
+const mockGetNetworkFn = jest.fn();
+const mockEstimateGasFn = jest.fn();
+
+// WDK's treasuryAccount public API — CouponsService calls only these, never reaches
+// into any internal/protected field.
+const mockTreasuryGetAddressFn = jest.fn();
+const mockSignTransactionFn = jest.fn();
+const mockSendTransactionFn = jest.fn();
+const mockGetTransactionFn = jest.fn();
+const mockWaitForTransactionFn = jest.fn();
 
 // Services use `import { ethers } from 'ethers'` (named namespace), not default import
 // The mock must export the `ethers` named property with the same shape
 jest.mock('ethers', () => ({
   ethers: {
-    JsonRpcProvider: jest.fn().mockImplementation(() => ({
-      broadcastTransaction: mockBroadcastTransactionFn,
-      getTransaction: mockGetTransactionFn,
-    })),
-    Wallet: jest.fn().mockImplementation(() => ({
-      populateTransaction: mockPopulateTransactionFn,
-      signTransaction: mockSignTransactionFn,
-    })),
     Contract: jest.fn().mockImplementation(() => ({
-      transfer: mockTransferFn,
-      getAddress: mockGetAddressFn,
-      interface: { encodeFunctionData: mockEncodeFunctionDataFn },
+      getAddress: (...args: unknown[]) => mockUtlGetAddressFn(...args),
+      interface: { encodeFunctionData: (...args: unknown[]) => mockEncodeFunctionDataFn(...args) },
+    })),
+    JsonRpcProvider: jest.fn().mockImplementation(() => ({
+      getTransactionCount: (...args: unknown[]) => mockGetTransactionCountFn(...args),
+      getFeeData: (...args: unknown[]) => mockGetFeeDataFn(...args),
+      getNetwork: (...args: unknown[]) => mockGetNetworkFn(...args),
+      estimateGas: (...args: unknown[]) => mockEstimateGasFn(...args),
     })),
     Transaction: {
       // Wrapped (rather than referenced directly) because jest hoists this
       // `jest.mock` factory above the `const mockTransactionFromFn` declaration
-      // below — a direct reference would throw "Cannot access before
+      // above — a direct reference would throw "Cannot access before
       // initialization" the first time this module is required.
       from: (...args: unknown[]) => mockTransactionFromFn(...(args as [string])),
     },
   },
+}));
+
+// CouponsService derives the treasury signer via WDK's WalletAccountEvm and drives it
+// entirely through its public API (getAddress/signTransaction/sendTransaction/
+// getTransaction/waitForTransaction) — no internal/protected field is touched.
+jest.mock('@tetherto/wdk-wallet-evm', () => ({
+  WalletAccountEvm: jest.fn().mockImplementation(() => ({
+    getAddress: (...args: unknown[]) => mockTreasuryGetAddressFn(...args),
+    signTransaction: (...args: unknown[]) => mockSignTransactionFn(...args),
+    sendTransaction: (...args: unknown[]) => mockSendTransactionFn(...args),
+    getTransaction: (...args: unknown[]) => mockGetTransactionFn(...args),
+    waitForTransaction: (...args: unknown[]) => mockWaitForTransactionFn(...args),
+  })),
+}));
+
+// `@tetherto/wdk-wallet` ships ESM-only, which jest's default transform can't parse —
+// mocked (like wdk-wallet-evm above) rather than fighting the transformIgnorePatterns
+// config. Only `NoSuchElementError` is actually used, so a plain Error subclass with
+// the same name/instanceof behavior is all this needs.
+jest.mock('@tetherto/wdk-wallet', () => ({
+  NoSuchElementError: class NoSuchElementError extends Error {},
 }));
 
 type MockRedis = {
@@ -100,22 +128,37 @@ describe('CouponsService', () => {
     redeemed: false,
   };
 
+  const EXPECTED_TX = {
+    to: '0xutladdress',
+    data: '0xencodeddata',
+    value: 0n,
+    nonce: 5,
+    gasLimit: 21000n,
+    maxFeePerGas: 2n,
+    maxPriorityFeePerGas: 1n,
+    chainId: 1n,
+  };
+
   beforeEach(async () => {
     couponModel = createMockModel();
     redis = {
       set: jest.fn().mockResolvedValue('OK'),
       eval: jest.fn().mockResolvedValue(1),
     };
-    mockTransferFn.mockReset();
-    mockWaitFn.mockReset();
-    mockWaitFn.mockResolvedValue({ hash: '0xreceipt' });
     mockEncodeFunctionDataFn.mockReset().mockReturnValue('0xencodeddata');
-    mockGetAddressFn.mockReset().mockResolvedValue('0xutladdress');
-    mockPopulateTransactionFn.mockReset().mockResolvedValue({ to: '0xutladdress', data: '0xencodeddata' });
-    mockSignTransactionFn.mockReset().mockResolvedValue('0xsignedtx');
+    mockUtlGetAddressFn.mockReset().mockResolvedValue('0xutladdress');
     mockTransactionFromFn.mockReset().mockReturnValue({ hash: '0xbroadcast' });
-    mockBroadcastTransactionFn.mockReset().mockResolvedValue(mockTxFn);
+
+    mockGetTransactionCountFn.mockReset().mockResolvedValue(5);
+    mockGetFeeDataFn.mockReset().mockResolvedValue({ maxFeePerGas: 2n, maxPriorityFeePerGas: 1n });
+    mockGetNetworkFn.mockReset().mockResolvedValue({ chainId: 1n });
+    mockEstimateGasFn.mockReset().mockResolvedValue(21000n);
+
+    mockTreasuryGetAddressFn.mockReset().mockResolvedValue('0xtreasuryaddress');
+    mockSignTransactionFn.mockReset().mockResolvedValue('0xsignedtx');
+    mockSendTransactionFn.mockReset().mockResolvedValue({ hash: '0xbroadcast', fee: 1n });
     mockGetTransactionFn.mockReset();
+    mockWaitForTransactionFn.mockReset().mockResolvedValue({ hash: '0xreceipt', success: true });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -138,7 +181,7 @@ describe('CouponsService', () => {
     service = module.get(CouponsService);
     usersService = module.get(UsersService);
 
-    service.onModuleInit();
+    await service.onModuleInit();
     jest.spyOn(service as unknown as { delay: (ms: number) => Promise<void> }, 'delay').mockResolvedValue(undefined);
   });
 
@@ -202,7 +245,7 @@ describe('CouponsService', () => {
         expect.objectContaining({ redeemed: true }),
       );
       // Critical: must never attempt the on-chain transfer if the lock wasn't won.
-      expect(mockPopulateTransactionFn).not.toHaveBeenCalled();
+      expect(mockGetTransactionCountFn).not.toHaveBeenCalled();
     });
 
     it('marks coupon redeemed and returns redemptionTxHash on success', async () => {
@@ -217,18 +260,14 @@ describe('CouponsService', () => {
         mockUser.walletAddress,
         BigInt(mockCoupon.utlAmountRaw as string),
       ]);
-      expect(mockPopulateTransactionFn).toHaveBeenCalledWith({
-        to: '0xutladdress',
-        data: '0xencodeddata',
-      });
-      expect(mockSignTransactionFn).toHaveBeenCalledWith({ to: '0xutladdress', data: '0xencodeddata' });
+      expect(mockSignTransactionFn).toHaveBeenCalledWith(EXPECTED_TX);
       // The hash must be recorded immediately after signing — BEFORE broadcasting —
       // so it's a durable idempotency record even if the broadcast call itself fails.
       expect(couponModel.updateOne).toHaveBeenCalledWith(
         { _id: 'coupon-id' },
         { redemptionTxHash: '0xbroadcast' },
       );
-      expect(mockBroadcastTransactionFn).toHaveBeenCalledWith('0xsignedtx');
+      expect(mockSendTransactionFn).toHaveBeenCalledWith('0xsignedtx');
       expect(result).toEqual({ redemptionTxHash: '0xreceipt' });
     });
 
@@ -237,7 +276,7 @@ describe('CouponsService', () => {
       couponModel.findOne.mockResolvedValue(mockCoupon);
       couponModel.findOneAndUpdate.mockResolvedValue({ ...mockCoupon, redeemed: true });
       couponModel.updateOne.mockResolvedValue(undefined);
-      mockPopulateTransactionFn.mockRejectedValueOnce(new Error('RPC unreachable'));
+      mockGetTransactionCountFn.mockRejectedValueOnce(new Error('RPC unreachable'));
 
       await expect(
         service.claimCoupon(mockCoupon.code as string, 'cognito-sub'),
@@ -249,7 +288,7 @@ describe('CouponsService', () => {
       );
       // Must never reach the broadcast step, and must never record a hash for a
       // transaction that was never even signed.
-      expect(mockBroadcastTransactionFn).not.toHaveBeenCalled();
+      expect(mockSendTransactionFn).not.toHaveBeenCalled();
       expect(couponModel.updateOne).not.toHaveBeenCalledWith(
         { _id: 'coupon-id' },
         expect.objectContaining({ redemptionTxHash: expect.anything() }),
@@ -261,8 +300,9 @@ describe('CouponsService', () => {
       couponModel.findOne.mockResolvedValue(mockCoupon);
       couponModel.findOneAndUpdate.mockResolvedValue({ ...mockCoupon, redeemed: true });
       couponModel.updateOne.mockResolvedValue(undefined);
-      mockBroadcastTransactionFn.mockRejectedValueOnce(new Error('connection reset'));
-      mockGetTransactionFn.mockResolvedValue(null);
+      mockSendTransactionFn.mockRejectedValueOnce(new Error('connection reset'));
+      // WDK's getTransaction throws NoSuchElementError instead of resolving null.
+      mockGetTransactionFn.mockRejectedValue(new NoSuchElementError('not found'));
 
       await expect(
         service.claimCoupon(mockCoupon.code as string, 'cognito-sub'),
@@ -280,8 +320,8 @@ describe('CouponsService', () => {
       couponModel.findOne.mockResolvedValue(mockCoupon);
       couponModel.findOneAndUpdate.mockResolvedValue({ ...mockCoupon, redeemed: true });
       couponModel.updateOne.mockResolvedValue(undefined);
-      mockBroadcastTransactionFn.mockRejectedValueOnce(new Error('response timed out'));
-      mockGetTransactionFn.mockResolvedValueOnce({ hash: '0xbroadcast' });
+      mockSendTransactionFn.mockRejectedValueOnce(new Error('response timed out'));
+      mockGetTransactionFn.mockResolvedValueOnce({ hash: '0xbroadcast', success: true });
 
       await expect(
         service.claimCoupon(mockCoupon.code as string, 'cognito-sub'),
@@ -298,7 +338,7 @@ describe('CouponsService', () => {
       couponModel.findOne.mockResolvedValue(mockCoupon);
       couponModel.findOneAndUpdate.mockResolvedValue({ ...mockCoupon, redeemed: true });
       couponModel.updateOne.mockResolvedValue(undefined);
-      mockBroadcastTransactionFn.mockRejectedValueOnce(new Error('connection reset'));
+      mockSendTransactionFn.mockRejectedValueOnce(new Error('connection reset'));
       mockGetTransactionFn.mockRejectedValue(new Error('RPC still unreachable'));
 
       await expect(
@@ -317,7 +357,7 @@ describe('CouponsService', () => {
       couponModel.findOne.mockResolvedValue(mockCoupon);
       couponModel.findOneAndUpdate.mockResolvedValue({ ...mockCoupon, redeemed: true });
       couponModel.updateOne.mockResolvedValue(undefined);
-      mockWaitFn.mockResolvedValueOnce(null);
+      mockWaitForTransactionFn.mockResolvedValueOnce({ hash: '0xreceipt', success: false });
 
       await expect(
         service.claimCoupon(mockCoupon.code as string, 'cognito-sub'),
@@ -350,13 +390,13 @@ describe('CouponsService', () => {
       couponModel.updateOne.mockResolvedValue(undefined);
 
       const order: string[] = [];
-      mockPopulateTransactionFn.mockImplementation(async () => {
+      mockGetTransactionCountFn.mockImplementation(async () => {
         order.push('populate');
-        return { to: '0xutladdress', data: '0xencodeddata' };
+        return 5;
       });
-      mockBroadcastTransactionFn.mockImplementation(async () => {
+      mockSendTransactionFn.mockImplementation(async () => {
         order.push('broadcast');
-        return mockTxFn;
+        return { hash: '0xbroadcast', fee: 1n };
       });
 
       await Promise.all([
@@ -409,8 +449,8 @@ describe('CouponsService', () => {
         { redeemed: false, redeemedAt: null },
       );
       // Nothing may be signed or broadcast without the distributed lock.
-      expect(mockPopulateTransactionFn).not.toHaveBeenCalled();
-      expect(mockBroadcastTransactionFn).not.toHaveBeenCalled();
+      expect(mockGetTransactionCountFn).not.toHaveBeenCalled();
+      expect(mockSendTransactionFn).not.toHaveBeenCalled();
     });
 
     it('fails closed (rollback + retriable error) when Redis is unreachable', async () => {
@@ -424,7 +464,7 @@ describe('CouponsService', () => {
         { _id: 'coupon-id' },
         { redeemed: false, redeemedAt: null },
       );
-      expect(mockPopulateTransactionFn).not.toHaveBeenCalled();
+      expect(mockGetTransactionCountFn).not.toHaveBeenCalled();
     });
 
     it('does not fail a successful transfer when releasing the lock errors (TTL reclaims it)', async () => {

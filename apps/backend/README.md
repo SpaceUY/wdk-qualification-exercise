@@ -20,7 +20,7 @@ src/
 └── health/             # Liveness check for the load balancer — public, no auth
 ```
 
-**Stack:** NestJS 10 · Mongoose · MongoDB · Redis + Bull · ethers v6 · AWS Cognito (RS256 JWTs) · `@nestjs/schedule` · `@nestjs/swagger`
+**Stack:** NestJS 10 · Mongoose · MongoDB · Redis + Bull · `@tetherto/wdk-wallet-evm` (treasury key derivation) + ethers v6 (contract calls) · AWS Cognito (RS256 JWTs) · `@nestjs/schedule` · `@nestjs/swagger`
 
 ## API docs
 
@@ -247,7 +247,7 @@ Wallet registration (`POST /connect`, `POST`/`PATCH /wallets`) is still called d
 
 ### `GET /wdk-app-node/token-transfers` — server-side proxy
 
-Transaction history is **not** fetched directly from app-node by the mobile app. app-node's ork/DHT shard lookup is unreliable and can fail for minutes at a stretch, so `TokenTransfersService` (`src/wdk-app-node/token-transfers.service.ts`) proxies it server-side: it calls app-node's own `GET /api/v1/users/:userId/token-transfers` (minting its own token internally via `WdkAppNodeService`), retries twice with a short backoff (300ms/800ms) on failure, and on success caches the result in Redis for `WDK_APP_NODE_TOKEN_TRANSFERS_CACHE_TTL_SECONDS` (default 24h). If the live call still fails after retries, it serves the last cached value instead of erroring; only with no cache at all does it return a 503. `WDK_APP_NODE_BASE_URL` is where this backend reaches app-node (server-side network path, not necessarily the same as the mobile app's `EXPO_PUBLIC_APP_NODE_URL`).
+Transaction history is **not** fetched directly from app-node by the mobile app. app-node's ork/DHT shard lookup is unreliable and can fail for minutes at a stretch, so `TokenTransfersService` (`src/wdk-app-node/token-transfers.service.ts`) proxies it server-side: it calls app-node's own `GET /api/v1/users/:userId/token-transfers` (minting its own token internally via `WdkAppNodeService`), retries twice with a short backoff (300ms/800ms) on failure, and on success caches the result in Redis for `WDK_APP_NODE_TOKEN_TRANSFERS_CACHE_TTL_SECONDS` (default 24h). If the live call still fails after retries, it serves the last cached value instead of erroring; only with no cache at all does it return a 503. `WDK_APP_NODE_BASE_URL` is where this backend reaches app-node (server-side network path, not necessarily the same as the mobile app's `EXPO_PUBLIC_APP_NODE_URL`) — the self-hosted stack (see `infra/wdk-stack`) is deployed and live at `https://cashback-wdk-stack.spacedev.io`, not local-only.
 
 ## Environment variables
 
@@ -268,8 +268,10 @@ ETHEREUM_RPC_URL=https://rpc.sepolia.org
 USDT_CONTRACT_ADDRESS=0x...
 UTL_CONTRACT_ADDRESS=0x...
 
-# Treasury wallet that sends UTL cashback
-TREASURY_PRIVATE_KEY=0x...
+# Treasury wallet that sends UTL cashback — derived via @tetherto/wdk-wallet-evm from a
+# BIP-39 seed phrase, not a raw private key
+TREASURY_SEED_PHRASE=word1 word2 ... word12
+TREASURY_DERIVATION_PATH=0'/0/0
 
 # Comma-separated list of merchant addresses to watch
 MERCHANT_ADDRESSES=0xabc...,0xdef...

@@ -14,9 +14,9 @@ overrides:
   bare-tls: 3.1.0
   bare-tcp: 2.2.12
   bare-http1: 4.5.7
-  '@tetherto/wdk-wallet': 1.0.0-beta.11
+  '@tetherto/wdk-wallet': 1.0.0-beta.17
   ws: 8.17.1
-  '@tetherto/wdk-wallet-evm': 1.0.0-beta.6
+  '@tetherto/wdk-wallet-evm': 1.0.0-beta.18
   expo-crypto: 15.0.9
   bare-buffer: 3.4.4
   bare-channel: 5.2.3
@@ -80,6 +80,12 @@ importers:
       '@nestjs/swagger':
         specifier: ^11.4.5
         version: 11.4.5(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      '@tetherto/wdk-wallet':
+        specifier: 1.0.0-beta.17
+        version: 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-wallet-evm':
+        specifier: 1.0.0-beta.18
+        version: 1.0.0-beta.18(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       axios:
         specifier: ^1.18.1
         version: 1.18.1
@@ -223,8 +229,8 @@ importers:
         specifier: 1.0.0-beta.7
         version: 1.0.0-beta.7(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(ledger-bitcoin@0.2.3)
       '@tetherto/wdk-wallet-evm':
-        specifier: 1.0.0-beta.6
-        version: 1.0.0-beta.6(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 1.0.0-beta.18
+        version: 1.0.0-beta.18(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@tetherto/wdk-wallet-evm-erc-4337':
         specifier: 1.0.0-beta.5
         version: 1.0.0-beta.5(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
@@ -2995,9 +3001,9 @@ packages:
     peerDependencies:
       react-native: '>=0.70.0'
 
-  '@tetherto/wdk-react-native-secure-storage@https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/7290354dd05409d1418873d51dba67e615d74096':
-    resolution: {tarball: https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/7290354dd05409d1418873d51dba67e615d74096}
-    version: 1.0.0-beta.4
+  '@tetherto/wdk-react-native-secure-storage@https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/c9e27b70ad359ae39dd8ac507c1e80b62a785619':
+    resolution: {tarball: https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/c9e27b70ad359ae39dd8ac507c1e80b62a785619}
+    version: 1.0.0-beta.5
     peerDependencies:
       react-native: '>=0.70.0'
 
@@ -3015,8 +3021,8 @@ packages:
   '@tetherto/wdk-wallet-evm-erc-4337@1.0.0-beta.5':
     resolution: {integrity: sha512-Hz/AvKPt1QiMXMEkaGwMwIq9gg1DBSqWm8G+OiolBQVpQHPNHEpSbED4w/F2jcGd6jdefod3IqrGWBscKE55RA==}
 
-  '@tetherto/wdk-wallet-evm@1.0.0-beta.6':
-    resolution: {integrity: sha512-ttI2P3D2bhr66UTCPod5qgZht5lPZwK9CZEFR5l3Ccpv2+U1gKRKbqfd/fYZwxahqVuH9s4hbrTJw3ONlpqNVw==}
+  '@tetherto/wdk-wallet-evm@1.0.0-beta.18':
+    resolution: {integrity: sha512-dkmDRNu8Fue0/z0ubUW9oBkTrVEHCMj+a3tDZEMZS6xZcmdGgI1EEI5onIQHTdEzMgnc69ZFmgwpjl9ekmIiag==}
 
   '@tetherto/wdk-wallet-spark@1.0.0-beta.11':
     resolution: {integrity: sha512-C9P38kJ8+dCeTywB0dXjhZ8bxrFjHAH/qg3UkPncfs9OZlRyzF6UZXMM34NikZq/SJDW2l0Fjv3J4EKLAyI+yg==}
@@ -3024,8 +3030,8 @@ packages:
   '@tetherto/wdk-wallet-tron@1.0.0-beta.7':
     resolution: {integrity: sha512-0Z39tGLmN1hxN8c4m73Ni2V/KUdhm830bGhxPd/jEW+Ggg1Qf6lQu8c7MbjrD5FojcMYNwuUeu9RdIKLbpaTvA==}
 
-  '@tetherto/wdk-wallet@1.0.0-beta.11':
-    resolution: {integrity: sha512-4KxZxIU3t7aQ7bdgB0UTM4LfLB/PvuLXqJ/AkTTP0MzhyJcJ8CtuYBT+fCnh4KNWSizPGmCqZNBGITYHyKwiug==}
+  '@tetherto/wdk-wallet@1.0.0-beta.17':
+    resolution: {integrity: sha512-xar2qggQJEcqtzlBvZDUzg0gtq3CwDtFzbCtFLqKTg2sjFEt8o2Grbl9r/BchEiulMhlYIX4drgLZ+Yf1rR9qw==}
 
   '@tetherto/wdk-worklet-bundler@1.0.0-beta.3':
     resolution: {integrity: sha512-wDNARbZD+MGcK4cdwF5hw5sD60s+qdz4ZXarNv4UYx1QuU47M/SiN0UIHr/t8s9g2mcyDH8xxRRFteoWNbkO7w==}
@@ -3409,10 +3415,12 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -4780,6 +4788,7 @@ packages:
   cron-parser@4.9.0:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
+    deprecated: v4 is no longer maintained, upgrade to v5
 
   cron@4.4.0:
     resolution: {integrity: sha512-fkdfq+b+AHI4cKdhZlppHveI/mgz2qpiYxcm+t5E5TsxX7QrLS1VE0+7GENEk9z0EeGPcpSciGv6ez24duWhwQ==}
@@ -5330,10 +5339,6 @@ packages:
 
   ethers@6.13.5:
     resolution: {integrity: sha512-+knKNieu5EKRThQJWwqaJ10a6HE9sSehGeqWN65//wE7j47ZpFhKAnHB/JJFibwwg61I/koxaPsXbXpD/skNOQ==}
-    engines: {node: '>=14.0.0'}
-
-  ethers@6.14.3:
-    resolution: {integrity: sha512-qq7ft/oCJohoTcsNPFaXSQUm457MA5iWqkf1Mb11ujONdg7jBI6sAOrHaTi3j0CBqIGFSCeR/RMc+qwRRub7IA==}
     engines: {node: '>=14.0.0'}
 
   ethers@6.14.4:
@@ -7869,6 +7874,7 @@ packages:
   prom-client@14.2.0:
     resolution: {integrity: sha512-sF308EhTenb/pDRPakm+WgiN+VdM/T1RaHj1x+MvAuT8UiQP8JmOEbxVqtkbfR4LrvOg5n7ic01kRBDGXjYikA==}
     engines: {node: '>=10'}
+    deprecated: prom-client has been replaced by @prometheus-io/client
 
   promaphore@1.0.0:
     resolution: {integrity: sha512-Eg8401+KJddVvDULkpy8bR964GMX8xMPegL6NdxTeBH2Wa3L86cZlEHizbkFJikr5u+E3wFoR5dLWJ+1OPyEfw==}
@@ -13468,7 +13474,7 @@ snapshots:
     dependencies:
       '@tanstack/react-query': 5.101.2(react@19.1.0)
       '@tetherto/pear-wrk-wdk': 1.0.0-beta.8(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))
-      '@tetherto/wdk-react-native-secure-storage': https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/7290354dd05409d1418873d51dba67e615d74096(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))
+      '@tetherto/wdk-react-native-secure-storage': https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/c9e27b70ad359ae39dd8ac507c1e80b62a785619(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))
       expo-crypto: 15.0.9(expo@54.0.35)
       immer: 11.1.9
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6)
@@ -13487,7 +13493,7 @@ snapshots:
       - react-native-nitro-modules
       - use-sync-external-store
 
-  '@tetherto/wdk-react-native-secure-storage@https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/7290354dd05409d1418873d51dba67e615d74096(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))':
+  '@tetherto/wdk-react-native-secure-storage@https://codeload.github.com/tetherto/wdk-react-native-secure-storage/tar.gz/c9e27b70ad359ae39dd8ac507c1e80b62a785619(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))':
     dependencies:
       expo-crypto: 15.0.9(expo@54.0.35)
       expo-local-authentication: 55.0.15(expo@54.0.35)
@@ -13537,7 +13543,7 @@ snapshots:
       '@bitcoinerlab/descriptors': 2.3.1(ledger-bitcoin@0.2.3)
       '@bitcoinerlab/secp256k1': 1.2.0
       '@mempool/electrum-client': 1.1.9
-      '@tetherto/wdk-wallet': 1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-wallet': 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bip32: 4.0.0
       bip39: 3.1.0
@@ -13559,8 +13565,8 @@ snapshots:
   '@tetherto/wdk-wallet-evm-erc-4337@1.0.0-beta.5(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)':
     dependencies:
       '@tetherto/wdk-safe-relay-kit': 4.1.5(bufferutil@4.1.0)(ethers@6.14.4(bufferutil@4.1.0)(utf-8-validate@6.0.6))(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
-      '@tetherto/wdk-wallet': 1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
-      '@tetherto/wdk-wallet-evm': 1.0.0-beta.6(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@tetherto/wdk-wallet': 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-wallet-evm': 1.0.0-beta.18(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       ethers: 6.14.4(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
@@ -13578,15 +13584,15 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@tetherto/wdk-wallet-evm@1.0.0-beta.6(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
+  '@tetherto/wdk-wallet-evm@1.0.0-beta.18(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))(bare-url@2.4.5)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
-      '@noble/curves': 1.9.2
       '@noble/hashes': 1.8.0
       '@noble/secp256k1': 2.2.3
-      '@tetherto/wdk-wallet': 1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-failover-provider': 1.0.0-beta.2
+      '@tetherto/wdk-wallet': 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bip39: 3.1.0
-      ethers: 6.14.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      ethers: 6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       sodium-universal: 5.0.1(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-url@2.4.5)
     transitivePeerDependencies:
       - bare-abort-controller
@@ -13606,7 +13612,7 @@ snapshots:
       '@noble/hashes': 2.2.0
       '@scure/bip32': 1.7.0
       '@sparkscan/api-node-sdk-client': 0.1.8
-      '@tetherto/wdk-wallet': 1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-wallet': 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bip39: 3.1.0
       sodium-universal: 5.0.1(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-url@2.4.5)
@@ -13634,7 +13640,7 @@ snapshots:
       '@noble/secp256k1': 2.3.0
       '@scure/bip32': 1.7.0
       '@tetherto/wdk-failover-provider': 1.0.0-beta.2
-      '@tetherto/wdk-wallet': 1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-wallet': 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bip39: 3.1.0
       sodium-universal: 5.0.1(bare-abort-controller@1.1.2)(bare-buffer@3.4.4)(bare-events@2.9.1(bare-abort-controller@1.1.2))(bare-url@2.4.5)
@@ -13652,7 +13658,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@tetherto/wdk-wallet@1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))':
+  '@tetherto/wdk-wallet@1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))':
     dependencies:
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bip39: 3.1.0
@@ -13674,7 +13680,7 @@ snapshots:
 
   '@tetherto/wdk@1.0.0-beta.12(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))':
     dependencies:
-      '@tetherto/wdk-wallet': 1.0.0-beta.11(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
+      '@tetherto/wdk-wallet': 1.0.0-beta.17(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       bare-node-runtime: 1.5.0(bare-tcp@2.2.12(bare-abort-controller@1.1.2)(bare-buffer@3.4.4))
       zod: 4.4.3
     transitivePeerDependencies:
@@ -16522,19 +16528,6 @@ snapshots:
       - utf-8-validate
 
   ethers@6.13.5(bufferutil@4.1.0)(utf-8-validate@6.0.6):
-    dependencies:
-      '@adraffy/ens-normalize': 1.10.1
-      '@noble/curves': 1.9.2
-      '@noble/hashes': 1.3.2
-      '@types/node': 22.7.5
-      aes-js: 4.0.0-beta.5
-      tslib: 2.7.0
-      ws: 8.17.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  ethers@6.14.3(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
       '@adraffy/ens-normalize': 1.10.1
       '@noble/curves': 1.9.2
