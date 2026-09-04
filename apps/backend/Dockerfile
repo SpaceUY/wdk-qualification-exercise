@@ -1,8 +1,17 @@
-FROM node:24.15.0-alpine
+# bookworm-slim (glibc), NOT alpine (musl): @tetherto/wdk-wallet-evm pulls in
+# sodium-universal -> sodium-native, whose Node.js entry is a plain
+# `require('sodium-native')` with no JS fallback. sodium-native ships a prebuilt
+# linux-x64 (glibc) binding but no linux-x64-musl one, and this image has no
+# compiler to build it from source either way — so it crashes on first import
+# under alpine. Same fix infra/wdk-stack's own Dockerfiles already use for a
+# different native WDK dependency (see their bookworm-slim comments).
+FROM node:24.15.0-bookworm-slim
 
 ENV CI=true
 
-RUN apk add --no-cache dumb-init curl
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends dumb-init curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && corepack prepare pnpm@10.15.1 --activate
 
