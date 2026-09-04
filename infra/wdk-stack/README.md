@@ -1,8 +1,10 @@
 # WDK Self-Hosted Stack — Core Pipeline (Sub-Project A)
 
 Single-chain (Ethereum Sepolia / USDT) docker-compose stack proving the full self-hosted WDK
-pipeline end-to-end: indexer → transaction router → data shard → ork → app-node. See
-`docs/wdk-self-hosted-stack/01-core-pipeline.md` in the repo root for the full design rationale.
+pipeline end-to-end: indexer → transaction router → data shard → ork → app-node. **Deployed and
+live** at `https://cashback-wdk-stack.spacedev.io` (see the deployment note under Notes below) —
+this isn't just a local proof of concept. See `docs/wdk-self-hosted-stack/01-core-pipeline.md` in
+the repo root for the full design rationale.
 
 ## Prerequisites
 
@@ -89,11 +91,15 @@ Follow `docs/wdk-self-hosted-stack/01-core-pipeline.md` §6 in full. Short versi
 
 - `vendor/` and `.env` are gitignored — nothing under this directory beyond the compose file,
   Dockerfiles, entrypoints, and scripts is meant to be committed.
-- This directory itself is a local/dev stack only. Production AWS deployment now has a concrete
-  plan — see [`docs/deployment-guide.md`](../../docs/deployment-guide.md#13-elastic-beanstalk--infrawdk-stack):
-  Elastic Beanstalk (same target as `apps/backend`), single-instance (not horizontally scaled,
-  since `mongo`/`redis`/`ork` are stateful), with images pre-built and pushed to ECR since the EB
-  instance itself can't clone the private forked repos the way `clone-forks.sh` does locally.
+- **This stack is deployed and live**, not just a local/dev setup — Elastic Beanstalk (same
+  target as `apps/backend`), single-instance (not horizontally scaled, since `mongo`/`redis`/`ork`
+  are stateful), with images pre-built and pushed to ECR since the EB instance itself can't clone
+  the private forked repos the way `clone-forks.sh` does locally. Verify it's up with:
+  `curl https://cashback-wdk-stack.spacedev.io/api/v1/ready` — a healthy response looks like
+  `{"status":"ready","orks":2}`. Both the mobile app (wallet registration/balance, directly) and
+  `apps/backend` (transaction-history proxy, plus consuming the indexer's Redis stream for the
+  cashback pipeline) talk to this deployment, not a local instance — see
+  `EXPO_PUBLIC_APP_NODE_URL` / `WDK_APP_NODE_BASE_URL` in the respective app READMEs.
 - `redis` (6380) and `mongo` (27018) are both mapped to host ports for external debugging
   (mongosh/Compass, redis-cli) — separate from `apps/backend/docker-compose.yml`'s own
   Mongo/Redis, which store application data (users/wallets/coupons + Bull queue), not
