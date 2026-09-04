@@ -19,6 +19,13 @@ import { UsersService } from '../users/users.service';
 import { CACHE_REDIS_CLIENT } from '../redis/redis-cache.tokens';
 import type { CouponListItemDto, ClaimedCouponListItemDto } from './dto/list-coupons.dto';
 
+// We encode the ERC-20 transfer ourselves with a plain ethers.Contract instead of
+// WDK's own transfer builder. WDK does have one (WalletAccountEvm._getTransferTransaction),
+// but it's `protected` — the only public ways to reach it are quoteTransfer() (returns
+// just a fee, not the built tx) or transfer() itself (signs AND broadcasts in one call,
+// see buildSignAndBroadcast below for why that's not an option here). Reaching into the
+// protected method to save this one ethers call would trade a real improvement (fully
+// public API, version-bump-safe) for a cosmetic one — not worth it.
 const ERC20_TRANSFER_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
 ] as const;
